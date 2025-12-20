@@ -1,0 +1,1048 @@
+/* Global Reset & Variables */
+:root {
+    --primary: #14b8a6;
+    /* Teal-500 */
+    --primary-hover: #0d9488;
+    /* Teal-600 */
+    --background: #121212;
+    --surface: #1e1e1e;
+    --surface-hover: #2a2a2a;
+    --text-primary: #f3f4f6;
+    --text-secondary: #9ca3af;
+    --border: #374151;
+    --radius: 12px;
+    --header-height: 64px;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--background);
+    background-image: radial-gradient(circle at 50% 50%, #1a1a1a 0%, #121212 100%);
+    /* Essential for glass effect */
+    color: var(--text-primary);
+    font-family: 'Inter', system-ui, sans-serif;
+    line-height: 1.5;
+    min-height: 100vh;
+}
+
+/* Layout */
+.app-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.main-content {
+    flex: 1;
+    width: 100%;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+/* Navbar */
+.navbar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    height: var(--header-height);
+    background-color: rgba(30, 30, 30, 0.8);
+    /* Updated to match new dark theme */
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1.5rem;
+}
+
+.nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-weight: 700;
+    font-size: 1.25rem;
+    color: var(--primary);
+}
+
+.nav-links {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.nav-item {
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+}
+
+.nav-item:hover {
+    color: white;
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.nav-item.active {
+    background-color: var(--primary);
+    color: white;
+}
+
+/* Utilities */
+.flex-center {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.search-bar {
+    display: none;
+    /* Hidden on mobile default */
+    position: relative;
+    align-items: center;
+}
+
+.search-input {
+    background-color: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.5rem 1rem 0.5rem 2.25rem;
+    color: white;
+    font-size: 0.875rem;
+    width: 250px;
+    outline: none;
+}
+
+.search-input:focus {
+    border-color: var(--primary);
+}
+
+.profile-pill {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background-color: rgba(0, 0, 0, 0.2);
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    font-size: 0.875rem;
+}
+
+.avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background-color: var(--primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 0.75rem;
+}
+
+/* Movie Grid */
+.page-header {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.page-title {
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+.subtitle {
+    color: var(--text-secondary);
+}
+
+.media-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+}
+
+@media (min-width: 768px) {
+    .media-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+
+    .search-bar {
+        display: flex;
+    }
+}
+
+@media (min-width: 1024px) {
+    .media-grid {
+        grid-template-columns: repeat(5, 1fr);
+    }
+
+    .page-header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+}
+
+/* Cards */
+.media-card {
+    position: relative;
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: transform 0.3s ease;
+    cursor: pointer;
+}
+
+.media-card:hover {
+    transform: translateY(-5px);
+}
+
+.poster-wrapper {
+    position: relative;
+    aspect-ratio: 2/3;
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.poster-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Media Card Overlay Pills */
+.media-pill {
+    position: absolute;
+    padding: 0.25rem 0.5rem;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    backdrop-filter: blur(4px);
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.pill-rating {
+    top: 0.5rem;
+    left: 0.5rem;
+    background-color: rgba(20, 20, 20, 0.8);
+    color: #fbbf24;
+    /* Amber */
+    border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.pill-year {
+    bottom: 0.5rem;
+    left: 0.5rem;
+    background-color: rgba(20, 20, 20, 0.7);
+    color: #9ca3af;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.pill-duration {
+    bottom: 0.5rem;
+    right: 0.5rem;
+    background-color: rgba(20, 20, 20, 0.7);
+    color: #f3f4f6;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.pill-seasons {
+    bottom: 2.25rem;
+    right: 0.5rem;
+    background-color: rgba(20, 20, 20, 0.7);
+    color: #d1d5db;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.card-info {
+    padding: 0.75rem 0.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.rating {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    color: #fbbf24;
+    /* Amber-400 */
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.action-btn {
+    margin-top: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.4rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    background-color: var(--primary);
+    color: white;
+    transition: background-color 0.2s;
+}
+
+.action-btn:hover {
+    background-color: var(--primary-hover);
+}
+
+.action-btn.watched {
+    background-color: var(--surface-hover);
+    color: var(--text-secondary);
+}
+
+/* Modal */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(5px);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.modal-content {
+    background-color: var(--surface);
+    width: 100%;
+    max-width: 900px;
+    max-height: 90vh;
+    overflow-y: auto;
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    position: relative;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+/* Utilities */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.modal-hero {
+    position: relative;
+    height: 250px;
+}
+
+@media (min-width: 768px) {
+    .modal-hero {
+        height: 400px;
+    }
+}
+
+.hero-content {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    padding: 2rem;
+    background: linear-gradient(to top, var(--surface) 0%, transparent 100%);
+}
+
+.hero-title {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: white;
+    margin-bottom: 0.5rem;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.meta-tags {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-size: 0.875rem;
+    color: #e5e5e5;
+    font-weight: 500;
+}
+
+.tag {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    background-color: rgba(0, 0, 0, 0.4);
+    padding: 0.25rem 0.5rem;
+    border-radius: 6px;
+}
+
+.tag.rating {
+    background-color: rgba(234, 179, 8, 0.2);
+    color: #eab308;
+    border: 1px solid rgba(234, 179, 8, 0.2);
+}
+
+.modal-body {
+    padding: 2rem;
+    display: grid;
+    gap: 2rem;
+}
+
+@media (min-width: 768px) {
+    .modal-body {
+        grid-template-columns: 2fr 1fr;
+    }
+}
+
+.section-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.overview-text {
+    color: #d1d5db;
+    line-height: 1.75;
+    font-size: 1rem;
+}
+
+.provider-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.provider-logo {
+    width: 3rem;
+    height: 3rem;
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.watch-btn {
+    width: 100%;
+    padding: 0.75rem 1.5rem;
+    border-radius: 12px;
+    font-weight: 700;
+    text-align: center;
+    border: none;
+    cursor: pointer;
+    background-color: var(--primary);
+    color: white;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.watch-btn:hover {
+    background-color: var(--primary-hover);
+    transform: translateY(-1px);
+}
+
+.watch-btn:disabled {
+    background-color: var(--surface-hover);
+    color: var(--text-secondary);
+    cursor: default;
+    transform: none;
+}
+
+.genre-tag {
+    display: inline-block;
+    font-size: 0.75rem;
+    border: 1px solid var(--border);
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+    color: #d1d5db;
+}
+
+.close-btn {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: rgba(0, 0, 0, 0.5);
+    border: none;
+    color: white;
+    border-radius: 50%;
+    padding: 0.5rem;
+    cursor: pointer;
+    z-index: 10;
+}
+
+.input-group {
+    position: relative;
+    width: 100%;
+    max-width: 400px;
+}
+
+/* Semantic Utilities */
+.u-full-center {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.u-vstack {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.u-text-gray {
+    color: var(--text-secondary);
+}
+
+.input-text {
+    width: 100%;
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    padding: 0.75rem 1rem 0.75rem 2.5rem;
+    border-radius: 8px;
+    color: white;
+    font-size: 1rem;
+}
+
+/* Specific Component Styles */
+.no-image-placeholder {
+    background-color: #2a2a2a;
+}
+
+.genres-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.subtitle-text {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+/* FAB */
+.fab-container {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    z-index: 40;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    align-items: center;
+}
+
+.fab-btn {
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: 50%;
+    background-color: var(--primary);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 12px rgba(20, 184, 166, 0.4);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.fab-btn.secondary-fab {
+    width: 3rem;
+    height: 3rem;
+    background-color: var(--surface);
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.fab-btn:hover {
+    transform: translateY(-2px) scale(1.05);
+    background-color: var(--primary-hover);
+    color: white;
+    box-shadow: 0 6px 16px rgba(20, 184, 166, 0.6);
+}
+
+/* Search Modal */
+.search-modal-content {
+    background-color: var(--surface);
+    width: 100%;
+    max-width: 600px;
+    max-height: 80vh;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+}
+
+.search-header {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.search-modal-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    font-size: 1.125rem;
+    color: white;
+    outline: none;
+}
+
+.search-results {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.search-result-item {
+    display: flex;
+    gap: 1rem;
+    padding: 0.75rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.search-result-item:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.search-poster {
+    width: 48px;
+    height: 72px;
+    border-radius: 4px;
+    object-fit: cover;
+    background-color: #2a2a2a;
+}
+
+.search-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.25rem;
+}
+
+.search-title {
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.search-meta {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+/* Filter Bar (New Design) */
+.filter-container {
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding-bottom: 10px;
+    overflow: visible;
+    margin-bottom: 1.5rem;
+}
+
+.filter-container::-webkit-scrollbar {
+    display: none;
+}
+
+.filter-bar {
+    display: inline-flex;
+    align-items: center;
+    gap: 16px;
+    width: fit-content;
+    white-space: nowrap;
+    overflow: visible;
+}
+
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow: visible;
+    position: relative;
+    /* Ensure z-index context if needed */
+}
+
+.pill {
+    padding: 8px 12px;
+    border-radius: 50px;
+    background: rgba(45, 45, 45, 0.5);
+    color: #eee;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow:
+        0 8px 20px rgba(0, 0, 0, 0.4),
+        inset 0 2px 6px rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    transition: all 0.3s ease;
+    white-space: nowrap;
+    text-align: center;
+    width: fit-content;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pill:hover {
+    background: rgba(70, 70, 70, 0.7);
+    box-shadow:
+        0 12px 28px rgba(0, 0, 0, 0.5),
+        inset 0 2px 8px rgba(255, 255, 255, 0.1);
+}
+
+.filter-trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 12px;
+}
+
+.filter-trigger:hover {
+    background: rgba(70, 70, 70, 0.7);
+    box-shadow:
+        0 10px 24px rgba(0, 0, 0, 0.45),
+        inset 0 2px 8px rgba(255, 255, 255, 0.08);
+}
+
+.filter-trigger::after {
+    content: "▶";
+    font-size: 12px;
+    transition: transform 0.3s ease;
+    flex-shrink: 0;
+}
+
+.filter-trigger.active::after {
+    transform: rotate(90deg);
+}
+
+.options-inline {
+    display: flex;
+    gap: 8px;
+    opacity: 0;
+    max-width: 0;
+    min-width: 0;
+    width: 0;
+    overflow: hidden;
+    transition: opacity 0.4s ease, max-width 0.4s ease, width 0.4s ease;
+    overflow: visible;
+    /* Inherited from example but check if it breaks transition */
+}
+
+/* Override overflow for transition to work, actually the user example had overflow: hidden; then overflow: visible? 
+   Wait, the user CSS had:
+   .options-inline { ... overflow: hidden; ... overflow: visible; }
+   The last one wins. If it is visible, max-width transition might look valid but content spills.
+   Actually, looking closely at the provided CSS:
+   .options-inline { ... overflow: hidden; ... overflow: visible; } -> effectively visible.
+   BUT for the transition (max-width: 0 -> 2000px) to work like a slide/reveal, hidden is usually required.
+   However, the user wants "Tight-Fitting Glass Pills".
+   I will stick to the user's CSS as much as possible but correct the double declaration if it looks like a typo, 
+   or maybe the user intended visible to allow shadows. Use 'hidden' for the closed state via max-width logic usually.
+   Let's check the user request closely:
+   `overflow: hidden;` then lines later `overflow: visible;` in the same block. Visible wins.
+   And `.options-inline.active` has `width: fit-content`.
+   If I use `overflow: visible`, then `max-width: 0` won't hide the content. It will just be 0 width but content spills.
+   I will trust that `overflow: hidden` is what makes the expansion effect work, and only `.active` should perhaps be visible if needed?
+   No, the user code literally has `overflow: visible` as the last property in `.options-inline`.
+   Let's assume the user made a copy-paste error or I should test. 
+   Actually, `pill` has a shadow. If I clip it, shadow is cut. 
+   But `opacity: 0` handles visibility. `max-width` handles layout space.
+   I will use `overflow: hidden` for the transition state, and `overflow: visible` when active if needed, but standard expansion needs hidden.
+   I'll stick to `overflow: hidden` for the base class to accept `max-width` animation.
+*/
+.options-inline {
+    display: flex;
+    gap: 8px;
+    opacity: 0;
+    max-width: 0;
+    width: 0;
+    overflow: hidden;
+    /* Necessary for width transition */
+    transition: all 0.4s ease;
+}
+
+.options-inline.active {
+    opacity: 1;
+    max-width: 2000px;
+    width: fit-content;
+    overflow: visible;
+    /* Show shadows when open */
+    margin-left: 8px;
+    /* Add some spacing if needed */
+}
+
+/* Option buttons with logo */
+.option-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px 8px 8px;
+    width: fit-content;
+}
+
+.option-btn img {
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    object-fit: contain;
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.option-btn:hover:not(.active) {
+    background: rgba(80, 80, 80, 0.8);
+    transform: scale(1.05);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
+}
+
+.option-btn.active {
+    background-color: #00b7ab;
+    color: white;
+    box-shadow: 0 0 15px rgba(0, 183, 171, 0.6);
+    transform: scale(1.02);
+}
+
+.selected-label {
+    font-weight: 600;
+    color: #fff;
+    text-transform: capitalize;
+}
+
+
+.filter-reel .filter-pill.active {
+    background: var(--primary);
+    color: #fff;
+}
+
+/* Ensure horizontal layout for options */
+.reel-options {
+    display: flex;
+    flex-direction: row;
+    /* Force row */
+    align-items: center;
+    gap: 0.5rem;
+    overflow-x: auto;
+    /* Allow internal scrolling if needed */
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+    flex-wrap: nowrap;
+    /* DIRECTIVE: NO WRAPPING */
+}
+
+.reel-options::-webkit-scrollbar {
+    display: none;
+}
+
+.filter-back-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    padding: 0.25rem 0.6rem;
+    white-space: nowrap;
+    border-right: 1px solid var(--border);
+    margin-right: 0.1rem;
+}
+
+.filter-back-btn:hover {
+    color: var(--primary);
+}
+
+/* Add Button & Watched Indicator Styles (REPAIRED) */
+
+/* The actual button - Cleaned up to be relative */
+.add-btn {
+    position: relative;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background-color: rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 10;
+    opacity: 1;
+    /* Always visible itself, controlled by container */
+    transition: all 0.2s;
+    flex-shrink: 0;
+    /* CRITICAL: Prevent shrinking in collapsed stack */
+}
+
+.delete-btn {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background-color: rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 10;
+    opacity: 0;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.watched-indicator {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    border: 1px solid var(--primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: default;
+    z-index: 10;
+    opacity: 1;
+    background-color: rgba(20, 184, 166, 0.8);
+    flex-shrink: 0;
+}
+
+/* Container for action stack - Hover Only, No pill expansion */
+/* Container for action stack - Expandable Pill */
+.card-actions-stack {
+    position: absolute;
+    top: 0.4rem;
+    /* Slightly higher to compensate for padding */
+    right: 0.4rem;
+    /* Slightly Right to compensate for padding */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    z-index: 20;
+
+    /* Animation Props */
+    /* Size is slightly larger than button (2rem) to allow for hover scale (1.1) without clipping */
+    width: 2.4rem;
+    height: 2.4rem;
+    padding-top: 0.2rem;
+    /* Center the first button vertically (2.4 - 2.0 / 2) */
+
+    overflow: hidden;
+    background-color: transparent;
+    border-radius: 999px;
+    /* Pill Shape */
+    transition: width 0.3s ease, height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease-in-out, background-color 0.2s;
+    opacity: 0;
+}
+
+.media-card:hover .card-actions-stack {
+    opacity: 1;
+}
+
+/* Hover over Button Stack -> Expand to show all options */
+.card-actions-stack:hover {
+    height: auto;
+    /* Expand vertical */
+    padding-top: 0.2rem;
+    padding-bottom: 0.2rem;
+    /* Add bottom padding */
+
+    /* Darken background to form the "pill" */
+    background-color: rgba(0, 0, 0, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    /* Keep width constant */
+    width: 2.4rem;
+}
+
+/* IMPORTANT: Ensure buttons inside don't have absolute positioning interference 
+   (They are already relative/static per recent edits, so this is fine) 
+*/
+
+.delete-btn:hover {
+    background-color: #ef4444;
+    border-color: #ef4444;
+}
+
+.add-btn:hover {
+    background-color: var(--primary);
+    border-color: var(--primary);
+    transform: scale(1.1);
+}
+
+.media-card:hover .delete-btn {
+    opacity: 1;
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes stamp {
+    0% {
+        opacity: 0;
+        transform: scale(2) rotate(-12deg);
+    }
+
+    50% {
+        opacity: 0.5;
+        transform: scale(1.5) rotate(-12deg);
+    }
+
+    100% {
+        opacity: 1;
+        transform: scale(1) rotate(-12deg);
+    }
+}

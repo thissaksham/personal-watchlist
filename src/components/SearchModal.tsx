@@ -1,0 +1,135 @@
+import { useState, useEffect } from 'react';
+import { Search, X, Loader, Plus } from 'lucide-react';
+import { tmdb, type TMDBMedia } from '../lib/tmdb';
+import { useWatchlist } from '../context/WatchlistContext';
+
+interface SearchModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    type: 'movie' | 'tv'; // Context sensitive search
+}
+
+export const SearchModal = ({ isOpen, onClose, type }: SearchModalProps) => {
+    const [query, setQuery] = useState('');
+    const [results, setResults] = useState<TMDBMedia[]>([]);
+    const [loading, setLoading] = useState(false);
+    const { addToWatchlist, isInWatchlist } = useWatchlist();
+
+    useEffect(() => {
+        const performSearch = async () => {
+            if (!query.trim()) {
+                setResults([]);
+                return;
+            }
+            setLoading(true);
+            try {
+                const data = await tmdb.search(query, type);
+                setResults(data.results || []);
+            } catch (err) {
+                console.error(err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        const timer = setTimeout(performSearch, 500);
+        return () => clearTimeout(timer);
+    }, [query, type]);
+
+    const handleAdd = async (media: TMDBMedia) => {
+        const mediaType = type === 'tv' ? 'show' : 'movie';
+        if (isInWatchlist(media.id, mediaType)) return;
+        await addToWatchlist(media, mediaType);
+        onClose();
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="search-modal-content" onClick={e => e.stopPropagation()}>
+                <div className="search-header">
+                    <Search className="text-gray-400" size={20} />
+                    <input
+                        autoFocus
+                        type="text"
+                        placeholder={`Search for a ${type === 'movie' ? 'movie' : 'TV show'} to add...`}
+                        className="search-modal-input"
+                        value={query}
+                        onChange={e => setQuery(e.target.value)}
+                    />
+                    <button onClick={onClose} className="p-1 hover:bg-white/10 rounded-full">
+                        <X size={20} className="text-gray-400" />
+                    </button>
+                </div>
+
+                <div className="search-results">
+                    {loading && (
+                        <div className="u-full-center py-8">
+                            <Loader className="animate-spin text-[var(--primary)]" />
+                        </div>
+                    )}
+
+                    {!loading && results.length === 0 && query && (
+                        <div className="text-center py-8 text-gray-500">
+                            No results found.
+                        </div>
+                    )}
+
+                    {!loading && !query && (
+                        <div className="text-center py-8 text-gray-500">
+                            Type to search...
+                        </div>
+                    )}
+
+                    {results.map(media => {
+                        const inList = isInWatchlist(Number(media.id), type === 'tv' ? 'show' : 'movie');
+                        const displayTitle = media.title || media.name || 'Unknown';
+                        const posterUrl = media.poster_path
+                            ? (media.poster_path.startsWith('http') ? media.poster_path : `https://image.tmdb.org/t/p/w92${media.poster_path}`)
+                            : `https://placehold.co/92x138/1f2937/ffffff?text=${encodeURIComponent(displayTitle)}`;
+
+                        return (
+                            <div
+                                key={media.id}
+                                className="search-result-item group"
+                                onClick={() => !inList && handleAdd(media)}
+                            >
+                                <img
+                                    src={posterUrl}
+                                    alt={media.title || media.name}
+                                    className="search-poster"
+                                />
+                                <div className="search-info">
+                                    <div className="flex items-center justify-between">
+                                        <h4 className="search-title group-hover:text-[var(--primary)] transition-colors">
+                                            {media.title || media.name}
+                                        </h4>
+                                    </div>
+                                    <p className="search-meta">
+                                        {(media.release_date || media.first_air_date)?.substring(0, 4)} • ⭐ {media.vote_average?.toFixed(1) || '0.0'}
+                                    </p>
+                                    <p className="text-xs text-gray-500 line-clamp-2 mt-1">{media.overview}</p>
+                                </div>
+                                <div className="flex items-center px-2">
+                                    {inList ? (
+                                        <span className="text-xs font-bold text-gray-500 bg-gray-800 px-2 py-1 rounded-full">
+                                            Added
+                                        </span>
+                                    ) : (
+                                        <button
+                                            className="p-2 rounded-full bg-[var(--surface-hover)] hover:bg-[var(--primary)] text-white transition-all"
+                                            title="Add to Library"
+                                        >
+                                            <Plus size={20} />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        </div>
+    );
+};
