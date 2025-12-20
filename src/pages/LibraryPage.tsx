@@ -271,8 +271,8 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
             {/* Filter Bar (Glassmorphism) */}
             <FilterBar>
 
-                {/* Status Filter (Shows only) */}
-                {tmdbType === 'tv' && (
+                {/* Status Filter (Shows only) - Hide if library is empty */}
+                {library.length > 0 && tmdbType === 'tv' && (
                     <FilterExpandable
                         label="Status"
                         value={statusFilter}

@@ -79,21 +79,23 @@ export const WatchedPage = () => {
                 </div>
             </div>
 
-            {/* Filter Bar */}
-            <FilterBar>
-                <FilterExpandable
-                    label="View"
-                    value={viewType}
-                    onChange={(val: any) => {
-                        setViewType(val);
-                        setFilterProvider(null); // Reset provided filter when switching type
-                    }}
-                    options={[
-                        { id: 'movie', label: 'Movies' },
-                        { id: 'show', label: 'Shows' },
-                    ]}
-                />
-            </FilterBar>
+            {/* Filter Bar - Hide if history is empty */}
+            {watchlist.some(item => item.status === 'watched') && (
+                <FilterBar>
+                    <FilterExpandable
+                        label="View"
+                        value={viewType}
+                        onChange={(val: any) => {
+                            setViewType(val);
+                            setFilterProvider(null); // Reset provided filter when switching type
+                        }}
+                        options={[
+                            { id: 'movie', label: 'Movies' },
+                            { id: 'show', label: 'Shows' },
+                        ]}
+                    />
+                </FilterBar>
+            )}
 
             {filteredItems.length === 0 ? (
                 <div className="u-full-center py-20 u-vstack text-center">

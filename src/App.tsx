@@ -9,6 +9,8 @@ import { Movies } from './pages/Movies';
 import { Shows } from './pages/Shows';
 import { Upcoming, Games } from './pages/Placeholders';
 import { WatchedPage } from './pages/WatchedPage';
+import VerifySuccess from './pages/VerifySuccess';
+
 
 // Protected Route Wrapper
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -31,6 +33,8 @@ function App() {
         <WatchlistProvider>
           <Routes>
             <Route path="/auth" element={<Login />} />
+            <Route path="/auth/verified" element={<VerifySuccess />} />
+
 
             <Route path="/" element={
               <ProtectedRoute>
