@@ -1,8 +1,8 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { MediaCard } from '../components/MediaCard';
 import { MediaDetailsModal } from '../components/MediaDetailsModal';
 import { useWatchlist } from '../context/WatchlistContext';
-import { tmdb, type TMDBMedia } from '../lib/tmdb';
+import { type TMDBMedia } from '../lib/tmdb';
 import { FilterBar, FilterExpandable } from '../components/FilterBar';
 import { useMediaProviders } from '../hooks/useMediaProviders';
 

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LogOut, Clapperboard, MonitorPlay, Calendar, Gamepad2, Menu, X, Flame, Check } from 'lucide-react';
+import { LogOut, Clapperboard, MonitorPlay, Calendar, Gamepad2, Menu, X, Check } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Layout() {

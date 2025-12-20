@@ -1,6 +1,5 @@
-import React from 'react';
 
-const PlaceholderPage = ({ title, icon }: { title: string; icon?: string }) => (
+const PlaceholderPage = ({ title }: { title: string }) => (
     <div className="mt-10">
         <h1 className="text-4xl font-bold mb-4">{title}</h1>
         <div className="p-10 border border-dashed border-[var(--border)] rounded-2xl flex items-center justify-center text-[var(--text-secondary)] h-64">
