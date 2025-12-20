@@ -34,6 +34,21 @@ A `vercel.json` file has been added to ensure that refreshing pages like `/movie
 
 ---
 
+## ⚙️ Supabase Configuration (Redirect Fix)
+
+If your confirmation emails are pointing to `localhost:3000` instead of `5173`, follow these steps:
+
+1.  Open your [Supabase Dashboard](https://supabase.com/dashboard).
+2.  Go to **Authentication** -> **URL Configuration**.
+3.  Update **Site URL** to your Vercel URL (e.g., `https://your-app.vercel.app`).
+4.  Add `http://localhost:5173/**` to **Redirect URLs** (so local development still works).
+5.  Add your Vercel URL with a wildcard (e.g., `https://your-app.vercel.app/**`) to **Redirect URLs**.
+
+> [!TIP]
+> The app now sends `window.location.origin` automatically, so as long as both URLs are in your Supabase whitelist, redirects will work seamlessly in both environments.
+
+---
+
 ## 🛠️ Local Development
 
 1.  Clone the repo:
