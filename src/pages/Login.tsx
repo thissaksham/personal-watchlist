@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
-import { Film, Gamepad2, Tv } from 'lucide-react';
+import { Clapperboard, Mail, Lock, ArrowRight, Loader } from 'lucide-react';
 
 export default function Login() {
     const [email, setEmail] = useState('');
@@ -9,6 +9,7 @@ export default function Login() {
     const [loading, setLoading] = useState(false);
     const [isSignUp, setIsSignUp] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [focusedInput, setFocusedInput] = useState<string | null>(null);
     const navigate = useNavigate();
 
     const handleAuth = async (e: React.FormEvent) => {
@@ -39,77 +40,281 @@ export default function Login() {
         }
     };
 
-    return (
-        <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
-            {/* Background Decor */}
-            <div className="absolute inset-0 z-0">
-                <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-purple-900/20 rounded-full blur-[120px]" />
-                <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-red-900/20 rounded-full blur-[120px]" />
-            </div>
+    // Inline Styles System
+    const theme = {
+        primary: '#14b8a6', // Teal-500
+        primaryHover: '#0d9488',
+        surface: 'rgba(20, 20, 20, 0.7)',
+        border: 'rgba(255, 255, 255, 0.1)',
+        textMain: '#ffffff',
+        textMuted: '#9ca3af',
+        glass: {
+            background: 'rgba(22, 22, 22, 0.6)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+        }
+    };
 
-            <div className="relative z-10 w-full max-w-md p-8 glass-panel rounded-2xl">
-                <div className="text-center mb-8">
-                    <div className="flex justify-center gap-2 mb-4 text-primary">
-                        <Film size={32} />
-                        <Tv size={32} />
-                        <Gamepad2 size={32} />
+    return (
+        <div style={{
+            minHeight: '100vh',
+            width: '100%',
+            display: 'flex',
+            position: 'relative',
+            overflow: 'hidden',
+            backgroundColor: '#000',
+            fontFamily: "'Inter', sans-serif"
+        }}>
+            {/* Cinematic Background */}
+            <div style={{
+                position: 'absolute',
+                inset: 0,
+                zIndex: 0,
+                backgroundImage: 'url("https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=2070&auto=format&fit=crop")',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                filter: 'brightness(0.35) saturate(1.1)',
+                transform: 'scale(1.05)' // Slight zoom for cinematic feel
+            }} />
+
+            {/* Content Container */}
+            <div style={{
+                position: 'relative',
+                zIndex: 10,
+                width: '100%',
+                maxWidth: '1200px',
+                margin: '0 auto',
+                display: 'flex',
+                flexDirection: 'row', // Default to row for desktop
+                alignItems: 'center',
+                justifyContent: 'space-between', // Split layout
+                padding: '2rem',
+                gap: '4rem',
+                flexWrap: 'wrap' // Allow wrapping on mobile
+            }}>
+
+                {/* Branding Section */}
+                <div style={{
+                    flex: '1 1 500px', // Grow, shrink, basis
+                    color: 'white',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '1.5rem',
+                    textShadow: '0 2px 10px rgba(0,0,0,0.5)'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <div style={{
+                            padding: '0.75rem',
+                            background: 'rgba(20, 184, 166, 0.2)',
+                            borderRadius: '12px',
+                            border: '1px solid rgba(20, 184, 166, 0.3)',
+                            display: 'flex'
+                        }}>
+                            <Clapperboard size={32} color={theme.primary} />
+                        </div>
+                        <h1 style={{ fontSize: '2rem', fontWeight: 800, letterSpacing: '-0.02em' }}>Watchlist</h1>
                     </div>
-                    <h1 className="text-3xl font-bold mb-2">Welcome Back</h1>
-                    <p className="text-text-secondary">
-                        {isSignUp ? 'Create an account to start tracking' : 'Enter your credentials to access your watchlist'}
+
+                    <h2 style={{ fontSize: '3.5rem', fontWeight: 900, lineHeight: 1.1 }}>
+                        Your Cinema, <br />
+                        <span style={{
+                            color: 'transparent',
+                            backgroundImage: 'linear-gradient(90deg, #2dd4bf, #3b82f6)',
+                            backgroundClip: 'text',
+                            WebkitBackgroundClip: 'text'
+                        }}>
+                            Unlimited.
+                        </span>
+                    </h2>
+
+                    <p style={{ fontSize: '1.125rem', color: '#d1d5db', maxWidth: '500px', lineHeight: 1.6 }}>
+                        The ultimate personal tracking library for movies and TV shows.
+                        Sort by runtime, find streaming sources, and track your progress in style.
                     </p>
                 </div>
 
-                <form onSubmit={handleAuth} className="space-y-4">
-                    {error && (
-                        <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-500 text-sm">
-                            {error}
+                {/* Login Card */}
+                <div style={{
+                    flex: '0 1 450px',
+                    width: '100%',
+                    ...theme.glass,
+                    padding: '3rem',
+                    borderRadius: '24px',
+                    position: 'relative',
+                    overflow: 'hidden'
+                }}>
+                    {/* Ambient Glow */}
+                    <div style={{
+                        position: 'absolute',
+                        top: '-50%',
+                        right: '-50%',
+                        width: '100%',
+                        height: '100%',
+                        background: 'radial-gradient(circle, rgba(20,184,166,0.15) 0%, transparent 70%)',
+                        filter: 'blur(60px)',
+                        pointerEvents: 'none'
+                    }} />
+
+                    <div style={{ position: 'relative', zIndex: 2 }}>
+                        <div style={{ marginBottom: '2rem' }}>
+                            <h3 style={{ fontSize: '1.75rem', fontWeight: 700, color: 'white', marginBottom: '0.5rem' }}>
+                                {isSignUp ? 'Join the Club' : 'Welcome Back'}
+                            </h3>
+                            <p style={{ color: theme.textMuted }}>
+                                {isSignUp ? 'Start your collection today.' : 'Enter your credentials to continue.'}
+                            </p>
                         </div>
-                    )}
 
-                    <div>
-                        <label className="block text-sm font-medium mb-1.5 text-gray-300">Email</label>
-                        <input
-                            type="email"
-                            required
-                            className="input-field"
-                            placeholder="name@example.com"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                        />
+                        <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                            {error && (
+                                <div style={{
+                                    padding: '0.75rem',
+                                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                    border: '1px solid rgba(239, 68, 68, 0.2)',
+                                    borderRadius: '8px',
+                                    color: '#fca5a5',
+                                    fontSize: '0.875rem'
+                                }}>
+                                    {error}
+                                </div>
+                            )}
+
+                            {/* Email Input */}
+                            <div style={{ position: 'relative' }}>
+                                <Mail
+                                    size={20}
+                                    color={focusedInput === 'email' ? theme.primary : '#6b7280'}
+                                    style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', transition: 'color 0.2s' }}
+                                />
+                                <input
+                                    type="email"
+                                    required
+                                    placeholder="Email address"
+                                    onFocus={() => setFocusedInput('email')}
+                                    onBlur={() => setFocusedInput(null)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '1rem 1rem 1rem 3rem',
+                                        backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                                        border: focusedInput === 'email' ? `1px solid ${theme.primary}` : '1px solid rgba(255, 255, 255, 0.1)',
+                                        borderRadius: '12px',
+                                        color: 'white',
+                                        fontSize: '1rem',
+                                        outline: 'none',
+                                        transition: 'all 0.2s ease'
+                                    }}
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                />
+                            </div>
+
+                            {/* Password Input */}
+                            <div style={{ position: 'relative' }}>
+                                <Lock
+                                    size={20}
+                                    color={focusedInput === 'password' ? theme.primary : '#6b7280'}
+                                    style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', transition: 'color 0.2s' }}
+                                />
+                                <input
+                                    type="password"
+                                    required
+                                    placeholder="Password"
+                                    onFocus={() => setFocusedInput('password')}
+                                    onBlur={() => setFocusedInput(null)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '1rem 1rem 1rem 3rem',
+                                        backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                                        border: focusedInput === 'password' ? `1px solid ${theme.primary}` : '1px solid rgba(255, 255, 255, 0.1)',
+                                        borderRadius: '12px',
+                                        color: 'white',
+                                        fontSize: '1rem',
+                                        outline: 'none',
+                                        transition: 'all 0.2s ease'
+                                    }}
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                />
+                            </div>
+
+                            {/* Submit Button */}
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                style={{
+                                    marginTop: '1rem',
+                                    width: '100%',
+                                    padding: '1rem',
+                                    backgroundColor: theme.primary,
+                                    color: 'white',
+                                    fontWeight: 600,
+                                    fontSize: '1rem',
+                                    border: 'none',
+                                    borderRadius: '12px',
+                                    cursor: loading ? 'not-allowed' : 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '0.5rem',
+                                    transition: 'transform 0.2s, background-color 0.2s',
+                                    boxShadow: '0 4px 12px rgba(20, 184, 166, 0.3)'
+                                }}
+                                onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                                onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                            >
+                                {loading ? (
+                                    <>
+                                        <Loader size={20} className="animate-spin" />
+                                        Processing...
+                                    </>
+                                ) : (
+                                    <>
+                                        {isSignUp ? 'Sign Up' : 'Sign In'}
+                                        <ArrowRight size={20} />
+                                    </>
+                                )}
+                            </button>
+                        </form>
+
+                        <div style={{ marginTop: '2rem', textAlign: 'center', fontSize: '0.875rem', color: theme.textMuted }}>
+                            {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
+                            <button
+                                onClick={() => setIsSignUp(!isSignUp)}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: theme.primary,
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    padding: 0
+                                }}
+                            >
+                                {isSignUp ? 'Sign In' : 'Sign Up'}
+                            </button>
+                        </div>
                     </div>
-
-                    <div>
-                        <label className="block text-sm font-medium mb-1.5 text-gray-300">Password</label>
-                        <input
-                            type="password"
-                            required
-                            className="input-field"
-                            placeholder="••••••••"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                        />
-                    </div>
-
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full btn-primary mt-2"
-                    >
-                        {loading ? 'Processing...' : (isSignUp ? 'Sign Up' : 'Sign In')}
-                    </button>
-                </form>
-
-                <div className="mt-6 text-center text-sm text-text-secondary">
-                    {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
-                    <button
-                        onClick={() => setIsSignUp(!isSignUp)}
-                        className="text-white hover:underline focus:outline-none"
-                    >
-                        {isSignUp ? 'Sign In' : 'Sign Up'}
-                    </button>
                 </div>
             </div>
+
+            {/* Mobile Responsive Helper (using styled-jsx logic via style tag for media queries) */}
+            <style>{`
+                @media (max-width: 768px) {
+                    div[style*="flex-direction: row"] {
+                        flex-direction: column !important;
+                        justify-content: center !important;
+                        gap: 2rem !important;
+                    }
+                    div[style*="text-align: left"] {
+                        text-align: center !important;
+                    }
+                    h1 { font-size: 1.5rem !important; }
+                    h2 { font-size: 2.5rem !important; }
+                    p { display: none !important; } /* Hide tagline on mobile to save space */
+                }
+            `}</style>
         </div>
     );
 }
+
