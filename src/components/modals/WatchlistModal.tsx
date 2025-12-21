@@ -158,6 +158,8 @@ export const WatchlistModal = ({ media, type, onClose }: WatchlistModalProps) =>
                                             }
                                         }
 
+                                        const isOngoing = details?.next_episode_to_air?.season_number === seasonNum;
+
                                         const isSolid = isWatched;
                                         const isGhost = !isWatched && isPreview;
 
@@ -168,11 +170,21 @@ export const WatchlistModal = ({ media, type, onClose }: WatchlistModalProps) =>
                                         let fontWeight = 'normal';
 
                                         if (isSolid) {
-                                            background = 'radial-gradient(circle at center, #5eead4 0%, #0f766e 100%)';
-                                            border = 'none';
-                                            color = '#000000';
-                                            boxShadow = '0 0 12px rgba(45,212,191,0.6)';
-                                            fontWeight = 'bold';
+                                            if (isOngoing) {
+                                                // Half-colored for ongoing but caught-up seasons
+                                                background = 'linear-gradient(90deg, #0f766e 50%, rgba(45, 212, 191, 0.2) 50%)';
+                                                border = '1px solid #0f766e'; // Match the solid part
+                                                color = '#ffffff'; // White text for contrast
+                                                boxShadow = '0 0 8px rgba(45,212,191,0.4)';
+                                                fontWeight = 'bold';
+                                            } else {
+                                                // Full solid for completed seasons
+                                                background = 'radial-gradient(circle at center, #5eead4 0%, #0f766e 100%)';
+                                                border = 'none';
+                                                color = '#000000';
+                                                boxShadow = '0 0 12px rgba(45,212,191,0.6)';
+                                                fontWeight = 'bold';
+                                            }
                                         } else if (isGhost) {
                                             background = 'rgba(45, 212, 191, 0.15)';
                                             border = '1px solid rgba(45, 212, 191, 0.6)';

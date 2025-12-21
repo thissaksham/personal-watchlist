@@ -1,11 +1,10 @@
 import { useState, useMemo } from 'react';
 import { useWatchlist } from '../context/WatchlistContext';
-import { FAB } from '../components/FAB';
-import { SearchModal } from '../components/SearchModal';
 import { UpcomingCard } from '../components/cards/UpcomingCard';
 import { calculateMediaRuntime } from '../lib/tmdb';
 
-// Helper Functions
+// ... (helper functions omitted for brevity, they are unchanged)
+
 const getDaysUntil = (dateStr: string) => {
     const today = new Date();
     // Reset time to start of day for accurate day diff
@@ -26,8 +25,7 @@ const formatDate = (dateStr: string) => {
 import { UpcomingModal } from '../components/modals/UpcomingModal';
 
 export const Upcoming = () => {
-    const { watchlist, markAsWatched, dismissFromUpcoming } = useWatchlist();
-    const [isSearchOpen, setIsSearchOpen] = useState(false);
+    const { watchlist, markAsWatched, dismissFromUpcoming, removeFromWatchlist } = useWatchlist();
     const [selectedMedia, setSelectedMedia] = useState<any | null>(null);
 
     // Derived State: Process watchlist into "Upcoming" items
@@ -35,7 +33,7 @@ export const Upcoming = () => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        return watchlist.map(item => {
+        const items = watchlist.map(item => {
             const meta = (item.metadata || {}) as any;
             let targetDate: Date | null = null;
             let seasonInfo = '';
@@ -68,7 +66,12 @@ export const Upcoming = () => {
                     const airDate = new Date(nextEp.air_date);
                     if (airDate >= today) {
                         targetDate = airDate;
-                        seasonInfo = `Season ${nextEp.season_number}`;
+                        // Determine label based on episode number
+                        if (nextEp.episode_number === 1) {
+                            seasonInfo = 'New Season';
+                        } else {
+                            seasonInfo = 'New Episode';
+                        }
                     }
                 }
             }
@@ -91,6 +94,8 @@ export const Upcoming = () => {
             };
         }).filter((item): item is NonNullable<typeof item> => item !== null)
             .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+        return items;
     }, [watchlist]);
 
     return (
@@ -127,8 +132,14 @@ export const Upcoming = () => {
                                     countdown: getDaysUntil(show.date),
                                 }}
                                 onRemove={() => {
-                                    if (window.confirm(`Hide ${show.title} from upcoming list? (It will remain in your library)`)) {
-                                        dismissFromUpcoming(Number(show.id), show.tmdbMediaType === 'movie' ? 'movie' : 'show');
+                                    if (show.tmdbMediaType === 'movie') {
+                                        if (window.confirm(`Delete ${show.title} from your watchlist completely?`)) {
+                                            removeFromWatchlist(Number(show.id), 'movie');
+                                        }
+                                    } else {
+                                        if (window.confirm(`Hide ${show.title} from upcoming list? (It will remain in your library)`)) {
+                                            dismissFromUpcoming(Number(show.id), 'show');
+                                        }
                                     }
                                 }}
                                 onMarkWatched={() => {
@@ -139,7 +150,7 @@ export const Upcoming = () => {
                             <div className="absolute -bottom-6 left-0 w-full text-center opacity-0 group-hover/upcoming:opacity-100 transition-opacity duration-300 pointer-events-none">
                                 <span className="text-[10px] font-bold text-teal-400 bg-black/80 px-2 py-1 rounded-full border border-teal-500/20 backdrop-blur-sm">
                                     {formatDate(show.date)}
-                                    {show.seasonInfo ? <span className="text-white"> &bull; {show.seasonInfo}</span> : null}
+                                    <span className="text-white"> &bull; {show.tmdbMediaType === 'movie' ? 'Movie' : show.seasonInfo}</span>
                                 </span>
                             </div>
                         </div>
@@ -147,22 +158,7 @@ export const Upcoming = () => {
                 </div>
             )}
 
-            <FAB
-                onClick={() => setIsSearchOpen(true)}
-                onRandom={() => { }}
-                hideRandom={true}
-            />
-
-            <SearchModal
-                isOpen={isSearchOpen}
-                onClose={() => setIsSearchOpen(false)}
-                type="multi"
-                onSuccess={(media) => {
-                    // Ensure we have the correct type for the modal
-                    const mediaType = media.media_type === 'movie' ? 'movie' : 'tv';
-                    setSelectedMedia({ ...media, tmdbMediaType: mediaType });
-                }}
-            />
+            {/* FAB Removed - Global Add replaces it. Random not strictly needed here or can be added back if requested. */}
 
             {selectedMedia && (
                 <UpcomingModal

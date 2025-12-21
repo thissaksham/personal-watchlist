@@ -8,13 +8,24 @@ interface SearchModalProps {
     onClose: () => void;
     type: 'movie' | 'tv' | 'multi'; // Context sensitive search
     onSuccess?: (media: TMDBMedia) => void;
+    initialQuery?: string;
 }
 
-export const SearchModal = ({ isOpen, onClose, type, onSuccess }: SearchModalProps) => {
-    const [query, setQuery] = useState('');
+export const SearchModal = ({ isOpen, onClose, type, onSuccess, initialQuery = '' }: SearchModalProps) => {
+    const [query, setQuery] = useState(initialQuery);
     const [results, setResults] = useState<TMDBMedia[]>([]);
     const [loading, setLoading] = useState(false);
     const { addToWatchlist, isInWatchlist } = useWatchlist();
+
+    useEffect(() => {
+        if (isOpen && initialQuery) {
+            setQuery(initialQuery);
+        } else if (isOpen && !initialQuery) {
+            // If opened without query, maybe clear or keep previous?
+            // Usually better to start fresh or keep input if user typed in header.
+            // If initialQuery is passed, use it.
+        }
+    }, [isOpen, initialQuery]);
 
     useEffect(() => {
         const performSearch = async () => {
@@ -106,7 +117,6 @@ export const SearchModal = ({ isOpen, onClose, type, onSuccess }: SearchModalPro
 
                     {results.map(media => {
                         const itemType = type === 'multi' ? (media.media_type === 'tv' ? 'show' : 'movie') : (type === 'tv' ? 'show' : 'movie');
-                        const inList = isInWatchlist(Number(media.id), itemType);
                         const displayTitle = media.title || media.name || 'Unknown';
                         const posterUrl = media.poster_path
                             ? (media.poster_path.startsWith('http') ? media.poster_path : `https://image.tmdb.org/t/p/w92${media.poster_path}`)
@@ -116,7 +126,11 @@ export const SearchModal = ({ isOpen, onClose, type, onSuccess }: SearchModalPro
                             <div
                                 key={media.id}
                                 className="search-result-item group"
-                                onClick={() => !inList && handleAdd(media)}
+                                onClick={() => {
+                                    if (!isInWatchlist(Number(media.id), itemType)) {
+                                        handleAdd(media);
+                                    }
+                                }}
                             >
                                 <img
                                     src={posterUrl}
@@ -135,7 +149,7 @@ export const SearchModal = ({ isOpen, onClose, type, onSuccess }: SearchModalPro
                                     <p className="text-xs text-gray-500 line-clamp-2 mt-1">{media.overview}</p>
                                 </div>
                                 <div className="flex items-center px-2">
-                                    {inList ? (
+                                    {isInWatchlist(Number(media.id), itemType) ? (
                                         <span className="text-xs font-bold text-gray-500 bg-gray-800 px-2 py-1 rounded-full">
                                             Added
                                         </span>

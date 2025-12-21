@@ -168,45 +168,80 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
         console.log(`[Watchlist] Removing ${tmdbId} (${type})`);
         const dbType = type as 'movie' | 'show';
 
+        // 1. Optimistic Update: Remove from Watchlist Array
+        setWatchlist((prev) => prev.filter((item) => !(item.tmdb_id == tmdbId && item.type === dbType)));
+
+        // 2. Optimistic Update: Clear Watched Seasons (if it's a show)
+        if (type === 'show') {
+            setWatchedSeasons(prev => {
+                const next = new Set(prev);
+                // Remove all keys starting with "ID-"
+                Array.from(next).forEach(key => {
+                    if (key.startsWith(`${tmdbId}-`)) {
+                        next.delete(key);
+                    }
+                });
+                if (!user) localStorage.setItem('watched_seasons', JSON.stringify(Array.from(next)));
+                return next;
+            });
+        }
+
         if (!user) {
+            // ... (Local Storage logic - update to remove watched_seasons too if needed)
             try {
                 const localWatchlist = JSON.parse(localStorage.getItem('watchlist') || '[]');
-                const initialLength = localWatchlist.length;
-
-                // Use loose equality (==) for IDs to handle string/number mismatch in localStorage
-                const updatedLocal = localWatchlist.filter((item: any) => {
-                    const idMatch = item.tmdb_id == tmdbId;
-                    const typeMatch = item.type === dbType;
-                    return !(idMatch && typeMatch);
-                });
-
-                if (updatedLocal.length === initialLength) {
-                    console.warn(`[Watchlist] Remove failed? Item not found: ${tmdbId} ${dbType}`);
-                    // window.alert(`Debug: Item ${tmdbId} not found in local storage to remove.`);
-                }
-
+                const updatedLocal = localWatchlist.filter((item: any) => !(item.tmdb_id == tmdbId && item.type === dbType));
                 localStorage.setItem('watchlist', JSON.stringify(updatedLocal));
                 setWatchlist(updatedLocal);
-                console.log(`[Watchlist] Removed. New length: ${updatedLocal.length}`);
+
+                // Also clear watched seasons from local storage if show
+                if (type === 'show') {
+                    const localSeasons = JSON.parse(localStorage.getItem('watched_seasons') || '[]');
+                    const userPrefix = `${tmdbId}-`;
+                    const updatedSeasons = localSeasons.filter((s: string) => !s.startsWith(userPrefix));
+                    localStorage.setItem('watched_seasons', JSON.stringify(updatedSeasons));
+                }
             } catch (e) {
                 console.error("Local storage remove error", e);
-                alert("Error removing item: " + e);
             }
             return;
         }
 
-        const { error } = await supabase
+        // 3. Database: Delete from 'watchlist'
+        // Use explicit .eq() for better control and type safety
+        const { error: wlError, count } = await supabase
             .from('watchlist')
-            .delete()
-            .match({ user_id: user.id, tmdb_id: tmdbId, type: dbType });
+            .delete({ count: 'exact' })
+            .eq('user_id', user.id)
+            .eq('tmdb_id', Number(tmdbId))
+            .eq('type', dbType);
 
-        if (error) {
-            console.error('Error removing from watchlist:', error);
-            alert('Error removing: ' + error.message);
+        if (wlError) {
+            console.error('Error removing from watchlist:', wlError);
+            fetchWatchlist(); // Revert on error
         } else {
-            setWatchlist((prev) => prev.filter((item) => !(item.tmdb_id === tmdbId && item.type === dbType)));
+            // Verify deletion
+            if (count === 0) {
+                console.warn(`[Watchlist] DB Delete returned 0 rows for Movie/Show! ID: ${tmdbId}, Type: ${dbType}`);
+                // Fallback: Try with string ID if number failed (rare edge case but happens if legacy data)
+                if (typeof tmdbId !== 'number') {
+                    await supabase.from('watchlist').delete().match({ user_id: user.id, tmdb_id: String(tmdbId), type: dbType });
+                }
+            }
+        }
+
+        // 4. Database: Delete from 'watched_seasons' (if show)
+        if (type === 'show') {
+            const { error: wsError } = await supabase
+                .from('watched_seasons')
+                .delete()
+                .match({ user_id: user.id, tmdb_id: tmdbId });
+
+            if (wsError) console.error('Error removing watched seasons:', wsError);
         }
     };
+
+
 
     const markAsWatched = async (tmdbId: number, type: 'movie' | 'show') => {
         const dbType = type as 'movie' | 'show';
@@ -285,15 +320,19 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
                 : item
         ));
 
-        const { error } = await supabase
+        const { error, count } = await supabase
             .from('watchlist')
-            .update({ status: 'watched' })
-            .match({ user_id: user.id, tmdb_id: tmdbId, type: dbType });
+            .update({ status: 'watched' }, { count: 'exact' })
+            .eq('user_id', user.id)
+            .eq('tmdb_id', Number(tmdbId))
+            .eq('type', dbType);
 
         if (error) {
             console.error('Error marking as watched:', error);
             // Revert on error (simple fetch to reset)
             fetchWatchlist();
+        } else if (count === 0) {
+            console.warn(`[Watchlist] Mark Watched updated 0 rows. ID: ${tmdbId}`);
         }
     };
 
@@ -319,14 +358,18 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
                 : item
         ));
 
-        const { error } = await supabase
+        const { error, count } = await supabase
             .from('watchlist')
-            .update({ status: 'watching' })
-            .match({ user_id: user.id, tmdb_id: tmdbId, type: dbType });
+            .update({ status: 'watching' }, { count: 'exact' })
+            .eq('user_id', user.id)
+            .eq('tmdb_id', Number(tmdbId))
+            .eq('type', dbType);
 
         if (error) {
             console.error('Error marking as watching:', error);
             fetchWatchlist();
+        } else if (count === 0) {
+            console.warn(`[Watchlist] Mark Watching updated 0 rows. ID: ${tmdbId}`);
         }
     };
 
@@ -375,19 +418,29 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
                 : item
         ));
 
-        const { error } = await supabase
+        const { error, count } = await supabase
             .from('watchlist')
-            .update({ status: 'plan_to_watch' })
-            .match({ user_id: user.id, tmdb_id: tmdbId, type: dbType });
+            .update({ status: 'plan_to_watch' }, { count: 'exact' })
+            .eq('user_id', user.id)
+            .eq('tmdb_id', Number(tmdbId))
+            .eq('type', dbType);
 
         if (error) {
             console.error('Error marking as unwatched:', error);
             fetchWatchlist();
+        } else if (count === 0) {
+            console.warn(`[Watchlist] Mark Unwatched updated 0 rows. ID: ${tmdbId}`);
         }
     };
 
     const isInWatchlist = (tmdbId: number, type: 'movie' | 'show') => {
-        return watchlist.some((item) => item.tmdb_id === tmdbId && item.type === type);
+        // Use loose equality to match potential string IDs from local storage or params
+        const match = watchlist.find((item) => item.tmdb_id == tmdbId && item.type === type);
+        if (match) {
+            console.log(`[Watchlist] Found match for ${tmdbId} (${type}):`, match); // Verbose log ENABLED
+            return true;
+        }
+        return false;
     };
 
     // --- Season Tracking Logic ---
@@ -482,14 +535,22 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
             return;
         }
 
-        const { error } = await supabase
+        const { error, count } = await supabase
             .from('watchlist')
-            .update({ metadata: newMeta })
-            .match({ user_id: user.id, tmdb_id: tmdbId, type: type });
+            .update({ metadata: newMeta }, { count: 'exact' })
+            .eq('user_id', user.id)
+            .eq('tmdb_id', Number(tmdbId))
+            .eq('type', type);
 
         if (error) {
             console.error('Error dismissing from upcoming:', error);
             fetchWatchlist(); // Revert
+        } else if (count === 0) {
+            console.warn(`[Watchlist] Dismiss (Upcoming) updated 0 rows. ID: ${tmdbId}`);
+            // Fallback
+            if (typeof tmdbId !== 'number') {
+                await supabase.from('watchlist').update({ metadata: newMeta }).match({ user_id: user.id, tmdb_id: String(tmdbId), type: type });
+            }
         }
     };
 

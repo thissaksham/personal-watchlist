@@ -1,12 +1,19 @@
 import { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LogOut, Clapperboard, MonitorPlay, Calendar, Gamepad2, Menu, X } from 'lucide-react';
+import { LogOut, Clapperboard, MonitorPlay, Calendar, Gamepad2, Menu, X, Search, Plus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useGlobalSearch } from '../context/GlobalSearchContext';
+import { SearchModal } from './SearchModal';
+import { WatchlistModal } from './modals/WatchlistModal';
+import type { TMDBMedia } from '../lib/tmdb';
 
 export default function Layout() {
     const { signOut, user } = useAuth();
+    const { searchQuery, setSearchQuery } = useGlobalSearch();
     const navigate = useNavigate();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [isAddOpen, setIsAddOpen] = useState(false);
+    const [recentlyAddedMedia, setRecentlyAddedMedia] = useState<TMDBMedia | null>(null);
 
     const handleSignOut = async () => {
         await signOut();
@@ -64,7 +71,33 @@ export default function Layout() {
 
                 {/* Right: Search Input & Profile */}
                 <div className="flex-center">
-                    {/* Global Search Removed per User Request */}
+                    {/* Global Search Bar */}
+                    <div className="search-bar" style={{ position: 'relative', width: '250px', marginRight: '1rem' }}>
+                        <Search size={16} color="#9ca3af" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+                        <input
+                            type="text"
+                            placeholder="Search library..."
+                            className="search-input"
+                            style={{ width: '100%' }}
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && searchQuery.trim()) {
+                                    setIsAddOpen(true);
+                                }
+                            }}
+                        />
+                    </div>
+
+                    {/* Global Add Button */}
+                    <button
+                        className="add-btn"
+                        onClick={() => setIsAddOpen(true)}
+                        style={{ marginRight: '1rem', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--primary)', color: 'white', border: 'none', cursor: 'pointer' }}
+                        title="Add Movie or Show"
+                    >
+                        <Plus size={20} />
+                    </button>
 
                     <div className="profile-pill">
                         <div className="avatar">
@@ -117,6 +150,27 @@ export default function Layout() {
             <main className="main-content">
                 <Outlet />
             </main>
+
+            <SearchModal
+                isOpen={isAddOpen}
+                onClose={() => setIsAddOpen(false)}
+                type="multi"
+                onSuccess={(media) => {
+                    // Auto-open modal for Shows to allow marking seasons
+                    if (media.media_type === 'tv') {
+                        setRecentlyAddedMedia(media);
+                    }
+                }}
+                initialQuery={searchQuery}
+            />
+
+            {recentlyAddedMedia && (
+                <WatchlistModal
+                    media={recentlyAddedMedia}
+                    type="tv"
+                    onClose={() => setRecentlyAddedMedia(null)}
+                />
+            )}
         </div>
     );
 }

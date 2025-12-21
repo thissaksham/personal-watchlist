@@ -3,9 +3,10 @@ import { calculateMediaRuntime } from '../lib/tmdb';
 import { useWatchlist } from '../context/WatchlistContext';
 import { WatchlistCard } from '../components/cards/WatchlistCard';
 import { WatchlistModal } from '../components/modals/WatchlistModal';
-import { SearchModal } from '../components/SearchModal';
+
 import { FAB } from '../components/FAB';
 import { FilterBar, FilterExpandable } from '../components/FilterBar';
+
 import { HistoryCard } from '../components/cards/HistoryCard';
 import { SlidingToggle } from '../components/common/SlidingToggle';
 import { Search, ListFilter } from 'lucide-react';
@@ -22,13 +23,12 @@ interface LibraryPageProps {
 export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMessage }: LibraryPageProps) => {
     const { watchlist, removeFromWatchlist, markAsWatched, markAsUnwatched, watchedSeasons } = useWatchlist();
     const [selectedMedia, setSelectedMedia] = useState<TMDBMedia | null>(null);
-    const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [filterProvider, setFilterProvider] = useState<number | null>(null);
     const [statusFilter, setStatusFilter] = useState<'finished' | 'ongoing' | null>(null);
     const [viewMode, setViewMode] = useState<string>('Unwatched'); // Changed to string for flexibility
     const [sortOption, setSortOption] = useState<'date_added' | 'rating' | 'release_date' | 'runtime'>('date_added'); // New Sort State
-    const [searchTerm, setSearchTerm] = useState('');
     const [isSortOpen, setIsSortOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
     const sortRef = useRef<HTMLDivElement>(null);
 
     // Close sort menu when clicking outside
@@ -48,10 +48,21 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
     }, [isSortOpen]);
 
     // Helper to determine Show status based on seasons
-    const getShowStatus = (item: any): 'Unwatched' | 'Watching' | 'Watched' => {
+    const getShowStatus = (item: any): 'Unwatched' | 'Watching' | 'Watched' | 'Upcoming' => {
         // Fallback or explicit status check if needed? No, user wants derived logic.
         const meta = item.metadata || {};
         const totalSeasons = meta.number_of_seasons || item.number_of_seasons || 0;
+
+        // Check for purely Upcoming shows (all seasons in future)
+        if (meta.seasons && Array.isArray(meta.seasons)) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const validSeasons = meta.seasons.filter((s: any) => s.season_number > 0 && s.air_date);
+            if (validSeasons.length > 0) {
+                const allFuture = validSeasons.every((s: any) => new Date(s.air_date) > today);
+                if (allFuture) return 'Upcoming';
+            }
+        }
 
         if (!totalSeasons) {
             // If no season info, fallback to manual status if available, else Unwatched
@@ -69,12 +80,22 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
         }
 
         if (watchedCount === 0) return 'Unwatched';
-        if (watchedCount === totalSeasons) return 'Watched';
+
+        // If we have watched all available seasons...
+        if (watchedCount === totalSeasons) {
+            // ...but the current season has upcoming episodes (Weekly Release user case)
+            if (meta.next_episode_to_air && meta.next_episode_to_air.season_number === totalSeasons) {
+                return 'Watching';
+            }
+            return 'Watched';
+        }
 
         // Check for unreleased future seasons
         // If we have watched all *aired* seasons, we are 'Watched' (Caught up)
         const lastEp = meta.last_episode_to_air;
         if (lastEp && lastEp.season_number <= watchedCount) {
+            // Catch-up logic for shows between seasons
+            // If next season is announced but not aired, stay Watched
             return 'Watched';
         }
 
@@ -93,7 +114,20 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
             }
 
             // Logic for Movies (Manual)
-            if (viewMode === 'Unwatched') return item.status === 'plan_to_watch' || !item.status;
+            if (viewMode === 'Unwatched') {
+                if (item.status === 'plan_to_watch' || !item.status) {
+                    // Check if it's a future release (should be in Upcoming only)
+                    const releaseDateStr = item.metadata?.release_date;
+                    if (releaseDateStr) {
+                        const releaseDate = new Date(releaseDateStr);
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        if (releaseDate > today) return false;
+                    }
+                    return true;
+                }
+                return false;
+            }
             if (viewMode === 'Watched') return item.status === 'watched';
 
             return false;
@@ -396,6 +430,9 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
                                         onMarkWatched={(m) => {
                                             markAsWatched(Number(m.id), watchlistType);
                                         }}
+                                        onMarkUnwatched={viewMode === 'Watching' ? (m) => {
+                                            markAsUnwatched(Number(m.id), watchlistType);
+                                        } : undefined}
                                         onClick={() => setSelectedMedia(media)}
                                     />
                                 )}
@@ -405,9 +442,8 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
                 )
             }
 
-            {/* Random Pick Logic */}
             <FAB
-                onClick={() => setIsSearchOpen(true)}
+                mode="random"
                 onRandom={() => {
                     const pool = filteredLibrary.length > 0 ? filteredLibrary : library;
                     if (pool.length > 0) {
@@ -419,20 +455,6 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
                 }}
             />
 
-            {
-                isSearchOpen && (
-                    <SearchModal
-                        isOpen={isSearchOpen}
-                        onClose={() => setIsSearchOpen(false)}
-                        type={tmdbType}
-                        onSuccess={(media) => {
-                            if (tmdbType === 'tv') {
-                                setSelectedMedia(media);
-                            }
-                        }}
-                    />
-                )
-            }
 
             {
                 selectedMedia && (

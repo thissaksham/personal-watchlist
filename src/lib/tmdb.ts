@@ -83,6 +83,9 @@ export interface TMDBMedia {
     number_of_seasons?: number;
     last_episode_to_air?: {
         runtime: number;
+        season_number: number;
+        episode_number: number;
+        air_date: string;
     };
     external_ids?: {
         imdb_id?: string;
