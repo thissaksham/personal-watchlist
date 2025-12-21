@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Calendar, Clock, Star, Play, Layers, Hash, Hourglass } from 'lucide-react';
 import { tmdb, type TMDBMedia } from '../../lib/tmdb';
-// import { useWatchlist } from '../../context/WatchlistContext';
+import { useWatchlist } from '../../context/WatchlistContext';
 
 interface UpcomingModalProps {
     media: TMDBMedia;
@@ -11,10 +11,10 @@ interface UpcomingModalProps {
 }
 
 export const UpcomingModal = ({ media, type, onClose }: UpcomingModalProps) => {
-    // const { addToWatchlist, isInWatchlist } = useWatchlist(); // logic removed
+    const { watchedSeasons, markSeasonWatched, markSeasonUnwatched } = useWatchlist();
 
     const [details, setDetails] = useState<any>(null);
-    // const inList = isInWatchlist(media.id, type === 'tv' ? 'show' : 'movie');
+    const [hoveredSeason, setHoveredSeason] = useState<number | null>(null);
 
     useEffect(() => {
         const fetchDetails = async () => {
@@ -123,7 +123,109 @@ export const UpcomingModal = ({ media, type, onClose }: UpcomingModalProps) => {
                 <div className="modal-body relative">
                     <div className="u-vstack">
 
-                        {/* No Season Progress in Upcoming */}
+                        {type === 'tv' && (details?.seasons || media.seasons) && (
+                            <div style={{ marginBottom: '24px', width: '100%' }}>
+                                <div style={{ textTransform: 'uppercase', fontSize: '12px', fontWeight: 'bold', letterSpacing: '0.1em', color: '#6b7280', marginBottom: '12px' }}>Seasons</div>
+                                <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '16px', overflowX: 'auto', padding: '16px', scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }} onMouseLeave={() => setHoveredSeason(null)}>
+                                    {(details?.seasons || media.seasons).filter((s: any) => s.season_number > 0).map((season: any) => {
+                                        const showId = Number(media.id);
+                                        const seasonNum = Number(season.season_number);
+                                        const isWatched = watchedSeasons.has(`${showId}-${seasonNum}`);
+
+                                        // Future Season Logic
+                                        let isFuture = false;
+                                        let airDateLabel = '';
+                                        if (season.air_date) {
+                                            const airDate = new Date(season.air_date);
+                                            const today = new Date();
+                                            today.setHours(0, 0, 0, 0);
+                                            if (airDate > today) {
+                                                isFuture = true;
+                                                airDateLabel = airDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                                            }
+                                        }
+
+                                        let isPreview = false;
+                                        if (hoveredSeason !== null) {
+                                            const cursorKey = `${showId}-${hoveredSeason}`;
+                                            const targetIsWatched = watchedSeasons.has(cursorKey);
+                                            if (!targetIsWatched) {
+                                                if (seasonNum <= hoveredSeason && !isWatched) isPreview = true;
+                                            }
+                                        }
+
+                                        const isSolid = isWatched;
+                                        const isGhost = !isWatched && isPreview;
+
+                                        let background = 'rgba(0,0,0,0.3)';
+                                        let border = '1px solid rgba(255,255,255,0.1)';
+                                        let color = '#9ca3af';
+                                        let boxShadow = 'none';
+                                        let fontWeight = 'normal';
+
+                                        if (isSolid) {
+                                            background = 'radial-gradient(circle at center, #5eead4 0%, #0f766e 100%)';
+                                            border = 'none';
+                                            color = '#000000';
+                                            boxShadow = '0 0 12px rgba(45,212,191,0.6)';
+                                            fontWeight = 'bold';
+                                        } else if (isGhost) {
+                                            background = 'rgba(45, 212, 191, 0.15)';
+                                            border = '1px solid rgba(45, 212, 191, 0.6)';
+                                            color = '#2dd4bf';
+                                            boxShadow = '0 0 8px rgba(45,212,191,0.2)';
+                                            fontWeight = 'normal';
+                                        }
+
+                                        return (
+                                            <div key={season.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                                                <button
+                                                    type="button"
+                                                    disabled={isFuture}
+                                                    onMouseEnter={() => !isFuture && setHoveredSeason(seasonNum)}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        const allSeasons = (details?.seasons || media.seasons);
+                                                        allSeasons.forEach((s: any) => {
+                                                            const sNum = Number(s.season_number);
+                                                            if (sNum <= 0) return;
+                                                            const sKey = `${showId}-${sNum}`;
+                                                            const sIsWatched = watchedSeasons.has(sKey);
+
+                                                            if (isWatched) {
+                                                                if (sNum >= seasonNum && sIsWatched) markSeasonUnwatched(showId, sNum);
+                                                            } else {
+                                                                if (sNum <= seasonNum) { if (!sIsWatched) markSeasonWatched(showId, sNum); }
+                                                                else { if (sIsWatched) markSeasonUnwatched(showId, sNum); }
+                                                            }
+                                                        });
+                                                    }}
+                                                    className="transition-transform duration-200 active:scale-95"
+                                                    style={{
+                                                        width: '44px', height: '44px', minWidth: '44px', minHeight: '44px', borderRadius: '50%', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, appearance: 'none', WebkitAppearance: 'none', boxSizing: 'border-box', padding: 0,
+                                                        cursor: isFuture ? 'not-allowed' : 'pointer',
+                                                        background: isFuture ? 'transparent' : background,
+                                                        border: isFuture ? '1px dashed #4b5563' : border,
+                                                        color: isFuture ? '#6b7280' : color,
+                                                        opacity: isFuture ? 0.6 : 1,
+                                                        boxShadow, fontWeight
+                                                    }}
+                                                    title={isFuture ? `Available on ${airDateLabel}` : `${season.name} (${season.episode_count} Episodes)`}
+                                                >
+                                                    <span style={{ fontSize: '13px', letterSpacing: '-0.5px' }}>S{season.season_number}</span>
+                                                </button>
+                                                {isFuture && (
+                                                    <span style={{ fontSize: '9px', color: '#6b7280', whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                        Upcoming {airDateLabel}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                <style>{`div::-webkit-scrollbar { display: none; }`}</style>
+                            </div>
+                        )}
 
                         <div>
                             <h3 className="section-title">Overview</h3>

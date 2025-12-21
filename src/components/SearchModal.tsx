@@ -7,9 +7,10 @@ interface SearchModalProps {
     isOpen: boolean;
     onClose: () => void;
     type: 'movie' | 'tv' | 'multi'; // Context sensitive search
+    onSuccess?: (media: TMDBMedia) => void;
 }
 
-export const SearchModal = ({ isOpen, onClose, type }: SearchModalProps) => {
+export const SearchModal = ({ isOpen, onClose, type, onSuccess }: SearchModalProps) => {
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<TMDBMedia[]>([]);
     const [loading, setLoading] = useState(false);
@@ -60,6 +61,7 @@ export const SearchModal = ({ isOpen, onClose, type }: SearchModalProps) => {
 
         if (isInWatchlist(media.id, targetType)) return;
         await addToWatchlist(media, targetType);
+        if (onSuccess) onSuccess(media);
         onClose();
     };
 

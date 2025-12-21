@@ -26,7 +26,7 @@ const formatDate = (dateStr: string) => {
 import { UpcomingModal } from '../components/modals/UpcomingModal';
 
 export const Upcoming = () => {
-    const { watchlist, removeFromWatchlist, markAsWatched } = useWatchlist();
+    const { watchlist, markAsWatched, dismissFromUpcoming } = useWatchlist();
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [selectedMedia, setSelectedMedia] = useState<any | null>(null);
 
@@ -40,6 +40,9 @@ export const Upcoming = () => {
             let targetDate: Date | null = null;
             let seasonInfo = '';
             let providerLogo = null;
+
+            // Check if dismissed
+            if (meta.dismissed_from_upcoming) return null;
 
             // Extract Provider (IN region)
             const providers = meta['watch/providers']?.results?.['IN']?.flatrate;
@@ -124,8 +127,8 @@ export const Upcoming = () => {
                                     countdown: getDaysUntil(show.date),
                                 }}
                                 onRemove={() => {
-                                    if (window.confirm(`Remove ${show.title} from upcoming list?`)) {
-                                        removeFromWatchlist(Number(show.id), show.tmdbMediaType === 'movie' ? 'movie' : 'show');
+                                    if (window.confirm(`Hide ${show.title} from upcoming list? (It will remain in your library)`)) {
+                                        dismissFromUpcoming(Number(show.id), show.tmdbMediaType === 'movie' ? 'movie' : 'show');
                                     }
                                 }}
                                 onMarkWatched={() => {
@@ -154,6 +157,11 @@ export const Upcoming = () => {
                 isOpen={isSearchOpen}
                 onClose={() => setIsSearchOpen(false)}
                 type="multi"
+                onSuccess={(media) => {
+                    // Ensure we have the correct type for the modal
+                    const mediaType = media.media_type === 'movie' ? 'movie' : 'tv';
+                    setSelectedMedia({ ...media, tmdbMediaType: mediaType });
+                }}
             />
 
             {selectedMedia && (

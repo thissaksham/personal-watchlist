@@ -47,7 +47,7 @@ export const UpcomingCard = ({
                     <button
                         className="add-btn text-white hover:scale-110"
                         onClick={(e) => { e.stopPropagation(); onRemove(media); }}
-                        title="Remove from Upcoming"
+                        title="Hide from Upcoming"
                         style={{ backgroundColor: '#dc2626', borderColor: '#dc2626' }}
                     >
                         <X size={16} />
@@ -57,7 +57,7 @@ export const UpcomingCard = ({
 
             <div className="card-info">
                 <h3 className="text-sm font-semibold truncate text-gray-100">{title}</h3>
-                <p className="text-xs text-gray-400">{releaseDate}</p>
+                {!media.first_air_date && <p className="text-xs text-gray-400">{releaseDate}</p>}
             </div>
         </div>
     );

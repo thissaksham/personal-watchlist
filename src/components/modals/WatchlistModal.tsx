@@ -136,6 +136,19 @@ export const WatchlistModal = ({ media, type, onClose }: WatchlistModalProps) =>
                                         const seasonNum = Number(season.season_number);
                                         const isWatched = watchedSeasons.has(`${showId}-${seasonNum}`);
 
+                                        // Future Season Logic
+                                        let isFuture = false;
+                                        let airDateLabel = '';
+                                        if (season.air_date) {
+                                            const airDate = new Date(season.air_date);
+                                            const today = new Date();
+                                            today.setHours(0, 0, 0, 0);
+                                            if (airDate > today) {
+                                                isFuture = true;
+                                                airDateLabel = airDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                                            }
+                                        }
+
                                         let isPreview = false;
                                         if (hoveredSeason !== null) {
                                             const cursorKey = `${showId}-${hoveredSeason}`;
@@ -169,33 +182,48 @@ export const WatchlistModal = ({ media, type, onClose }: WatchlistModalProps) =>
                                         }
 
                                         return (
-                                            <button
-                                                key={season.id}
-                                                type="button"
-                                                onMouseEnter={() => setHoveredSeason(seasonNum)}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    const allSeasons = (details?.seasons || media.seasons);
-                                                    allSeasons.forEach((s: any) => {
-                                                        const sNum = Number(s.season_number);
-                                                        if (sNum <= 0) return;
-                                                        const sKey = `${showId}-${sNum}`;
-                                                        const sIsWatched = watchedSeasons.has(sKey);
+                                            <div key={season.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                                                <button
+                                                    type="button"
+                                                    disabled={isFuture}
+                                                    onMouseEnter={() => !isFuture && setHoveredSeason(seasonNum)}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        const allSeasons = (details?.seasons || media.seasons);
+                                                        allSeasons.forEach((s: any) => {
+                                                            const sNum = Number(s.season_number);
+                                                            if (sNum <= 0) return;
+                                                            const sKey = `${showId}-${sNum}`;
+                                                            const sIsWatched = watchedSeasons.has(sKey);
 
-                                                        if (isWatched) {
-                                                            if (sNum >= seasonNum && sIsWatched) markSeasonUnwatched(showId, sNum);
-                                                        } else {
-                                                            if (sNum <= seasonNum) { if (!sIsWatched) markSeasonWatched(showId, sNum); }
-                                                            else { if (sIsWatched) markSeasonUnwatched(showId, sNum); }
-                                                        }
-                                                    });
-                                                }}
-                                                className="transition-transform duration-200 active:scale-95"
-                                                style={{ width: '44px', height: '44px', minWidth: '44px', minHeight: '44px', borderRadius: '50%', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, appearance: 'none', WebkitAppearance: 'none', boxSizing: 'border-box', padding: 0, cursor: 'pointer', background, border, color, boxShadow, fontWeight }}
-                                                title={`${season.name} (${season.episode_count} Episodes)`}
-                                            >
-                                                <span style={{ fontSize: '13px', letterSpacing: '-0.5px' }}>S{season.season_number}</span>
-                                            </button>
+                                                            if (isWatched) {
+                                                                if (sNum >= seasonNum && sIsWatched) markSeasonUnwatched(showId, sNum);
+                                                            } else {
+                                                                if (sNum <= seasonNum) { if (!sIsWatched) markSeasonWatched(showId, sNum); }
+                                                                else { if (sIsWatched) markSeasonUnwatched(showId, sNum); }
+                                                            }
+                                                        });
+                                                    }}
+                                                    className="transition-transform duration-200 active:scale-95"
+                                                    style={{
+                                                        width: '44px', height: '44px', minWidth: '44px', minHeight: '44px', borderRadius: '50%', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, appearance: 'none', WebkitAppearance: 'none', boxSizing: 'border-box', padding: 0,
+                                                        cursor: isFuture ? 'not-allowed' : 'pointer',
+                                                        background: isFuture ? 'transparent' : background,
+                                                        border: isFuture ? '1px dashed #4b5563' : border,
+                                                        color: isFuture ? '#6b7280' : color,
+                                                        opacity: isFuture ? 0.6 : 1,
+                                                        boxShadow, fontWeight
+                                                    }}
+                                                    title={isFuture ? `Available on ${airDateLabel}` : `${season.name} (${season.episode_count} Episodes)`}
+                                                >
+                                                    <span style={{ fontSize: '13px', letterSpacing: '-0.5px' }}>S{season.season_number}</span>
+                                                </button>
+                                                {isFuture && (
+                                                    <span style={{ fontSize: '9px', color: '#6b7280', whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                        Upcoming {airDateLabel}
+                                                    </span>
+                                                )}
+                                            </div>
                                         );
                                     })}
                                 </div>

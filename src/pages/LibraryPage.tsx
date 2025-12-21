@@ -70,6 +70,14 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
 
         if (watchedCount === 0) return 'Unwatched';
         if (watchedCount === totalSeasons) return 'Watched';
+
+        // Check for unreleased future seasons
+        // If we have watched all *aired* seasons, we are 'Watched' (Caught up)
+        const lastEp = meta.last_episode_to_air;
+        if (lastEp && lastEp.season_number <= watchedCount) {
+            return 'Watched';
+        }
+
         return 'Watching';
     };
 
@@ -417,6 +425,11 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
                         isOpen={isSearchOpen}
                         onClose={() => setIsSearchOpen(false)}
                         type={tmdbType}
+                        onSuccess={(media) => {
+                            if (tmdbType === 'tv') {
+                                setSelectedMedia(media);
+                            }
+                        }}
                     />
                 )
             }

@@ -25,7 +25,9 @@ interface WatchlistContextType {
     loading: boolean;
     watchedSeasons: Set<string>;
     markSeasonWatched: (tmdbId: number, seasonNumber: number) => Promise<void>;
+
     markSeasonUnwatched: (tmdbId: number, seasonNumber: number) => Promise<void>;
+    dismissFromUpcoming: (tmdbId: number, type: 'movie' | 'show') => Promise<void>;
 }
 
 const WatchlistContext = createContext<WatchlistContextType | undefined>(undefined);
@@ -209,6 +211,61 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
     const markAsWatched = async (tmdbId: number, type: 'movie' | 'show') => {
         const dbType = type as 'movie' | 'show';
 
+        if (type === 'show') {
+            // Smart Mark for Shows: Mark all RELEASED seasons
+            const item = watchlist.find(i => i.tmdb_id === tmdbId && i.type === 'show');
+            let seasons: any[] = [];
+
+            if (item?.metadata?.seasons) {
+                seasons = item.metadata.seasons;
+            } else {
+                try {
+                    const details = await tmdb.getDetails(tmdbId, 'tv');
+                    seasons = details.seasons || [];
+                } catch (e) {
+                    console.error("Failed to fetch details for smart mark", e);
+                }
+            }
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const releasedSeasons = seasons.filter((s: any) => {
+                if (s.season_number === 0) return false; // Skip specials usually
+                if (!s.air_date) return false; // No date = assume unreleased or unknown
+                return new Date(s.air_date) <= today;
+            });
+
+            const seasonNumbers = releasedSeasons.map((s: any) => s.season_number);
+
+            // Optimistic Updates for Seasons
+            setWatchedSeasons(prev => {
+                const next = new Set(prev);
+                seasonNumbers.forEach((num: number) => next.add(`${tmdbId}-${num}`));
+                if (!user) localStorage.setItem('watched_seasons', JSON.stringify(Array.from(next)));
+                return next;
+            });
+
+            if (user) {
+                // Batch insert/upsert for seasons
+                const updates = seasonNumbers.map((num: number) => ({
+                    user_id: user.id,
+                    tmdb_id: tmdbId,
+                    season_number: num
+                }));
+
+                if (updates.length > 0) {
+                    const { error: upsertError } = await supabase
+                        .from('watched_seasons')
+                        .upsert(updates, { onConflict: 'user_id, tmdb_id, season_number' });
+
+                    if (upsertError) {
+                        console.error('Error saving watched seasons:', upsertError);
+                    }
+                }
+            }
+        }
+
         if (!user) {
             const localWatchlist = JSON.parse(localStorage.getItem('watchlist') || '[]');
             const updatedLocal = localWatchlist.map((item: any) =>
@@ -275,6 +332,29 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
 
     const markAsUnwatched = async (tmdbId: number, type: 'movie' | 'show') => {
         const dbType = type as 'movie' | 'show';
+
+        if (type === 'show') {
+            // Deep Unwatch for Shows: Remove ALL seasons
+            setWatchedSeasons(prev => {
+                const next = new Set(prev);
+                // Remove all keys starting with tmdbId-
+                for (const key of next) {
+                    if (key.startsWith(`${tmdbId}-`)) {
+                        next.delete(key);
+                    }
+                }
+                if (!user) localStorage.setItem('watched_seasons', JSON.stringify(Array.from(next)));
+                return next;
+            });
+
+            if (user) {
+                // Delete all season records for this show
+                await supabase.from('watched_seasons').delete().match({
+                    user_id: user.id,
+                    tmdb_id: tmdbId
+                });
+            }
+        }
 
         if (!user) {
             const localWatchlist = JSON.parse(localStorage.getItem('watchlist') || '[]');
@@ -376,6 +456,43 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
+    // --- Dismiss Logic ---
+    const dismissFromUpcoming = async (tmdbId: number, type: 'movie' | 'show') => {
+        const item = watchlist.find(i => i.tmdb_id === tmdbId && i.type === type);
+        if (!item) return;
+
+        const newMeta: any = { ...(item.metadata || {}), dismissed_from_upcoming: true };
+
+        // Optimistic Update
+        setWatchlist(prev => prev.map(i =>
+            (i.tmdb_id === tmdbId && i.type === type)
+                ? { ...i, metadata: newMeta }
+                : i
+        ));
+        console.log(`[Watchlist] Dismissing ${tmdbId} from upcoming`);
+
+        if (!user) {
+            const localWatchlist = JSON.parse(localStorage.getItem('watchlist') || '[]');
+            const updatedLocal = localWatchlist.map((i: any) =>
+                (i.tmdb_id === tmdbId && i.type === type)
+                    ? { ...i, metadata: newMeta }
+                    : i
+            );
+            localStorage.setItem('watchlist', JSON.stringify(updatedLocal));
+            return;
+        }
+
+        const { error } = await supabase
+            .from('watchlist')
+            .update({ metadata: newMeta })
+            .match({ user_id: user.id, tmdb_id: tmdbId, type: type });
+
+        if (error) {
+            console.error('Error dismissing from upcoming:', error);
+            fetchWatchlist(); // Revert
+        }
+    };
+
     return (
         <WatchlistContext.Provider value={{
             watchlist,
@@ -389,7 +506,9 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
             // New Exports
             watchedSeasons,
             markSeasonWatched,
-            markSeasonUnwatched
+
+            markSeasonUnwatched,
+            dismissFromUpcoming
         }}>
             {children}
         </WatchlistContext.Provider>
