@@ -26,7 +26,7 @@ const formatDate = (dateStr: string) => {
 import { UpcomingModal } from '../components/modals/UpcomingModal';
 
 export const Upcoming = () => {
-    const { watchlist, removeFromWatchlist } = useWatchlist();
+    const { watchlist, removeFromWatchlist, markAsWatched } = useWatchlist();
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [selectedMedia, setSelectedMedia] = useState<any | null>(null);
 
@@ -123,13 +123,15 @@ export const Upcoming = () => {
                                     vote_average: show.vote_average || 0,
                                     countdown: getDaysUntil(show.date),
                                 }}
-                                onToggleReminder={() => {
+                                onRemove={() => {
                                     if (window.confirm(`Remove ${show.title} from upcoming list?`)) {
                                         removeFromWatchlist(Number(show.id), show.tmdbMediaType === 'movie' ? 'movie' : 'show');
                                     }
                                 }}
+                                onMarkWatched={() => {
+                                    markAsWatched(Number(show.id), show.tmdbMediaType === 'movie' ? 'movie' : 'show');
+                                }}
                                 onClick={() => setSelectedMedia(show)}
-                                isRemindSet={true}
                             />
                             <div className="absolute -bottom-6 left-0 w-full text-center opacity-0 group-hover/upcoming:opacity-100 transition-opacity duration-300 pointer-events-none">
                                 <span className="text-[10px] font-bold text-teal-400 bg-black/80 px-2 py-1 rounded-full border border-teal-500/20 backdrop-blur-sm">

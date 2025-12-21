@@ -1,19 +1,19 @@
 
-import { Plus, Check } from 'lucide-react';
+import { X, Check } from 'lucide-react';
 import { type TMDBMedia } from '../../lib/tmdb';
 
 interface UpcomingCardProps {
     media: TMDBMedia;
-    onToggleReminder: (media: TMDBMedia) => void;
+    onRemove: (media: TMDBMedia) => void;
+    onMarkWatched: (media: TMDBMedia) => void;
     onClick: (media: TMDBMedia) => void;
-    isRemindSet?: boolean;
 }
 
 export const UpcomingCard = ({
     media,
-    onToggleReminder,
+    onRemove,
+    onMarkWatched,
     onClick,
-    isRemindSet = false
 }: UpcomingCardProps) => {
     const title = media.title || media.name || 'Unknown';
     const imageUrl = media.poster_path
@@ -38,11 +38,19 @@ export const UpcomingCard = ({
                 {/* Actions Stack */}
                 <div className="card-actions-stack">
                     <button
-                        className={`add-btn ${isRemindSet ? 'bg-teal-500/80 border-teal-500' : ''}`}
-                        onClick={(e) => { e.stopPropagation(); onToggleReminder(media); }}
-                        title={isRemindSet ? "Reminder Set (Click to Remove)" : "Remind Me"}
+                        className="add-btn bg-white/10 hover:bg-teal-500/80 text-white"
+                        onClick={(e) => { e.stopPropagation(); onMarkWatched(media); }}
+                        title="Mark as Watched"
                     >
-                        {isRemindSet ? <Check size={16} /> : <Plus size={16} />}
+                        <Check size={16} />
+                    </button>
+                    <button
+                        className="add-btn text-white hover:scale-110"
+                        onClick={(e) => { e.stopPropagation(); onRemove(media); }}
+                        title="Remove from Upcoming"
+                        style={{ backgroundColor: '#dc2626', borderColor: '#dc2626' }}
+                    >
+                        <X size={16} />
                     </button>
                 </div>
             </div>
