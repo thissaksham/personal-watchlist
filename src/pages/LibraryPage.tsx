@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { calculateMediaRuntime } from '../lib/tmdb';
+import { calculateMediaRuntime, TMDB_REGION } from '../lib/tmdb';
 import { useWatchlist } from '../context/WatchlistContext';
 import { WatchlistCard } from '../components/cards/WatchlistCard';
 import { WatchlistModal } from '../components/modals/WatchlistModal';
@@ -116,18 +116,43 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
             // Logic for Movies (Manual)
             if (viewMode === 'Unwatched') {
                 if (item.status === 'plan_to_watch' || !item.status) {
-                    // Check if it's a future release (should be in Upcoming only)
-                    const releaseDateStr = item.metadata?.release_date;
-                    if (releaseDateStr) {
-                        const releaseDate = new Date(releaseDateStr);
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        if (releaseDate > today) return false;
+                    const meta = (item.metadata || {}) as any;
+
+                    // Critical: Hide if not moved to library yet
+                    if (meta.moved_to_library === false) return false;
+
+                    const digitalDateStr = meta.digital_release_date;
+                    const theatricalDateStr = meta.theatrical_release_date;
+                    const releaseDateStr = meta.release_date;
+
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+
+                    // 1. Digital Date (Standard for OTT)
+                    if (digitalDateStr) {
+                        // If digital date is past or today, show it.
+                        return new Date(digitalDateStr) <= today;
                     }
+
+                    // 2. Theatrical Date (No digital date)
+                    if (theatricalDateStr) {
+                        const tDate = new Date(theatricalDateStr);
+                        // If we are here, it means moved_to_library is true.
+                        // We only hide if it's released in the future (safety check)
+                        return tDate <= today;
+                    }
+
+                    // 3. Fallback (release_date)
+                    if (releaseDateStr) {
+                        return new Date(releaseDateStr) <= today;
+                    }
+
+                    // No dates? Default to show
                     return true;
                 }
                 return false;
             }
+
             if (viewMode === 'Watched') return item.status === 'watched';
 
             return false;
@@ -151,7 +176,7 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
         library.forEach(media => {
             // @ts-ignore - dynamic property access
             // Strict IN only - no fallback to US
-            const providerData = media['watch/providers']?.results?.['IN'];
+            const providerData = media['watch/providers']?.results?.[TMDB_REGION];
             const flatrate = providerData?.flatrate || [];
 
             if (flatrate.length === 0) {
@@ -207,7 +232,7 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
         // 3. Provider Filter
         if (filterProvider) {
             // @ts-ignore
-            const providerData = media['watch/providers']?.results?.['IN'];
+            const providerData = media['watch/providers']?.results?.[TMDB_REGION];
             const flatrate = providerData?.flatrate || [];
 
             if (filterProvider === -1) {

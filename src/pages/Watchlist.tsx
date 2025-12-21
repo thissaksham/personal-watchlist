@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { WatchlistCard } from '../components/cards/WatchlistCard';
 import { WatchlistModal } from '../components/modals/WatchlistModal';
 import { useWatchlist } from '../context/WatchlistContext';
-import { type TMDBMedia } from '../lib/tmdb';
+import { type TMDBMedia, TMDB_REGION } from '../lib/tmdb';
 import { FilterBar, FilterExpandable } from '../components/FilterBar';
 import { useMediaProviders } from '../hooks/useMediaProviders';
 
@@ -45,7 +45,7 @@ export const Watchlist = () => {
         return enrichedWatchlist.filter(media => {
             if (filterProvider) {
                 // @ts-ignore
-                const providerData = media['watch/providers']?.results?.['IN'];
+                const providerData = media['watch/providers']?.results?.[TMDB_REGION];
                 const flatrate = providerData?.flatrate || [];
                 if (filterProvider === -1) return flatrate.length === 0;
                 return flatrate.some((p: any) => p.provider_id === filterProvider);

@@ -14,7 +14,7 @@ export const useMediaProviders = (mediaList: TMDBMedia[]) => {
 
         mediaList.forEach(media => {
             // @ts-ignore - dynamic property access
-            const providerData = media['watch/providers']?.results?.['IN'];
+            const providerData = media['watch/providers']?.results?.[TMDB_REGION];
             const flatrate = providerData?.flatrate || [];
 
             if (flatrate.length === 0) {

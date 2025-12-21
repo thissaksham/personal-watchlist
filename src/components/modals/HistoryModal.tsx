@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Calendar, Clock, Star, PlayCircle, Play, Layers, Hash, Hourglass } from 'lucide-react';
-import { tmdb, type TMDBMedia } from '../../lib/tmdb';
+import { tmdb, type TMDBMedia, TMDB_REGION } from '../../lib/tmdb';
 import { useWatchlist } from '../../context/WatchlistContext';
+import { getMoctaleUrl, getTMDBUrl, TMDB_ICON_BASE64, MOCTALE_ICON_BASE64 } from '../../lib/urls';
 
 interface HistoryModalProps {
     media: TMDBMedia;
@@ -37,10 +38,10 @@ export const HistoryModal = ({ media, type, onClose }: HistoryModalProps) => {
         ? `https://image.tmdb.org/t/p/w780${backdropPath}`
         : (posterPath ? `https://image.tmdb.org/t/p/w780${posterPath}` : null);
 
-    const detailsProviders = details?.['watch/providers']?.results?.['IN']?.flatrate;
-    const mediaProviders = media['watch/providers']?.results?.['IN']?.flatrate;
+    const detailsProviders = details?.['watch/providers']?.results?.[TMDB_REGION]?.flatrate;
+    const mediaProviders = media['watch/providers']?.results?.[TMDB_REGION]?.flatrate;
     const providers = (detailsProviders && detailsProviders.length > 0) ? detailsProviders : (mediaProviders || []);
-    const watchLink = details?.['watch/providers']?.results?.['IN']?.link || media['watch/providers']?.results?.['IN']?.link;
+    const watchLink = details?.['watch/providers']?.results?.[TMDB_REGION]?.link || media['watch/providers']?.results?.[TMDB_REGION]?.link;
 
     const getShowStats = () => {
         if (type !== 'tv') return null;
@@ -122,6 +123,28 @@ export const HistoryModal = ({ media, type, onClose }: HistoryModalProps) => {
                             {showStats?.seasons ? <span className="tag"><Layers size={14} /> {showStats.seasons} Seasons</span> : null}
                             {showStats?.episodes ? <span className="tag"><Hash size={14} /> {showStats.episodes} Episodes</span> : null}
                         </div>
+                    </div>
+
+                    {/* Floating External Links */}
+                    <div className="floating-link-bar">
+                        <a
+                            href={getTMDBUrl(media.id, type)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="floating-link-btn tmdb-btn"
+                            title="View on TMDB"
+                        >
+                            <img src={TMDB_ICON_BASE64} alt="TMDB" />
+                        </a>
+                        <a
+                            href={getMoctaleUrl(media)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="floating-link-btn moctale-btn"
+                            title="View on Moctale"
+                        >
+                            <img src={MOCTALE_ICON_BASE64} alt="Moctale" />
+                        </a>
                     </div>
                 </div>
 
@@ -250,7 +273,7 @@ export const HistoryModal = ({ media, type, onClose }: HistoryModalProps) => {
                         {providers.length > 0 && (
                             <div>
                                 <h3 className="section-title text-sm uppercase tracking-wider text-gray-500 mb-3 mt-4">
-                                    <div className="flex items-center gap-2"><PlayCircle size={16} />Available to Stream (IN)</div>
+                                    <div className="flex items-center gap-2"><PlayCircle size={16} />Available to Stream</div>
                                 </h3>
                                 <div className="provider-list">
                                     {providers.map((provider: any) => (

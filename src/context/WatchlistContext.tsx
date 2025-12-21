@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
-import { tmdb, type TMDBMedia } from '../lib/tmdb';
+import { tmdb, type TMDBMedia, TMDB_REGION } from '../lib/tmdb';
 
 export interface WatchlistItem {
     id: string; // database uuid
@@ -28,6 +28,7 @@ interface WatchlistContextType {
 
     markSeasonUnwatched: (tmdbId: number, seasonNumber: number) => Promise<void>;
     dismissFromUpcoming: (tmdbId: number, type: 'movie' | 'show') => Promise<void>;
+    updateWatchlistItemMetadata: (tmdbId: number, type: 'movie' | 'show', newMetadata: any) => Promise<void>;
 }
 
 const WatchlistContext = createContext<WatchlistContextType | undefined>(undefined);
@@ -133,14 +134,97 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
                     }
                 }
 
-                // C. PRUNE METADATA: Remove heavy fields like credits, production_companies, etc.
+                // C. Fetch Release Dates (Smart OTT Logic - Movies)
+                let digitalDate = null;
+                let theatricalDate = null;
+                if (tmdbType === 'movie') {
+                    try {
+                        const releaseData = await tmdb.getReleaseDates(media.id);
+                        const results = releaseData.results || [];
+
+                        // Helper to extract dates from a region
+                        const extractDates = (regionCode: string) => {
+                            const regionData = results.find((r: any) => r.iso_3166_1 === regionCode);
+                            if (!regionData?.release_dates) return null;
+
+                            const theatrical = regionData.release_dates.find((d: any) => d.type === 3);
+                            const digital = regionData.release_dates.find((d: any) => d.type === 4);
+
+                            return {
+                                theatrical: theatrical?.release_date,
+                                digital: digital?.release_date,
+                                hasData: !!(theatrical || digital)
+                            };
+                        };
+
+                        // 1. Try Configured Region (IN) - Primary Preference
+                        let dates = extractDates(TMDB_REGION);
+
+                        // 2. Fallback to Primary Country (if available in results but not configured region)
+                        if (!dates?.hasData && results.length > 0) {
+                            // Try to find ANY region with type 3 or 4
+                            for (const res of results) {
+                                const d = extractDates(res.iso_3166_1);
+                                if (d?.hasData) {
+                                    dates = d;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (dates) {
+                            theatricalDate = dates.theatrical || null;
+                            digitalDate = dates.digital || null;
+                        }
+                    } catch (e) {
+                        console.warn("Failed to fetch Release Dates", e);
+                    }
+                }
+
+                // D. PRUNE METADATA: Remove heavy fields like credits, production_companies, etc.
                 // We only need providers, runtime info, and external_ids.
                 const { credits, production_companies, images, videos, reviews, ...leanDetails } = details as any;
+
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                let movedToLibrary = true; // Default for already released stuff
+                if (tmdbType === 'movie') {
+                    const dDate = digitalDate ? new Date(digitalDate) : null;
+                    const tDate = theatricalDate ? new Date(theatricalDate) : null;
+                    const rDate = details.release_date ? new Date(details.release_date) : null;
+
+                    // If any of these are in the future, it starts in Upcoming
+                    if ((dDate && dDate > today) || (tDate && tDate > today) || (rDate && rDate > today)) {
+                        movedToLibrary = false;
+                    }
+                    // Special case: If it's a recent theatrical release (< 4 months) and no digital date yet, 
+                    // start it in Upcoming (as "In Theaters")
+                    else if (tDate && !dDate) {
+                        const cutoff = new Date();
+                        cutoff.setMonth(today.getMonth() - 4);
+                        if (tDate > cutoff) {
+                            movedToLibrary = false;
+                        }
+                    }
+                } else if (tmdbType === 'tv') {
+                    // Check for future episodes
+                    const nextEp = details.next_episode_to_air;
+                    if (nextEp && nextEp.air_date) {
+                        const airDate = new Date(nextEp.air_date);
+                        if (airDate > today) {
+                            movedToLibrary = false;
+                        }
+                    }
+                }
 
                 const optimizedMetadata = {
                     ...media,
                     ...leanDetails,
-                    tvmaze_runtime: tvmazeRuntime
+                    tvmaze_runtime: tvmazeRuntime,
+                    digital_release_date: digitalDate,
+                    theatrical_release_date: theatricalDate,
+                    moved_to_library: movedToLibrary
                 };
 
                 // 4. Update the record with optimized metadata
@@ -569,7 +653,36 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
             markSeasonWatched,
 
             markSeasonUnwatched,
-            dismissFromUpcoming
+            dismissFromUpcoming,
+            updateWatchlistItemMetadata: async (tmdbId: number, type: 'movie' | 'show', newMetadata: any) => {
+                const item = watchlist.find(i => i.tmdb_id === tmdbId && i.type === type);
+                if (!item) return;
+
+                // Optimistic Update
+                setWatchlist(prev => prev.map(i =>
+                    (i.tmdb_id === tmdbId && i.type === type)
+                        ? { ...i, metadata: newMetadata }
+                        : i
+                ));
+
+                if (!user) {
+                    const localWatchlist = JSON.parse(localStorage.getItem('watchlist') || '[]');
+                    const updatedLocal = localWatchlist.map((i: any) =>
+                        (i.tmdb_id === tmdbId && i.type === type)
+                            ? { ...i, metadata: newMetadata }
+                            : i
+                    );
+                    localStorage.setItem('watchlist', JSON.stringify(updatedLocal));
+                    return;
+                }
+
+                await supabase
+                    .from('watchlist')
+                    .update({ metadata: newMetadata })
+                    .eq('user_id', user.id)
+                    .eq('tmdb_id', tmdbId)
+                    .eq('type', type);
+            }
         }}>
             {children}
         </WatchlistContext.Provider>

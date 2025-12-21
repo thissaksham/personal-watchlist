@@ -1,5 +1,4 @@
-
-import { X, Check } from 'lucide-react';
+import { X, Check, Calendar, ArrowUp } from 'lucide-react';
 import { type TMDBMedia } from '../../lib/tmdb';
 import { useWatchlist } from '../../context/WatchlistContext';
 
@@ -7,6 +6,9 @@ interface UpcomingCardProps {
     media: TMDBMedia;
     onRemove: (media: TMDBMedia) => void;
     onMarkWatched: (media: TMDBMedia) => void;
+    onSetDate: (media: TMDBMedia) => void;
+    onMoveToLibrary: (media: TMDBMedia) => void;
+    showDateOverride?: boolean;
     onClick: (media: TMDBMedia) => void;
 }
 
@@ -14,6 +16,9 @@ export const UpcomingCard = ({
     media,
     onRemove,
     onMarkWatched,
+    onSetDate,
+    onMoveToLibrary,
+    showDateOverride,
     onClick,
 }: UpcomingCardProps) => {
     const { watchedSeasons } = useWatchlist();
@@ -162,6 +167,26 @@ export const UpcomingCard = ({
 
                 {/* Actions Stack */}
                 <div className="card-actions-stack">
+                    {/* Manual Date Override (Only for Movies in Coming Soon) */}
+                    {showDateOverride && (media.media_type === 'movie' || (media as any).tmdbMediaType === 'movie') && (
+                        <button
+                            className="add-btn bg-white/10 hover:bg-white/20 text-white"
+                            onClick={(e) => { e.stopPropagation(); onSetDate(media); }}
+                            title="Set Release Date"
+                        >
+                            <Calendar size={16} />
+                        </button>
+                    )}
+                    {/* Move to Library Button (Only when released) */}
+                    {media.countdown !== undefined && media.countdown <= 0 && (
+                        <button
+                            className="add-btn bg-teal-500 text-black shadow-[0_0_10px_rgba(45,212,191,0.5)] border-teal-500 animate-pulse-slow"
+                            onClick={(e) => { e.stopPropagation(); onMoveToLibrary(media); }}
+                            title="Move to Library"
+                        >
+                            <ArrowUp size={16} strokeWidth={3} />
+                        </button>
+                    )}
                     <button
                         className="add-btn bg-white/10 hover:bg-teal-500/80 text-white"
                         onClick={(e) => { e.stopPropagation(); onMarkWatched(media); }}

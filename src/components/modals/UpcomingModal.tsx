@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { X, Calendar, Clock, Star, Play, Layers, Hash, Hourglass } from 'lucide-react';
 import { tmdb, type TMDBMedia } from '../../lib/tmdb';
 import { useWatchlist } from '../../context/WatchlistContext';
+import { getMoctaleUrl, getTMDBUrl, TMDB_ICON_BASE64, MOCTALE_ICON_BASE64 } from '../../lib/urls';
 
 interface UpcomingModalProps {
     media: TMDBMedia;
@@ -117,6 +118,28 @@ export const UpcomingModal = ({ media, type, onClose }: UpcomingModalProps) => {
                             {showStats?.seasons ? <span className="tag"><Layers size={14} /> {showStats.seasons} Seasons</span> : null}
                             {showStats?.episodes ? <span className="tag"><Hash size={14} /> {showStats.episodes} Episodes</span> : null}
                         </div>
+                    </div>
+
+                    {/* Floating External Links */}
+                    <div className="floating-link-bar">
+                        <a
+                            href={getTMDBUrl(media.id, type)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="floating-link-btn tmdb-btn"
+                            title="View on TMDB"
+                        >
+                            <img src={TMDB_ICON_BASE64} alt="TMDB" />
+                        </a>
+                        <a
+                            href={getMoctaleUrl(media)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="floating-link-btn moctale-btn"
+                            title="View on Moctale"
+                        >
+                            <img src={MOCTALE_ICON_BASE64} alt="Moctale" />
+                        </a>
                     </div>
                 </div>
 

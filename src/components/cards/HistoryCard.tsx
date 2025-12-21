@@ -1,6 +1,6 @@
 
 import { Star, Undo2, X } from 'lucide-react';
-import { type TMDBMedia, calculateMediaRuntime } from '../../lib/tmdb';
+import { type TMDBMedia } from '../../lib/tmdb';
 
 interface HistoryCardProps {
     media: TMDBMedia;
@@ -22,21 +22,6 @@ export const HistoryCard = ({
 
     const year = (media.release_date || media.first_air_date)?.split('-')[0] || '';
 
-    const getDuration = () => {
-        const totalMinutes = calculateMediaRuntime(media);
-        if (!totalMinutes) return null;
-        if (totalMinutes >= 24 * 60) {
-            const days = Math.floor(totalMinutes / (24 * 60));
-            const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
-            return `${days}d ${hours}h`;
-        }
-        const h = Math.floor(totalMinutes / 60);
-        const m = totalMinutes % 60;
-        if (h > 0) return `${h}h ${m}m`;
-        return `${m}m`;
-    };
-    const duration = getDuration();
-
     return (
         <div className="media-card group" onClick={() => onClick(media)}>
             <div className="poster-wrapper">
@@ -52,10 +37,6 @@ export const HistoryCard = ({
                 {year && (
                     <div className="media-pill pill-year"><span>{year}</span></div>
                 )}
-                {duration && (
-                    <div className="media-pill pill-duration"><span>{duration}</span></div>
-                )}
-
                 {/* Actions Stack */}
                 <div className="card-actions-stack">
                     <button

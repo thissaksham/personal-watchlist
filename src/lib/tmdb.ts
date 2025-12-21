@@ -10,7 +10,9 @@ if (!TMDB_API_KEY) {
 // V3 API Keys are shorter hex strings (~32 chars)
 const isBearerToken = TMDB_API_KEY && TMDB_API_KEY.length > 60;
 
-console.log(`[TMDB] Initializing. Key Present: ${!!TMDB_API_KEY}, Length: ${TMDB_API_KEY?.length}, Mode: ${isBearerToken ? 'Bearer' : 'API Key'}`);
+export const TMDB_REGION = 'IN';
+
+console.log(`[TMDB] Initializing. Key Present: ${!!TMDB_API_KEY}, Length: ${TMDB_API_KEY?.length}, Mode: ${isBearerToken ? 'Bearer' : 'API Key'}, Region: ${TMDB_REGION}`);
 
 const getHeaders = () => {
     const headers: Record<string, string> = {
@@ -26,6 +28,7 @@ const getHeaders = () => {
 async function fetchTMDB(endpoint: string, params: Record<string, string> = {}) {
     const queryParams: any = {
         language: 'en-US',
+        region: TMDB_REGION,
         ...params,
     };
 
@@ -95,6 +98,8 @@ export interface TMDBMedia {
     'watch/providers'?: any;
     seasons?: any[];
     countdown?: number; // UI propery for upcoming
+    digital_release_date?: string;
+    theatrical_release_date?: string;
 }
 
 export const tmdb = {
@@ -108,7 +113,7 @@ export const tmdb = {
 
         // Explicitly constructing URL as requested by user:
         // https://api.themoviedb.org/3/search/tv?query={user_entry}&api_key={api_key}
-        const url = `${BASE_URL}/search/${type}?query=${encodeURIComponent(query)}&api_key=${TMDB_API_KEY}`;
+        const url = `${BASE_URL}/search/${type}?query=${encodeURIComponent(query)}&api_key=${TMDB_API_KEY}&region=${TMDB_REGION}`;
 
         console.log(`[TMDB] Fetching explicitly: ${url}`);
 
@@ -130,6 +135,10 @@ export const tmdb = {
         return fetchTMDB(`/${type}/${id}`, {
             append_to_response: 'watch/providers,credits,external_ids,videos'
         });
+    },
+
+    getReleaseDates: async (id: number) => {
+        return fetchTMDB(`/movie/${id}/release_dates`);
     }
 };
 
