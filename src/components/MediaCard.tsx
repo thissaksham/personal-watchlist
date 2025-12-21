@@ -103,6 +103,14 @@ export const MediaCard = ({
                     </div>
                 )}
 
+                {/* 5. Countdown Pill (Upcoming Mode) */}
+                {media.countdown && (
+                    <div className="absolute top-2 right-2 z-10 bg-black/80 backdrop-blur-md px-2 py-1 rounded-lg border border-teal-500/50 shadow-lg flex flex-col items-center min-w-[50px]">
+                        <span className="text-xl font-bold text-teal-400 leading-none">{media.countdown}</span>
+                        <span className="text-[10px] uppercase text-gray-400 font-bold tracking-wider">Days</span>
+                    </div>
+                )}
+
                 {/* ACTIONS */}
 
 

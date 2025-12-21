@@ -51,10 +51,12 @@ export const MediaDetailsModal = ({ media, type, onClose, onAdd, isInWatchlist }
         : (posterPath ? `https://image.tmdb.org/t/p/w780${posterPath}` : null);
 
     // Extract OTT Providers (Flatrate only for simplicity), prioritizing India (IN)
-    // Removed fallback to US to ensure strict region filtering
-    const providerData = details?.['watch/providers']?.results?.['IN'];
-    const providers = providerData?.flatrate || [];
-    const watchLink = providerData?.link; // Official TMDB Watch Link (Deep link to JustWatch/Provider)
+    // Stable derivation: Prefer fresh details if they have valid providers, otherwise fallback to cached media
+    const detailsProviders = details?.['watch/providers']?.results?.['IN']?.flatrate;
+    const mediaProviders = media['watch/providers']?.results?.['IN']?.flatrate;
+
+    const providers = (detailsProviders && detailsProviders.length > 0) ? detailsProviders : (mediaProviders || []);
+    const watchLink = details?.['watch/providers']?.results?.['IN']?.link || media['watch/providers']?.results?.['IN']?.link;
 
     // Helper: Calculate Show Stats
     const getShowStats = () => {

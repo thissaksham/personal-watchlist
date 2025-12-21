@@ -1,20 +1,25 @@
-import { Plus, Shuffle } from 'lucide-react';
+import { Plus, Dice5 } from 'lucide-react';
 
 interface FABProps {
     onClick: () => void;
-    onRandom?: () => void;
+    onRandom: () => void;
+    hideRandom?: boolean;
 }
 
-export const FAB = ({ onClick, onRandom }: FABProps) => {
+export const FAB = ({ onClick, onRandom, hideRandom }: FABProps) => {
     return (
         <div className="fab-container">
-            {onRandom && (
-                <button className="fab-btn secondary-fab" onClick={onRandom} title="Surprise Me!">
-                    <Shuffle size={24} />
+            {!hideRandom && (
+                <button
+                    className="fab-btn secondary-fab"
+                    onClick={onRandom}
+                    title="Random Pick"
+                >
+                    <Dice5 size={24} />
                 </button>
             )}
             <button className="fab-btn" onClick={onClick} title="Add New">
-                <Plus size={28} />
+                <Plus size={24} />
             </button>
         </div>
     );

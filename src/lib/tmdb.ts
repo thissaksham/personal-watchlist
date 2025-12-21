@@ -90,6 +90,7 @@ export interface TMDBMedia {
     tvmaze_runtime?: number;
     status?: string;
     'watch/providers'?: any;
+    countdown?: number; // UI propery for upcoming
 }
 
 export const tmdb = {

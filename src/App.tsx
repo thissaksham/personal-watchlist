@@ -7,7 +7,8 @@ import Login from './pages/Login';
 import { Trending } from './pages/Trending';
 import { Movies } from './pages/Movies';
 import { Shows } from './pages/Shows';
-import { Upcoming, Games } from './pages/Placeholders';
+import { Upcoming } from './pages/Upcoming';
+import { Games } from './pages/Placeholders';
 import { WatchedPage } from './pages/WatchedPage';
 import VerifySuccess from './pages/VerifySuccess';
 

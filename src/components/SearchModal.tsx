@@ -6,7 +6,7 @@ import { useWatchlist } from '../context/WatchlistContext';
 interface SearchModalProps {
     isOpen: boolean;
     onClose: () => void;
-    type: 'movie' | 'tv'; // Context sensitive search
+    type: 'movie' | 'tv' | 'multi'; // Context sensitive search
 }
 
 export const SearchModal = ({ isOpen, onClose, type }: SearchModalProps) => {
@@ -23,8 +23,18 @@ export const SearchModal = ({ isOpen, onClose, type }: SearchModalProps) => {
             }
             setLoading(true);
             try {
-                const data = await tmdb.search(query, type);
-                setResults(data.results || []);
+                // @ts-ignore
+                const data = await tmdb.search(query, type as 'movie' | 'tv');
+                let rawResults = data.results || [];
+
+                // Filter for "Next Release Date Known" (Client-side)
+                // We keep items that have a release_date or first_air_date
+                // AND we sort them by popularity to keep good results at top
+                rawResults = rawResults.filter((item: TMDBMedia) => {
+                    return !!(item.release_date || item.first_air_date);
+                });
+
+                setResults(rawResults);
             } catch (err) {
                 console.error(err);
             } finally {
@@ -37,9 +47,19 @@ export const SearchModal = ({ isOpen, onClose, type }: SearchModalProps) => {
     }, [query, type]);
 
     const handleAdd = async (media: TMDBMedia) => {
-        const mediaType = type === 'tv' ? 'show' : 'movie';
-        if (isInWatchlist(media.id, mediaType)) return;
-        await addToWatchlist(media, mediaType);
+        let targetType: 'movie' | 'show';
+
+        if (type === 'multi') {
+            // For multi search, rely on media_type property from result
+            if (media.media_type === 'movie') targetType = 'movie';
+            else if (media.media_type === 'tv') targetType = 'show';
+            else return; // Unknown type
+        } else {
+            targetType = type === 'tv' ? 'show' : 'movie';
+        }
+
+        if (isInWatchlist(media.id, targetType)) return;
+        await addToWatchlist(media, targetType);
         onClose();
     };
 
@@ -53,7 +73,7 @@ export const SearchModal = ({ isOpen, onClose, type }: SearchModalProps) => {
                     <input
                         autoFocus
                         type="text"
-                        placeholder={`Search for a ${type === 'movie' ? 'movie' : 'TV show'} to add...`}
+                        placeholder={type === 'multi' ? "Search for movies or TV shows..." : `Search for a ${type === 'movie' ? 'movie' : 'TV show'} to add...`}
                         className="search-modal-input"
                         value={query}
                         onChange={e => setQuery(e.target.value)}
@@ -83,7 +103,8 @@ export const SearchModal = ({ isOpen, onClose, type }: SearchModalProps) => {
                     )}
 
                     {results.map(media => {
-                        const inList = isInWatchlist(Number(media.id), type === 'tv' ? 'show' : 'movie');
+                        const itemType = type === 'multi' ? (media.media_type === 'tv' ? 'show' : 'movie') : (type === 'tv' ? 'show' : 'movie');
+                        const inList = isInWatchlist(Number(media.id), itemType);
                         const displayTitle = media.title || media.name || 'Unknown';
                         const posterUrl = media.poster_path
                             ? (media.poster_path.startsWith('http') ? media.poster_path : `https://image.tmdb.org/t/p/w92${media.poster_path}`)

@@ -10,10 +10,4 @@ const PlaceholderPage = ({ title }: { title: string }) => (
 
 export const Movies = () => <PlaceholderPage title="Movies" />;
 export { Shows } from './Shows';
-export const Upcoming = () => (
-    <div className="flex flex-col items-center justify-center h-[50vh] text-[var(--text-secondary)] animate-fade-in">
-        <h2 className="text-2xl font-bold mb-2">Coming Soon</h2>
-        <p>Track upcoming releases and get notified.</p>
-    </div>
-);
 export const Games = () => <PlaceholderPage title="Games Library" />;
