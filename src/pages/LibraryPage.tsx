@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { calculateMediaRuntime } from '../lib/tmdb';
 import { useWatchlist } from '../context/WatchlistContext';
 import { MediaCard } from '../components/MediaCard';
-import { MediaDetailsModal } from '../components/MediaDetailsModal';
+import { WatchlistModal } from '../components/modals/WatchlistModal';
 import { SearchModal } from '../components/SearchModal';
 import { FAB } from '../components/FAB';
 import { FilterBar, FilterExpandable } from '../components/FilterBar';
@@ -363,12 +363,10 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
 
             {
                 selectedMedia && (
-                    <MediaDetailsModal
+                    <WatchlistModal
                         media={selectedMedia}
                         type={tmdbType}
                         onClose={() => setSelectedMedia(null)}
-                        onAdd={() => removeFromWatchlist(selectedMedia.id, watchlistType)}
-                        isInWatchlist={true}
                     />
                 )
             }

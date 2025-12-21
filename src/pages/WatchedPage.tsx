@@ -2,7 +2,7 @@ import { Search } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { useWatchlist } from '../context/WatchlistContext';
 import { MediaCard } from '../components/MediaCard';
-import { MediaDetailsModal } from '../components/MediaDetailsModal';
+import { HistoryModal } from '../components/modals/HistoryModal';
 import { FilterBar, FilterExpandable } from '../components/FilterBar';
 import { Check } from 'lucide-react';
 import type { TMDBMedia } from '../lib/tmdb';
@@ -136,17 +136,10 @@ export const WatchedPage = () => {
             )}
 
             {selectedMedia && (
-                <MediaDetailsModal
+                <HistoryModal
                     media={selectedMedia}
                     type={tmdbType}
                     onClose={() => setSelectedMedia(null)}
-                    onAdd={() => {
-                        if (selectedMedia) {
-                            const type = selectedMedia.media_type === 'tv' ? 'show' : 'movie';
-                            removeFromWatchlist(selectedMedia.id, type);
-                        }
-                    }}
-                    isInWatchlist={true}
                 />
             )}
         </div>

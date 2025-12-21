@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { MediaCard } from '../components/MediaCard';
-import { MediaDetailsModal } from '../components/MediaDetailsModal';
+import { WatchlistModal } from '../components/modals/WatchlistModal';
 import { useWatchlist } from '../context/WatchlistContext';
 import { type TMDBMedia } from '../lib/tmdb';
 import { FilterBar, FilterExpandable } from '../components/FilterBar';
@@ -111,12 +111,10 @@ export const Watchlist = () => {
             )}
 
             {selectedMedia && (
-                <MediaDetailsModal
+                <WatchlistModal
                     media={selectedMedia}
                     type={selectedMedia.media_type as 'movie' | 'tv'}
                     onClose={() => setSelectedMedia(null)}
-                    onAdd={() => handleRemove(selectedMedia.id, selectedMedia.media_type === 'movie' ? 'movie' : 'show')}
-                    isInWatchlist={true}
                 />
             )}
         </div>

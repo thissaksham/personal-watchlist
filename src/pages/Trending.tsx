@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { tmdb, type TMDBMedia } from '../lib/tmdb';
 import { MediaCard } from '../components/MediaCard';
-import { MediaDetailsModal } from '../components/MediaDetailsModal';
+import { DiscoveryModal } from '../components/modals/DiscoveryModal';
 import { useWatchlist } from '../context/WatchlistContext';
 import { Flame } from 'lucide-react';
 
@@ -91,12 +91,10 @@ export const Trending = () => {
             )}
 
             {selectedMedia && (
-                <MediaDetailsModal
+                <DiscoveryModal
                     media={selectedMedia}
                     type={selectedMedia.media_type as 'movie' | 'tv'}
                     onClose={() => setSelectedMedia(null)}
-                    onAdd={() => handleAdd(selectedMedia)}
-                    isInWatchlist={isInWatchlist(selectedMedia.id, selectedMedia.media_type === 'tv' ? 'show' : 'movie')}
                 />
             )}
         </div>

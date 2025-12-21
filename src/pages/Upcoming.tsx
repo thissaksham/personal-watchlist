@@ -23,7 +23,7 @@ const formatDate = (dateStr: string) => {
     return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
 };
 
-import { MediaDetailsModal } from '../components/MediaDetailsModal';
+import { UpcomingModal } from '../components/modals/UpcomingModal';
 
 export const Upcoming = () => {
     const { watchlist, removeFromWatchlist } = useWatchlist();
@@ -157,12 +157,10 @@ export const Upcoming = () => {
             />
 
             {selectedMedia && (
-                <MediaDetailsModal
+                <UpcomingModal
                     media={selectedMedia}
                     type={selectedMedia.tmdbMediaType}
                     onClose={() => setSelectedMedia(null)}
-                    onAdd={() => { }} // Already in watchlist
-                    isInWatchlist={true}
                 />
             )}
         </div>
