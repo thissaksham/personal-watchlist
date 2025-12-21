@@ -123,7 +123,6 @@ export const Upcoming = () => {
                                     vote_average: show.vote_average || 0,
                                     countdown: getDaysUntil(show.date),
                                 }}
-                                type={show.tmdbMediaType}
                                 onToggleReminder={() => {
                                     if (window.confirm(`Remove ${show.title} from upcoming list?`)) {
                                         removeFromWatchlist(Number(show.id), show.tmdbMediaType === 'movie' ? 'movie' : 'show');

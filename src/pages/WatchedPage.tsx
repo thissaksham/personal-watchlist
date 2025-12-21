@@ -114,7 +114,6 @@ export const WatchedPage = () => {
                         <div key={media.id}>
                             <HistoryCard
                                 media={media}
-                                type={media.media_type === 'tv' ? 'tv' : 'movie'}
                                 onRemove={(m) => {
                                     if (window.confirm(`Remove "${m.title || m.name}" from history?`)) {
                                         const type = m.media_type === 'tv' ? 'show' : 'movie';
