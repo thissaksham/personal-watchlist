@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LogOut, Clapperboard, MonitorPlay, Calendar, Gamepad2, Menu, X, Check } from 'lucide-react';
+import { LogOut, Clapperboard, MonitorPlay, Calendar, Gamepad2, Menu, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Layout() {
@@ -17,7 +17,6 @@ export default function Layout() {
         // Trending removed (Default Home)
         { name: 'Movies', path: '/movies', icon: Clapperboard },
         { name: 'Shows', path: '/shows', icon: MonitorPlay },
-        { name: 'Watched', path: '/watched', icon: Check },
         { name: 'Upcoming', path: '/upcoming', icon: Calendar },
         { name: 'Games', path: '/games', icon: Gamepad2 },
     ];

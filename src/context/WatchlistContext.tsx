@@ -10,7 +10,7 @@ export interface WatchlistItem {
     title: string;
     poster_path: string | null;
     vote_average: number;
-    status: 'watched' | 'plan_to_watch' | 'dropped';
+    status: 'watched' | 'plan_to_watch' | 'dropped' | 'watching';
     metadata?: TMDBMedia; // Include metadata in type definition
 }
 
@@ -19,6 +19,7 @@ interface WatchlistContextType {
     addToWatchlist: (media: TMDBMedia, type: 'movie' | 'show') => Promise<void>;
     removeFromWatchlist: (tmdbId: number, type: 'movie' | 'show') => Promise<void>;
     markAsWatched: (tmdbId: number, type: 'movie' | 'show') => Promise<void>;
+    markAsWatching: (tmdbId: number, type: 'movie' | 'show') => Promise<void>;
     markAsUnwatched: (tmdbId: number, type: 'movie' | 'show') => Promise<void>;
     isInWatchlist: (tmdbId: number, type: 'movie' | 'show') => boolean;
     loading: boolean;
@@ -239,6 +240,39 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
+    const markAsWatching = async (tmdbId: number, type: 'movie' | 'show') => {
+        const dbType = type as 'movie' | 'show';
+
+        if (!user) {
+            const localWatchlist = JSON.parse(localStorage.getItem('watchlist') || '[]');
+            const updatedLocal = localWatchlist.map((item: any) =>
+                (item.tmdb_id === tmdbId && item.type === dbType)
+                    ? { ...item, status: 'watching' }
+                    : item
+            );
+            localStorage.setItem('watchlist', JSON.stringify(updatedLocal));
+            setWatchlist(updatedLocal);
+            return;
+        }
+
+        // Optimistic Update
+        setWatchlist((prev) => prev.map(item =>
+            (item.tmdb_id === tmdbId && item.type === dbType)
+                ? { ...item, status: 'watching' }
+                : item
+        ));
+
+        const { error } = await supabase
+            .from('watchlist')
+            .update({ status: 'watching' })
+            .match({ user_id: user.id, tmdb_id: tmdbId, type: dbType });
+
+        if (error) {
+            console.error('Error marking as watching:', error);
+            fetchWatchlist();
+        }
+    };
+
     const markAsUnwatched = async (tmdbId: number, type: 'movie' | 'show') => {
         const dbType = type as 'movie' | 'show';
 
@@ -348,6 +382,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
             addToWatchlist,
             removeFromWatchlist,
             markAsWatched,
+            markAsWatching,
             markAsUnwatched,
             isInWatchlist,
             loading,

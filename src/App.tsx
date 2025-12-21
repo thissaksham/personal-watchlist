@@ -9,7 +9,6 @@ import { Movies } from './pages/Movies';
 import { Shows } from './pages/Shows';
 import { Upcoming } from './pages/Upcoming';
 import { Games } from './pages/Placeholders';
-import { WatchedPage } from './pages/WatchedPage';
 import VerifySuccess from './pages/VerifySuccess';
 
 
@@ -47,7 +46,6 @@ function App() {
               <Route path="shows" element={<Shows />} />
               <Route path="upcoming" element={<Upcoming />} />
               <Route path="games" element={<Games />} />
-              <Route path="watched" element={<WatchedPage />} />
             </Route>
           </Routes>
         </WatchlistProvider>

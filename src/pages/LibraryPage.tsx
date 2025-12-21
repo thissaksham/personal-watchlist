@@ -6,6 +6,8 @@ import { WatchlistModal } from '../components/modals/WatchlistModal';
 import { SearchModal } from '../components/SearchModal';
 import { FAB } from '../components/FAB';
 import { FilterBar, FilterExpandable } from '../components/FilterBar';
+import { HistoryCard } from '../components/cards/HistoryCard';
+import { SlidingToggle } from '../components/common/SlidingToggle';
 import { Search, ListFilter } from 'lucide-react';
 import type { TMDBMedia } from '../lib/tmdb';
 
@@ -18,11 +20,12 @@ interface LibraryPageProps {
 }
 
 export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMessage }: LibraryPageProps) => {
-    const { watchlist, removeFromWatchlist, markAsWatched } = useWatchlist();
+    const { watchlist, removeFromWatchlist, markAsWatched, markAsUnwatched, watchedSeasons } = useWatchlist();
     const [selectedMedia, setSelectedMedia] = useState<TMDBMedia | null>(null);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [filterProvider, setFilterProvider] = useState<number | null>(null);
     const [statusFilter, setStatusFilter] = useState<'finished' | 'ongoing' | null>(null);
+    const [viewMode, setViewMode] = useState<string>('Unwatched'); // Changed to string for flexibility
     const [sortOption, setSortOption] = useState<'date_added' | 'rating' | 'release_date' | 'runtime'>('date_added'); // New Sort State
     const [searchTerm, setSearchTerm] = useState('');
     const [isSortOpen, setIsSortOpen] = useState(false);
@@ -44,9 +47,49 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
         };
     }, [isSortOpen]);
 
-    // Filter from watchlist based on type and status (Plan to Watch only)
+    // Helper to determine Show status based on seasons
+    const getShowStatus = (item: any): 'Unwatched' | 'Watching' | 'Watched' => {
+        // Fallback or explicit status check if needed? No, user wants derived logic.
+        const meta = item.metadata || {};
+        const totalSeasons = meta.number_of_seasons || item.number_of_seasons || 0;
+
+        if (!totalSeasons) {
+            // If no season info, fallback to manual status if available, else Unwatched
+            // Or maybe treat as Unwatched?
+            if (item.status === 'watched') return 'Watched';
+            if (item.status === 'watching') return 'Watching';
+            return 'Unwatched';
+        }
+
+        let watchedCount = 0;
+        for (let i = 1; i <= totalSeasons; i++) {
+            if (watchedSeasons.has(`${item.tmdb_id}-${i}`)) {
+                watchedCount++;
+            }
+        }
+
+        if (watchedCount === 0) return 'Unwatched';
+        if (watchedCount === totalSeasons) return 'Watched';
+        return 'Watching';
+    };
+
+    // Filter from watchlist based on type and status
     const library = watchlist
-        .filter(item => item.type === watchlistType && item.status !== 'watched')
+        .filter(item => {
+            if (item.type !== watchlistType) return false;
+
+            // Logic for Shows (Derived)
+            if (tmdbType === 'tv') {
+                const derivedStatus = getShowStatus(item);
+                return derivedStatus === viewMode;
+            }
+
+            // Logic for Movies (Manual)
+            if (viewMode === 'Unwatched') return item.status === 'plan_to_watch' || !item.status;
+            if (viewMode === 'Watched') return item.status === 'watched';
+
+            return false;
+        })
         .map(item => ({
             ...(item.metadata || {}), // Load full metadata if available
             id: Number(item.tmdb_id),
@@ -162,9 +205,16 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
                 </div>
 
                 <div
-                    className="flex items-center gap-4"
-                    style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', flexWrap: 'nowrap' }}
+                    className="flex items-center"
+                    style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '24px' }} // Increased gap and restored flex
                 >
+                    {/* View Mode Toggle (Custom Sliding) */}
+                    <SlidingToggle
+                        options={tmdbType === 'tv' ? ['Unwatched', 'Watching', 'Watched'] : ['Unwatched', 'Watched']}
+                        activeOption={viewMode}
+                        onToggle={(opt) => setViewMode(opt)}
+                    />
+
                     {/* Sort Dropdown */}
                     <div className="relative z-50" ref={sortRef} style={{ position: 'relative', marginRight: '8px' }}>
                         <button
@@ -311,20 +361,36 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
                     <div className="media-grid">
                         {sortedLibrary.map((media) => (
                             <div key={media.id}>
-                                <WatchlistCard
-                                    media={media}
-                                    type={tmdbType}
-                                    onRemove={(m) => {
-                                        const displayTitle = m.title || m.name;
-                                        if (window.confirm(`Are you sure you want to remove "${displayTitle}" from your library?`)) {
-                                            removeFromWatchlist(Number(m.id), watchlistType);
-                                        }
-                                    }}
-                                    onMarkWatched={(m) => {
-                                        markAsWatched(Number(m.id), watchlistType);
-                                    }}
-                                    onClick={() => setSelectedMedia(media)}
-                                />
+                                {viewMode === 'Watched' ? (
+                                    <HistoryCard
+                                        media={media}
+                                        onRemove={(m) => {
+                                            const displayTitle = m.title || m.name;
+                                            if (window.confirm(`Are you sure you want to remove "${displayTitle}" from your history?`)) {
+                                                removeFromWatchlist(Number(m.id), watchlistType);
+                                            }
+                                        }}
+                                        onUnwatch={(m) => {
+                                            markAsUnwatched(Number(m.id), watchlistType);
+                                        }}
+                                        onClick={() => setSelectedMedia(media)}
+                                    />
+                                ) : (
+                                    <WatchlistCard
+                                        media={media}
+                                        type={tmdbType}
+                                        onRemove={(m) => {
+                                            const displayTitle = m.title || m.name;
+                                            if (window.confirm(`Are you sure you want to remove "${displayTitle}" from your library?`)) {
+                                                removeFromWatchlist(Number(m.id), watchlistType);
+                                            }
+                                        }}
+                                        onMarkWatched={(m) => {
+                                            markAsWatched(Number(m.id), watchlistType);
+                                        }}
+                                        onClick={() => setSelectedMedia(media)}
+                                    />
+                                )}
                             </div>
                         ))}
                     </div>
