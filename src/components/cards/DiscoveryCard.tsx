@@ -4,7 +4,6 @@ import { type TMDBMedia } from '../../lib/tmdb';
 
 interface DiscoveryCardProps {
     media: TMDBMedia;
-    type?: 'movie' | 'tv';
     onAdd: (media: TMDBMedia) => void;
     onClick: (media: TMDBMedia) => void;
     isInWatchlist?: boolean;
@@ -12,7 +11,6 @@ interface DiscoveryCardProps {
 
 export const DiscoveryCard = ({
     media,
-    type,
     onAdd,
     onClick,
     isInWatchlist = false

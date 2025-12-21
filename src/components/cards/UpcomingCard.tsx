@@ -4,7 +4,6 @@ import { type TMDBMedia } from '../../lib/tmdb';
 
 interface UpcomingCardProps {
     media: TMDBMedia;
-    type?: 'movie' | 'tv';
     onToggleReminder: (media: TMDBMedia) => void;
     onClick: (media: TMDBMedia) => void;
     isRemindSet?: boolean;
@@ -12,7 +11,6 @@ interface UpcomingCardProps {
 
 export const UpcomingCard = ({
     media,
-    type,
     onToggleReminder,
     onClick,
     isRemindSet = false
@@ -23,7 +21,6 @@ export const UpcomingCard = ({
         : `https://placehold.co/500x750/1f2937/ffffff?text=${encodeURIComponent(title)}`;
 
     const releaseDate = media.release_date || media.first_air_date;
-    const year = releaseDate?.split('-')[0] || '';
 
     return (
         <div className="media-card group" onClick={() => onClick(media)}>

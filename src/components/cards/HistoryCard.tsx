@@ -4,7 +4,6 @@ import { type TMDBMedia, calculateMediaRuntime } from '../../lib/tmdb';
 
 interface HistoryCardProps {
     media: TMDBMedia;
-    type?: 'movie' | 'tv';
     onUnwatch: (media: TMDBMedia) => void;
     onRemove: (media: TMDBMedia) => void;
     onClick: (media: TMDBMedia) => void;
@@ -12,7 +11,6 @@ interface HistoryCardProps {
 
 export const HistoryCard = ({
     media,
-    type,
     onUnwatch,
     onRemove,
     onClick
