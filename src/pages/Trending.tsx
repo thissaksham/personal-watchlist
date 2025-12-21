@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { tmdb, type TMDBMedia } from '../lib/tmdb';
-import { MediaCard } from '../components/MediaCard';
+import { DiscoveryCard } from '../components/cards/DiscoveryCard';
 import { DiscoveryModal } from '../components/modals/DiscoveryModal';
 import { useWatchlist } from '../context/WatchlistContext';
 import { Flame } from 'lucide-react';
@@ -78,12 +78,13 @@ export const Trending = () => {
             ) : (
                 <div className="media-grid">
                     {trending.map((media) => (
-                        <div key={`${media.media_type}-${media.id}`} onClick={() => setSelectedMedia(media)}>
-                            <MediaCard
+                        <div key={`${media.media_type}-${media.id}`}>
+                            <DiscoveryCard
                                 media={media}
                                 type={media.media_type as 'movie' | 'tv'}
                                 onAdd={() => handleAdd(media)}
-                                isWatched={isInWatchlist(media.id, media.media_type === 'tv' ? 'show' : 'movie')}
+                                onClick={() => setSelectedMedia(media)}
+                                isInWatchlist={isInWatchlist(media.id, media.media_type === 'tv' ? 'show' : 'movie')}
                             />
                         </div>
                     ))}

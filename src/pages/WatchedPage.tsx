@@ -1,7 +1,7 @@
 import { Search } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { useWatchlist } from '../context/WatchlistContext';
-import { MediaCard } from '../components/MediaCard';
+import { HistoryCard } from '../components/cards/HistoryCard';
 import { HistoryModal } from '../components/modals/HistoryModal';
 import { FilterBar, FilterExpandable } from '../components/FilterBar';
 import { Check } from 'lucide-react';
@@ -111,10 +111,10 @@ export const WatchedPage = () => {
             ) : (
                 <div className="media-grid">
                     {filteredItems.map((media) => (
-                        <div key={media.id} onClick={() => setSelectedMedia(media)}>
-                            <MediaCard
+                        <div key={media.id}>
+                            <HistoryCard
                                 media={media}
-                                type={tmdbType}
+                                type={media.media_type === 'tv' ? 'tv' : 'movie'}
                                 onRemove={(m) => {
                                     if (window.confirm(`Remove "${m.title || m.name}" from history?`)) {
                                         const type = m.media_type === 'tv' ? 'show' : 'movie';
@@ -125,10 +125,7 @@ export const WatchedPage = () => {
                                     const type = m.media_type === 'tv' ? 'show' : 'movie';
                                     markAsUnwatched(Number(m.id), type);
                                 }}
-                                showRating={false}
-                                showYear={false}
-                                showDuration={false}
-                                showSeasons={false}
+                                onClick={() => setSelectedMedia(media)}
                             />
                         </div>
                     ))}

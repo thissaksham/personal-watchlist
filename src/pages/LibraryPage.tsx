@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { calculateMediaRuntime } from '../lib/tmdb';
 import { useWatchlist } from '../context/WatchlistContext';
-import { MediaCard } from '../components/MediaCard';
+import { WatchlistCard } from '../components/cards/WatchlistCard';
 import { WatchlistModal } from '../components/modals/WatchlistModal';
 import { SearchModal } from '../components/SearchModal';
 import { FAB } from '../components/FAB';
@@ -310,8 +310,8 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
                 ) : (
                     <div className="media-grid">
                         {sortedLibrary.map((media) => (
-                            <div key={media.id} onClick={() => setSelectedMedia(media)}>
-                                <MediaCard
+                            <div key={media.id}>
+                                <WatchlistCard
                                     media={media}
                                     type={tmdbType}
                                     onRemove={(m) => {
@@ -321,15 +321,9 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
                                         }
                                     }}
                                     onMarkWatched={(m) => {
-                                        // Assuming we can import markAsWatched or use context
-                                        // Luckily we have useWatchlist inside LibraryPage
                                         markAsWatched(Number(m.id), watchlistType);
                                     }}
-                                    // Config based on type
-                                    showSeasons={tmdbType === 'tv'} // Only show seasons for TV
-                                    showDuration={true}
-                                    showRating={true}
-                                    showYear={true}
+                                    onClick={() => setSelectedMedia(media)}
                                 />
                             </div>
                         ))}

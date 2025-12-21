@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useWatchlist } from '../context/WatchlistContext';
 import { FAB } from '../components/FAB';
 import { SearchModal } from '../components/SearchModal';
-import { MediaCard } from '../components/MediaCard';
+import { UpcomingCard } from '../components/cards/UpcomingCard';
 import { calculateMediaRuntime } from '../lib/tmdb';
 
 // Helper Functions
@@ -115,8 +115,8 @@ export const Upcoming = () => {
             ) : (
                 <div className="media-grid">
                     {upcomingItems.map((show: any) => (
-                        <div key={show.id} className="relative group/upcoming" onClick={() => setSelectedMedia(show)}>
-                            <MediaCard
+                        <div key={show.id} className="relative group/upcoming">
+                            <UpcomingCard
                                 media={{
                                     ...show,
                                     id: Number(show.id),
@@ -124,14 +124,13 @@ export const Upcoming = () => {
                                     countdown: getDaysUntil(show.date),
                                 }}
                                 type={show.tmdbMediaType}
-                                showRating={true}
-                                showYear={true}
-                                showDuration={true}
-                                onRemove={() => {
-                                    if (window.confirm(`Remove ${show.title} from library?`)) {
+                                onToggleReminder={() => {
+                                    if (window.confirm(`Remove ${show.title} from upcoming list?`)) {
                                         removeFromWatchlist(Number(show.id), show.tmdbMediaType === 'movie' ? 'movie' : 'show');
                                     }
                                 }}
+                                onClick={() => setSelectedMedia(show)}
+                                isRemindSet={true}
                             />
                             <div className="absolute -bottom-6 left-0 w-full text-center opacity-0 group-hover/upcoming:opacity-100 transition-opacity duration-300 pointer-events-none">
                                 <span className="text-[10px] font-bold text-teal-400 bg-black/80 px-2 py-1 rounded-full border border-teal-500/20 backdrop-blur-sm">

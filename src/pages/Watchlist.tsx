@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { MediaCard } from '../components/MediaCard';
+import { WatchlistCard } from '../components/cards/WatchlistCard';
 import { WatchlistModal } from '../components/modals/WatchlistModal';
 import { useWatchlist } from '../context/WatchlistContext';
 import { type TMDBMedia } from '../lib/tmdb';
@@ -7,7 +7,7 @@ import { FilterBar, FilterExpandable } from '../components/FilterBar';
 import { useMediaProviders } from '../hooks/useMediaProviders';
 
 export const Watchlist = () => {
-    const { watchlist, removeFromWatchlist } = useWatchlist();
+    const { watchlist, removeFromWatchlist, markAsWatched } = useWatchlist();
     const [selectedMedia, setSelectedMedia] = useState<TMDBMedia | null>(null);
     const [enrichedWatchlist, setEnrichedWatchlist] = useState<TMDBMedia[]>([]);
     const [loading, setLoading] = useState(true);
@@ -98,12 +98,13 @@ export const Watchlist = () => {
             ) : (
                 <div className="media-grid">
                     {filteredList.map((media) => (
-                        <div key={`${media.media_type}-${media.id}`} onClick={() => setSelectedMedia(media)}>
-                            <MediaCard
+                        <div key={`${media.media_type}-${media.id}`}>
+                            <WatchlistCard
                                 media={media}
                                 type={media.media_type as 'movie' | 'tv'}
-                                onAdd={() => handleRemove(media.id, media.media_type === 'movie' ? 'movie' : 'show')}
-                                isWatched={true}
+                                onRemove={() => handleRemove(media.id, media.media_type === 'movie' ? 'movie' : 'show')}
+                                onMarkWatched={() => markAsWatched(media.id, media.media_type === 'movie' ? 'movie' : 'show')}
+                                onClick={() => setSelectedMedia(media)}
                             />
                         </div>
                     ))}
