@@ -22,6 +22,9 @@ interface WatchlistContextType {
     markAsUnwatched: (tmdbId: number, type: 'movie' | 'show') => Promise<void>;
     isInWatchlist: (tmdbId: number, type: 'movie' | 'show') => boolean;
     loading: boolean;
+    watchedSeasons: Set<string>;
+    markSeasonWatched: (tmdbId: number, seasonNumber: number) => Promise<void>;
+    markSeasonUnwatched: (tmdbId: number, seasonNumber: number) => Promise<void>;
 }
 
 const WatchlistContext = createContext<WatchlistContextType | undefined>(undefined);
@@ -273,8 +276,86 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
         return watchlist.some((item) => item.tmdb_id === tmdbId && item.type === type);
     };
 
+    // --- Season Tracking Logic ---
+
+    // State to store watched seasons: Map of "tmdbId-seasonNumber" -> boolean
+    const [watchedSeasons, setWatchedSeasons] = useState<Set<string>>(new Set());
+
+    // Load watched seasons on init
+    useEffect(() => {
+        if (!user) {
+            const local = JSON.parse(localStorage.getItem('watched_seasons') || '[]');
+            setWatchedSeasons(new Set(local));
+        } else {
+            // Fetch from Supabase
+            (async () => {
+                const { data } = await supabase.from('watched_seasons').select('*');
+                if (data) {
+                    const loaded = new Set(data.map((row: any) => `${row.tmdb_id}-${row.season_number}`));
+                    setWatchedSeasons(loaded);
+                }
+            })();
+        }
+    }, [user]);
+
+    const markSeasonWatched = async (tmdbId: number, seasonNumber: number) => {
+        const key = `${tmdbId}-${seasonNumber}`;
+
+        // Optimistic Update
+        setWatchedSeasons(prev => {
+            const next = new Set(prev);
+            next.add(key);
+            if (!user) {
+                localStorage.setItem('watched_seasons', JSON.stringify(Array.from(next)));
+            }
+            return next;
+        });
+
+        if (user) {
+            await supabase.from('watched_seasons').upsert({
+                user_id: user.id,
+                tmdb_id: tmdbId,
+                season_number: seasonNumber
+            });
+        }
+    };
+
+    const markSeasonUnwatched = async (tmdbId: number, seasonNumber: number) => {
+        const key = `${tmdbId}-${seasonNumber}`;
+
+        // Optimistic Update
+        setWatchedSeasons(prev => {
+            const next = new Set(prev);
+            next.delete(key);
+            if (!user) {
+                localStorage.setItem('watched_seasons', JSON.stringify(Array.from(next)));
+            }
+            return next;
+        });
+
+        if (user) {
+            await supabase.from('watched_seasons').delete().match({
+                user_id: user.id,
+                tmdb_id: tmdbId,
+                season_number: seasonNumber
+            });
+        }
+    };
+
     return (
-        <WatchlistContext.Provider value={{ watchlist, addToWatchlist, removeFromWatchlist, markAsWatched, markAsUnwatched, isInWatchlist, loading }}>
+        <WatchlistContext.Provider value={{
+            watchlist,
+            addToWatchlist,
+            removeFromWatchlist,
+            markAsWatched,
+            markAsUnwatched,
+            isInWatchlist,
+            loading,
+            // New Exports
+            watchedSeasons,
+            markSeasonWatched,
+            markSeasonUnwatched
+        }}>
             {children}
         </WatchlistContext.Provider>
     );

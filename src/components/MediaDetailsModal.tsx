@@ -14,13 +14,14 @@ interface MediaDetailsModalProps {
 import { useWatchlist } from '../context/WatchlistContext';
 
 export const MediaDetailsModal = ({ media, type, onClose, onAdd, isInWatchlist }: MediaDetailsModalProps) => {
-    const { watchlist } = useWatchlist();
+    const { watchlist, watchedSeasons, markSeasonWatched, markSeasonUnwatched } = useWatchlist();
 
     // Check status for UI logic
     const watchlistItem = watchlist.find(i => i.tmdb_id === media.id && i.type === (type === 'tv' ? 'show' : 'movie'));
     const isWatched = watchlistItem?.status === 'watched';
 
     const [details, setDetails] = useState<any>(null);
+    const [hoveredSeason, setHoveredSeason] = useState<number | null>(null);
 
 
 
@@ -295,6 +296,168 @@ export const MediaDetailsModal = ({ media, type, onClose, onAdd, isInWatchlist }
                 {/* Content */}
                 <div className="modal-body relative">
                     <div className="u-vstack">
+
+                        {/* TV Show Seasons Progress - Linear Circles */}
+                        {type === 'tv' && (details?.seasons || media.seasons) && (
+                            <div style={{ marginBottom: '24px', width: '100%' }}>
+                                <div style={{
+                                    textTransform: 'uppercase',
+                                    fontSize: '12px',
+                                    fontWeight: 'bold',
+                                    letterSpacing: '0.1em',
+                                    color: '#6b7280',
+                                    marginBottom: '12px'
+                                }}>
+                                    Seasons
+                                </div>
+                                <div style={{
+                                    display: 'flex',
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    gap: '16px',
+                                    overflowX: 'auto',
+                                    padding: '16px', // Added generous padding for shadows
+                                    scrollbarWidth: 'none', // Firefox
+                                    msOverflowStyle: 'none', // IE/Edge
+                                    WebkitOverflowScrolling: 'touch'
+                                }}
+                                    onMouseLeave={() => setHoveredSeason(null)} // Clear hover when leaving container
+                                >
+                                    {(details?.seasons || media.seasons)
+                                        .filter((s: any) => s.season_number > 0)
+                                        .map((season: any) => {
+                                            const showId = Number(media.id);
+                                            const seasonNum = Number(season.season_number);
+                                            const isWatched = watchedSeasons.has(`${showId}-${seasonNum}`);
+
+                                            // Interactive Logic
+                                            let isPreview = false;
+                                            if (hoveredSeason !== null) {
+                                                const cursorKey = `${showId}-${hoveredSeason}`;
+                                                // If TARGET is unwatched, we preview ADD.
+                                                const targetIsWatched = watchedSeasons.has(cursorKey);
+
+                                                if (!targetIsWatched) {
+                                                    // Show add preview for items <= cursor
+                                                    if (seasonNum <= hoveredSeason && !isWatched) {
+                                                        isPreview = true;
+                                                    }
+                                                }
+                                            }
+
+                                            // Visual States
+                                            const isSolid = isWatched;
+                                            const isGhost = !isWatched && isPreview;
+
+                                            // Styles
+                                            let background = 'rgba(0,0,0,0.3)';
+                                            let border = '1px solid rgba(255,255,255,0.1)';
+                                            let color = '#9ca3af';
+                                            let boxShadow = 'none';
+                                            let fontWeight = 'normal';
+
+                                            if (isSolid) {
+                                                // Radial gradient for a true "orb" feel
+                                                background = 'radial-gradient(circle at center, #5eead4 0%, #0f766e 100%)';
+                                                border = 'none';
+                                                color = '#000000';
+                                                boxShadow = '0 0 12px rgba(45,212,191,0.6)';
+                                                fontWeight = 'bold';
+                                            } else if (isGhost) {
+                                                background = 'rgba(45, 212, 191, 0.15)';
+                                                border = '1px solid rgba(45, 212, 191, 0.6)';
+                                                color = '#2dd4bf';
+                                                boxShadow = '0 0 8px rgba(45,212,191,0.2)';
+                                                fontWeight = 'normal';
+                                            }
+
+                                            return (
+                                                <button
+                                                    key={season.id}
+                                                    type="button"
+                                                    onMouseEnter={() => setHoveredSeason(seasonNum)}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+
+                                                        // Smart Toggle Logic
+                                                        // Case A: Clicking an already Watched season -> "Rewind / Unmark"
+                                                        // If I click S3 and it is watched, unmark S3, S4, S5... (Reset to end of S2)
+                                                        // Case B: Clicking an Unwatched season -> "Advance"
+                                                        // Mark S1..S3 as watched. Ensure S4..S5 are unwatched.
+
+                                                        const allSeasons = (details?.seasons || media.seasons);
+
+                                                        allSeasons.forEach((s: any) => {
+                                                            const sNum = Number(s.season_number);
+                                                            if (sNum <= 0) return;
+
+                                                            const sKey = `${showId}-${sNum}`;
+                                                            const sIsWatched = watchedSeasons.has(sKey);
+
+                                                            if (isWatched) {
+                                                                // REWIND: Unmark this season and all after
+                                                                // Example: Click S3 (Watched). Unmark S3, S4, S5...
+                                                                if (sNum >= seasonNum) {
+                                                                    if (sIsWatched) markSeasonUnwatched(showId, sNum);
+                                                                }
+                                                            } else {
+                                                                // ADVANCE: Mark up to this season
+                                                                // Example: Click S3 (Unwatched). Mark S1, S2, S3. Unmark S4, S5...
+                                                                if (sNum <= seasonNum) {
+                                                                    if (!sIsWatched) markSeasonWatched(showId, sNum);
+                                                                } else {
+                                                                    if (sIsWatched) markSeasonUnwatched(showId, sNum);
+                                                                }
+                                                            }
+                                                        });
+                                                    }}
+                                                    className="transition-transform duration-200 active:scale-95"
+                                                    style={{
+                                                        // Force Geometry
+                                                        width: '44px',
+                                                        height: '44px',
+                                                        minWidth: '44px', // Prevent crushing
+                                                        minHeight: '44px',
+                                                        borderRadius: '50%',
+                                                        overflow: 'hidden', // Added to enforce circular gradient clipping
+
+                                                        // Force Layout
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        flexShrink: 0,
+
+                                                        // Reset default button styles
+                                                        appearance: 'none',
+                                                        WebkitAppearance: 'none',
+                                                        boxSizing: 'border-box',
+                                                        padding: 0,
+                                                        cursor: 'pointer',
+
+                                                        // Neon / Glass Aesthetic (Inline)
+                                                        background,
+                                                        border,
+                                                        color,
+                                                        boxShadow,
+                                                        fontWeight,
+
+                                                        // Scale animation on hover logic is handled via class active:scale-95
+                                                    }}
+                                                    title={`${season.name} (${season.episode_count} Episodes)`}
+                                                >
+                                                    <span style={{ fontSize: '13px', letterSpacing: '-0.5px' }}>S{season.season_number}</span>
+                                                </button>
+                                            );
+                                        })}
+                                </div>
+                                {/* Hide scrollbar hack for Chrome/Safari */}
+                                <style>{`
+                                    div::-webkit-scrollbar {
+                                        display: none;
+                                    }
+                                `}</style>
+                            </div>
+                        )}
                         <div>
                             <h3 className="section-title">Overview</h3>
                             <p className="overview-text">
@@ -318,7 +481,11 @@ export const MediaDetailsModal = ({ media, type, onClose, onAdd, isInWatchlist }
                             {/* Mark as Watched removed as requested */}
                         </div>
 
-                        {/* TV Show Stats Removed as requested */}
+
+
+                        {/* Old Tracking Help removed for cleaner look */}
+
+                        {/* TV Show Stats Removed as requested (Old placeholder) */}
 
                         {details?.genres && (
                             <div>
@@ -387,6 +554,6 @@ export const MediaDetailsModal = ({ media, type, onClose, onAdd, isInWatchlist }
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 };

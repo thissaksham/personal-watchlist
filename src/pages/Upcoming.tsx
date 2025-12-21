@@ -77,7 +77,8 @@ export const Upcoming = () => {
 
             return {
                 ...meta, // Pass full metadata for Modal to work nicely initially
-                id: item.id,
+                id: item.tmdb_id, // Use TMDB ID (number) not Supabase UUID
+                supabaseId: item.id, // Keep UUID if needed
                 title: item.title,
                 date: targetDate.toISOString(),
                 tmdbMediaType: item.type === 'movie' ? 'movie' : 'tv', // For Modal
