@@ -4,6 +4,7 @@ import { X, Calendar, Clock, Star, Play, Layers, Hash, Hourglass } from 'lucide-
 import { tmdb, type TMDBMedia } from '../../lib/tmdb';
 import { useWatchlist } from '../../context/WatchlistContext';
 import { getMoctaleUrl, getTMDBUrl, TMDB_ICON_BASE64, MOCTALE_ICON_BASE64 } from '../../lib/urls';
+import { calculateShowStats } from '../../utils/mediaUtils';
 
 interface UpcomingModalProps {
     media: TMDBMedia;
@@ -38,30 +39,7 @@ export const UpcomingModal = ({ media, type, onClose }: UpcomingModalProps) => {
         ? `https://image.tmdb.org/t/p/w780${backdropPath}`
         : (posterPath ? `https://image.tmdb.org/t/p/w780${posterPath}` : null);
 
-    const getShowStats = () => {
-        if (type !== 'tv') return null;
-        let avgRuntime = 0;
-        if (media.tvmaze_runtime) avgRuntime = media.tvmaze_runtime;
-        else if (details?.episode_run_time && details.episode_run_time.length > 0) avgRuntime = Math.min(...details.episode_run_time);
-        else if (media.episode_run_time && media.episode_run_time.length > 0) avgRuntime = Math.min(...media.episode_run_time);
-        else if (details?.runtime) avgRuntime = details.runtime;
-
-        const episodes = details?.number_of_episodes || media.number_of_episodes || 0;
-        const seasons = details?.number_of_seasons || media.number_of_seasons || 0;
-
-        let bingeTime = '';
-        if (avgRuntime && episodes) {
-            const totalMinutes = avgRuntime * episodes;
-            const days = Math.floor(totalMinutes / (24 * 60));
-            const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
-            const minutes = totalMinutes % 60;
-            if (days > 0) bingeTime = `${days}d ${hours}h`;
-            else bingeTime = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
-        }
-        return { avgRuntime, episodes, seasons, bingeTime };
-    };
-
-    const showStats = getShowStats();
+    const showStats = calculateShowStats(media, details);
     const runtimeDisplay = type === 'movie' ? (details?.runtime || media.runtime) : showStats?.avgRuntime;
 
     const trailer = details?.videos?.results?.find(
@@ -113,7 +91,7 @@ export const UpcomingModal = ({ media, type, onClose }: UpcomingModalProps) => {
                         <div className="meta-tags">
                             {year && <span className="tag"><Calendar size={14} /> {year}</span>}
                             <span className="tag rating"><Star size={14} fill="currentColor" /> {media.vote_average?.toFixed(1)}</span>
-                            {runtimeDisplay && <span className="tag"><Clock size={14} /> {runtimeDisplay} min</span>}
+                            {runtimeDisplay > 0 && <span className="tag"><Clock size={14} /> {runtimeDisplay} min</span>}
                             {showStats?.bingeTime && <span className="tag" style={{ borderColor: '#2dd4bf', color: '#2dd4bf' }}><Hourglass size={14} /> {showStats.bingeTime}</span>}
                             {showStats?.seasons ? <span className="tag"><Layers size={14} /> {showStats.seasons} Seasons</span> : null}
                             {showStats?.episodes ? <span className="tag"><Hash size={14} /> {showStats.episodes} Episodes</span> : null}

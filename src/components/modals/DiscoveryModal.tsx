@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom';
 import { X, Calendar, Clock, Star, PlayCircle, Play, Layers, Hash, Hourglass } from 'lucide-react';
 import { tmdb, type TMDBMedia, TMDB_REGION } from '../../lib/tmdb';
 import { getMoctaleUrl, getTMDBUrl, TMDB_ICON_BASE64, MOCTALE_ICON_BASE64 } from '../../lib/urls';
-// import { useWatchlist } from '../../context/WatchlistContext';
+import { Download } from 'lucide-react';
+import { calculateShowStats } from '../../utils/mediaUtils';
 
 interface DiscoveryModalProps {
     media: TMDBMedia;
@@ -12,10 +13,7 @@ interface DiscoveryModalProps {
 }
 
 export const DiscoveryModal = ({ media, type, onClose }: DiscoveryModalProps) => {
-    // const { addToWatchlist, isInWatchlist } = useWatchlist(); // logic removed
-
     const [details, setDetails] = useState<any>(null);
-    // const inList = isInWatchlist(media.id, type === 'tv' ? 'show' : 'movie');
 
     useEffect(() => {
         const fetchDetails = async () => {
@@ -43,30 +41,7 @@ export const DiscoveryModal = ({ media, type, onClose }: DiscoveryModalProps) =>
     const providers = (detailsProviders && detailsProviders.length > 0) ? detailsProviders : (mediaProviders || []);
     const watchLink = details?.['watch/providers']?.results?.[TMDB_REGION]?.link || media['watch/providers']?.results?.[TMDB_REGION]?.link;
 
-    const getShowStats = () => {
-        if (type !== 'tv') return null;
-        let avgRuntime = 0;
-        if (media.tvmaze_runtime) avgRuntime = media.tvmaze_runtime;
-        else if (details?.episode_run_time && details.episode_run_time.length > 0) avgRuntime = Math.min(...details.episode_run_time);
-        else if (media.episode_run_time && media.episode_run_time.length > 0) avgRuntime = Math.min(...media.episode_run_time);
-        else if (details?.runtime) avgRuntime = details.runtime;
-
-        const episodes = details?.number_of_episodes || media.number_of_episodes || 0;
-        const seasons = details?.number_of_seasons || media.number_of_seasons || 0;
-
-        let bingeTime = '';
-        if (avgRuntime && episodes) {
-            const totalMinutes = avgRuntime * episodes;
-            const days = Math.floor(totalMinutes / (24 * 60));
-            const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
-            const minutes = totalMinutes % 60;
-            if (days > 0) bingeTime = `${days}d ${hours}h`;
-            else bingeTime = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
-        }
-        return { avgRuntime, episodes, seasons, bingeTime };
-    };
-
-    const showStats = getShowStats();
+    const showStats = calculateShowStats(media, details);
     const runtimeDisplay = type === 'movie' ? (details?.runtime || media.runtime) : showStats?.avgRuntime;
 
     const trailer = details?.videos?.results?.find(
@@ -118,7 +93,7 @@ export const DiscoveryModal = ({ media, type, onClose }: DiscoveryModalProps) =>
                         <div className="meta-tags">
                             {year && <span className="tag"><Calendar size={14} /> {year}</span>}
                             <span className="tag rating"><Star size={14} fill="currentColor" /> {media.vote_average?.toFixed(1)}</span>
-                            {runtimeDisplay && <span className="tag"><Clock size={14} /> {runtimeDisplay} min</span>}
+                            {runtimeDisplay > 0 && <span className="tag"><Clock size={14} /> {runtimeDisplay} min</span>}
                             {showStats?.bingeTime && <span className="tag" style={{ borderColor: '#2dd4bf', color: '#2dd4bf' }}><Hourglass size={14} /> {showStats.bingeTime}</span>}
                             {showStats?.seasons ? <span className="tag"><Layers size={14} /> {showStats.seasons} Seasons</span> : null}
                             {showStats?.episodes ? <span className="tag"><Hash size={14} /> {showStats.episodes} Episodes</span> : null}
@@ -151,7 +126,36 @@ export const DiscoveryModal = ({ media, type, onClose }: DiscoveryModalProps) =>
                 <div className="modal-body relative">
                     <div className="u-vstack">
 
-                        {/* No Season Progress in Discovery - keeps it clean */}
+                        {/* Seasons List (Read-Only / Info) */}
+                        {type === 'tv' && (details?.seasons || media.seasons) && (
+                            <div style={{ marginBottom: '24px', width: '100%' }}>
+                                <div style={{ textTransform: 'uppercase', fontSize: '12px', fontWeight: 'bold', letterSpacing: '0.1em', color: '#6b7280', marginBottom: '12px' }}>Seasons</div>
+                                <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '16px', overflowX: 'auto', padding: '16px', scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}>
+                                    {(details?.seasons || media.seasons).filter((s: any) => s.season_number > 0).map((season: any) => {
+                                        // Simple display for discovery
+                                        const isFuture = season.air_date && new Date(season.air_date) > new Date();
+                                        return (
+                                            <div key={season.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                                                <div
+                                                    style={{
+                                                        width: '44px', height: '44px', minWidth: '44px', minHeight: '44px', borderRadius: '50%', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                                                        background: 'rgba(255, 255, 255, 0.05)',
+                                                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                                                        color: '#9ca3af',
+                                                        fontWeight: 'bold',
+                                                        opacity: isFuture ? 0.5 : 1
+                                                    }}
+                                                    title={`${season.name} (${season.episode_count} Episodes)`}
+                                                >
+                                                    <span style={{ fontSize: '13px', letterSpacing: '-0.5px' }}>S{season.season_number}</span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                <style>{`div::-webkit-scrollbar { display: none; }`}</style>
+                            </div>
+                        )}
 
                         <div>
                             <h3 className="section-title">Overview</h3>
@@ -160,6 +164,9 @@ export const DiscoveryModal = ({ media, type, onClose }: DiscoveryModalProps) =>
                     </div>
 
                     <div className="u-vstack">
+
+
+                        {/* Action Button Removed per User Request */}
 
 
                         {details?.genres && (
@@ -180,6 +187,19 @@ export const DiscoveryModal = ({ media, type, onClose }: DiscoveryModalProps) =>
                                             <img src={`https://image.tmdb.org/t/p/original${provider.logo_path}`} alt={provider.provider_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                         </a>
                                     ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {providers.length === 0 && (
+                            <div>
+                                <h3 className="section-title text-sm uppercase tracking-wider text-gray-500 mb-3 mt-4">
+                                    <div className="flex items-center gap-2"><Download size={16} />Download From</div>
+                                </h3>
+                                <div className="provider-list">
+                                    <a href={type === 'movie' ? `https://ext.to/browse/?cat=1&name_filter=${encodeURIComponent(title || '')}` : `https://ext.to/tv-series/?title=${encodeURIComponent(title || '')}`} target="_blank" rel="noopener noreferrer" className="provider-logo hover:opacity-80 transition-opacity cursor-pointer block" title={`Download ${title}`} style={{ background: 'transparent' }}>
+                                        <img src="/ext-logo.png" alt="EXT" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                    </a>
                                 </div>
                             </div>
                         )}
