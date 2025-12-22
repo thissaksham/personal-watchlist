@@ -148,8 +148,30 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
             today.setHours(0, 0, 0, 0);
 
             if (tmdbType === 'movie') {
-                // Step 1: If streaming or rental now -> MOVIES (Library)
-                movedToLibrary = allStreamingOrRental.length > 0;
+                const hasProviders = allStreamingOrRental.length > 0;
+                const releaseDateStr = details.release_date;
+                const isReleasedStatus = details.status === 'Released';
+                const mainDate = releaseDateStr ? new Date(releaseDateStr) : null;
+                const isPastMainDate = mainDate && mainDate <= today;
+
+                console.log(`[Categorization] Analyzing Movie: ${details.title}`);
+                console.log(`[Categorization] Providers: ${hasProviders}, Status: ${details.status}, MainDate: ${releaseDateStr}`);
+                console.log(`[Categorization] Theatrical Date: ${theatricalDate}`);
+
+                if (hasProviders) {
+                    movedToLibrary = true;
+                    console.log(`[Categorization] Result: LIBRARY (Has Providers - streaming/rent/buy)`);
+                } else if (!theatricalDate) {
+                    // Rule: If no theatrical run info is found, it's a digital/documentary release. 
+                    // Move to library if it's released.
+                    movedToLibrary = !!(isReleasedStatus || isPastMainDate);
+                    console.log(`[Categorization] Result: ${movedToLibrary ? 'LIBRARY' : 'UPCOMING'} (No Theatrical record, checking release status)`);
+                } else {
+                    // Rule: If there IS a theatrical record, but no OTT providers yet, 
+                    // it stays in Upcoming/Coming Soon (even if already in theaters)
+                    movedToLibrary = false;
+                    console.log(`[Categorization] Result: UPCOMING (Has Theatrical record but NO OTT providers yet)`);
+                }
             } else {
                 movedToLibrary = true;
                 const nextEp = details.next_episode_to_air;

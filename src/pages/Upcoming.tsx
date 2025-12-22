@@ -81,7 +81,7 @@ export const Upcoming = () => {
                 if (dDate && dDate > today) {
                     category = 'ott';
                     targetDate = dDate;
-                    seasonInfo = meta.manual_ott_name ? `Coming on ${meta.manual_ott_name}` : 'Coming to OTT';
+                    seasonInfo = '';
                 }
                 // Step 3: Else (Theatrical or Fallback)
                 else {
@@ -89,7 +89,7 @@ export const Upcoming = () => {
                     // Determine best target date and label for Step 3
                     if (tDate) {
                         targetDate = tDate;
-                        seasonInfo = tDate > today ? 'In Theaters' : 'Released';
+                        seasonInfo = tDate > today ? 'Releasing in Theatres' : 'Released';
                     } else if (dDate) {
                         // Past digital date but no active providers (else Step 1 would have caught it)
                         targetDate = dDate;
