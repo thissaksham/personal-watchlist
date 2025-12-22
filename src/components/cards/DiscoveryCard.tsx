@@ -27,6 +27,17 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
             <div className="discovery-poster-wrapper">
                 <img src={posterUrl} alt={title} className="discovery-poster-img" loading="lazy" />
 
+                {/* Standardized Pills (Matching WatchlistCard) */}
+                {media.vote_average > 0 && (
+                    <div className="media-pill pill-rating">
+                        <Star size={10} fill="#fbbf24" strokeWidth={0} />
+                        <span>{media.vote_average.toFixed(1)}</span>
+                    </div>
+                )}
+                {year && (
+                    <div className="media-pill pill-year pill-stacked"><span>{year}</span></div>
+                )}
+
                 {/* Content Overlay */}
                 <div className="discovery-overlay">
                     <div className="discovery-actions">
@@ -49,16 +60,7 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
                     </div>
 
                     <div className="discovery-info">
-                        <div className="flex items-center gap-2 mb-1">
-                            {media.vote_average > 0 && (
-                                <div className="discovery-rating">
-                                    <Star size={10} fill="#fbbf24" strokeWidth={0} />
-                                    <span>{media.vote_average.toFixed(1)}</span>
-                                </div>
-                            )}
-                            {year && <span className="discovery-year">{year}</span>}
-                        </div>
-                        <h4 className="discovery-title line-clamp-1">{title}</h4>
+                        <h4 className="discovery-title line-clamp-2 text-center px-2">{title}</h4>
                     </div>
                 </div>
             </div>
