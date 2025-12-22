@@ -61,3 +61,24 @@ export const calculateShowStats = (media: TMDBMedia | null, details: any | null)
 
     return { avgRuntime, episodes, seasons, bingeTime };
 };
+
+export const getWatchProviders = (media: TMDBMedia | null, details: any | null, region: string) => {
+    const getFromSource = (source: any) => {
+        const rData = source?.['watch/providers']?.results?.[region];
+        if (!rData) return [];
+        return [
+            ...(rData.flatrate || []),
+            ...(rData.free || []),
+            ...(rData.ads || [])
+        ];
+    };
+
+    const fromDetails = getFromSource(details);
+    if (fromDetails.length > 0) return fromDetails;
+    return getFromSource(media);
+};
+
+export const getWatchLink = (media: TMDBMedia | null, details: any | null, region: string) => {
+    return details?.['watch/providers']?.results?.[region]?.link ||
+        media?.['watch/providers']?.results?.[region]?.link;
+};

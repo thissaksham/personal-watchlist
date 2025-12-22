@@ -154,42 +154,60 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
             vote_average: item.vote_average
         } as TMDBMedia));
 
-    // Extract unique providers
+    // Extract unique providers sorted by popularity
     const allProviders = useMemo(() => {
-        const providers = new Map();
+        const providers = new Map<number, { id: number; name: string; logo?: string; count: number }>();
         let hasNoProvider = false;
 
         library.forEach(media => {
-            // @ts-ignore - dynamic property access
-            // Strict IN only - no fallback to US
             const providerData = media['watch/providers']?.results?.[TMDB_REGION];
-            const flatrate = providerData?.flatrate || [];
+            if (!providerData) {
+                hasNoProvider = true;
+                return;
+            }
 
-            if (flatrate.length === 0) {
+            const available = [
+                ...(providerData.flatrate || []),
+                ...(providerData.free || []),
+                ...(providerData.ads || [])
+            ];
+
+            if (available.length === 0) {
                 hasNoProvider = true;
             } else {
-                flatrate.forEach((p: any) => {
+                // Use a Set to ensure we only count a provider once *per media item*
+                const uniqueMediaProviders = new Set<number>();
+                available.forEach((p: any) => {
+                    uniqueMediaProviders.add(p.provider_id);
                     if (!providers.has(p.provider_id)) {
                         const logoUrl = p.logo_path ? `https://image.tmdb.org/t/p/original${p.logo_path}` : undefined;
-                        providers.set(p.provider_id, { id: p.provider_id, name: p.provider_name, logo: logoUrl });
+                        providers.set(p.provider_id, { id: p.provider_id, name: p.provider_name, logo: logoUrl, count: 0 });
                     }
+                });
+
+                uniqueMediaProviders.forEach(pid => {
+                    const existing = providers.get(pid)!;
+                    existing.count += 1;
                 });
             }
         });
 
-        const result: any[] = Array.from(providers.values());
+        let result = Array.from(providers.values());
 
-        // Remove "Amazon Prime Video with Ads" if "Amazon Prime Video" is also present
-        const primeVideo = result.find(p => p.name === 'Amazon Prime Video');
-        const primeVideoAds = result.find(p => p.name === 'Amazon Prime Video with Ads');
+        // Merge Amazon Prime Video variations
+        const prime = result.find(p => p.name === 'Amazon Prime Video');
+        const primeAds = result.find(p => p.name === 'Amazon Prime Video with Ads');
 
-        if (primeVideo && primeVideoAds) {
-            const index = result.findIndex(p => p.id === primeVideoAds.id);
-            if (index > -1) result.splice(index, 1);
+        if (prime && primeAds) {
+            prime.count += primeAds.count;
+            result = result.filter(p => p.id !== primeAds.id);
         }
 
+        // Sort by occurrence count descending
+        result.sort((a, b) => b.count - a.count);
+
         if (hasNoProvider) {
-            result.push({ id: -1, name: 'Not Streaming', logo: '/ext-logo.png' });
+            result.push({ id: -1, name: 'Not Streaming', logo: '/ext-logo.png', count: 0 });
         }
         return result;
     }, [library]);
@@ -216,14 +234,19 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
 
         // 3. Provider Filter
         if (filterProvider) {
-            // @ts-ignore
             const providerData = media['watch/providers']?.results?.[TMDB_REGION];
-            const flatrate = providerData?.flatrate || [];
+            if (!providerData) return filterProvider === -1;
+
+            const available = [
+                ...(providerData.flatrate || []),
+                ...(providerData.free || []),
+                ...(providerData.ads || [])
+            ];
 
             if (filterProvider === -1) {
-                return flatrate.length === 0;
+                return available.length === 0;
             }
-            return flatrate.some((p: any) => p.provider_id === filterProvider);
+            return available.some((p: any) => p.provider_id === filterProvider);
         }
 
         return true;

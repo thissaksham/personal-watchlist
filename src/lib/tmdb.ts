@@ -113,7 +113,7 @@ export const tmdb = {
 
         // Explicitly constructing URL as requested by user:
         // https://api.themoviedb.org/3/search/tv?query={user_entry}&api_key={api_key}
-        const url = `${BASE_URL}/search/${type}?query=${encodeURIComponent(query)}&api_key=${TMDB_API_KEY}&region=${TMDB_REGION}`;
+        const url = `${BASE_URL}/search/${type}?query=${encodeURIComponent(query)}&api_key=${TMDB_API_KEY}`;
 
         console.log(`[TMDB] Fetching explicitly: ${url}`);
 

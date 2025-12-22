@@ -4,7 +4,7 @@ import { X, Calendar, Clock, Star, PlayCircle, Play, Layers, Hash, Hourglass } f
 import { tmdb, type TMDBMedia, TMDB_REGION } from '../../lib/tmdb';
 import { useWatchlist } from '../../context/WatchlistContext';
 import { getMoctaleUrl, getTMDBUrl, TMDB_ICON_BASE64, MOCTALE_ICON_BASE64 } from '../../lib/urls';
-import { calculateShowStats } from '../../utils/mediaUtils';
+import { calculateShowStats, getWatchProviders, getWatchLink } from '../../utils/mediaUtils';
 
 interface WatchlistModalProps {
     media: TMDBMedia;
@@ -34,15 +34,11 @@ export const WatchlistModal = ({ media, type, onClose }: WatchlistModalProps) =>
     const year = (media.release_date || media.first_air_date)?.substring(0, 4);
 
     const backdropPath = media.backdrop_path || details?.backdrop_path;
-    const posterPath = media.poster_path || details?.poster_path;
     const backdropUrl = backdropPath
         ? `https://image.tmdb.org/t/p/w780${backdropPath}`
-        : (posterPath ? `https://image.tmdb.org/t/p/w780${posterPath}` : null);
-
-    const detailsProviders = details?.['watch/providers']?.results?.[TMDB_REGION]?.flatrate;
-    const mediaProviders = media['watch/providers']?.results?.[TMDB_REGION]?.flatrate;
-    const providers = (detailsProviders && detailsProviders.length > 0) ? detailsProviders : (mediaProviders || []);
-    const watchLink = details?.['watch/providers']?.results?.[TMDB_REGION]?.link || media['watch/providers']?.results?.[TMDB_REGION]?.link;
+        : (media.poster_path || details?.poster_path ? `https://image.tmdb.org/t/p/w780${media.poster_path || details?.poster_path}` : null);
+    const providers = getWatchProviders(media, details, TMDB_REGION);
+    const watchLink = getWatchLink(media, details, TMDB_REGION);
 
     const showStats = calculateShowStats(media, details);
     const runtimeDisplay = type === 'movie' ? (details?.runtime || media.runtime) : showStats?.avgRuntime;

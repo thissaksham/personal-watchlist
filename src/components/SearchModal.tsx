@@ -101,8 +101,10 @@ export const SearchModal = ({ isOpen, onClose, type: initialType, onSuccess, ini
 
     const displayResults = query.trim() ? results : trending;
     const itemsToShow = displayResults.filter(item => {
-        const hasPosterAndDate = item.poster_path && (item.release_date || item.first_air_date);
-        if (!hasPosterAndDate) return false;
+        // Relaxed Filter: Allow items without a date or poster
+        // DiscoveryCard handles missing posters with a placeholder.
+        // const hasPoster = !!item.poster_path; // Removed entirely
+        // if (!hasPoster) return false; // Removed to show everything found by API
 
         // Filter by media_type if searchType is not 'multi'
         if (searchType !== 'multi') {

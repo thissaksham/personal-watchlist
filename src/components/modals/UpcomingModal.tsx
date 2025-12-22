@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Calendar, Clock, Star, Play, Layers, Hash, Hourglass } from 'lucide-react';
-import { tmdb, type TMDBMedia } from '../../lib/tmdb';
+import { X, Calendar, Clock, Star, PlayCircle, Play, Layers, Hash, Hourglass } from 'lucide-react';
+import { tmdb, type TMDBMedia, TMDB_REGION } from '../../lib/tmdb';
 import { useWatchlist } from '../../context/WatchlistContext';
 import { getMoctaleUrl, getTMDBUrl, TMDB_ICON_BASE64, MOCTALE_ICON_BASE64 } from '../../lib/urls';
-import { calculateShowStats } from '../../utils/mediaUtils';
+import { calculateShowStats, getWatchProviders, getWatchLink } from '../../utils/mediaUtils';
 
 interface UpcomingModalProps {
     media: TMDBMedia;
@@ -40,6 +40,8 @@ export const UpcomingModal = ({ media, type, onClose }: UpcomingModalProps) => {
         : (posterPath ? `https://image.tmdb.org/t/p/w780${posterPath}` : null);
 
     const showStats = calculateShowStats(media, details);
+    const providers = getWatchProviders(media, details, TMDB_REGION);
+    const watchLink = getWatchLink(media, details, TMDB_REGION);
     const runtimeDisplay = type === 'movie' ? (details?.runtime || media.runtime) : showStats?.avgRuntime;
 
     const trailer = details?.videos?.results?.find(
@@ -255,7 +257,20 @@ export const UpcomingModal = ({ media, type, onClose }: UpcomingModalProps) => {
                             </div>
                         )}
 
-                        {/* No Providers for Upcoming usually */}
+                        {providers.length > 0 && (
+                            <div>
+                                <h3 className="section-title text-sm uppercase tracking-wider text-gray-500 mb-3 mt-4">
+                                    <div className="flex items-center gap-2"><PlayCircle size={16} />Available to Stream</div>
+                                </h3>
+                                <div className="provider-list">
+                                    {providers.map((provider: any) => (
+                                        <a key={provider.provider_id} href={watchLink} target="_blank" rel="noopener noreferrer" className="provider-logo hover:opacity-80 transition-opacity cursor-pointer block" title={`Watch on ${provider.provider_name}`}>
+                                            <img src={`https://image.tmdb.org/t/p/original${provider.logo_path}`} alt={provider.provider_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        </a>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

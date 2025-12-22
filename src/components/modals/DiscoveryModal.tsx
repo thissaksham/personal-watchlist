@@ -4,7 +4,7 @@ import { X, Calendar, Clock, Star, PlayCircle, Play, Layers, Hash, Hourglass } f
 import { tmdb, type TMDBMedia, TMDB_REGION } from '../../lib/tmdb';
 import { getMoctaleUrl, getTMDBUrl, TMDB_ICON_BASE64, MOCTALE_ICON_BASE64 } from '../../lib/urls';
 import { Download } from 'lucide-react';
-import { calculateShowStats } from '../../utils/mediaUtils';
+import { calculateShowStats, getWatchProviders, getWatchLink } from '../../utils/mediaUtils';
 
 interface DiscoveryModalProps {
     media: TMDBMedia;
@@ -36,10 +36,8 @@ export const DiscoveryModal = ({ media, type, onClose }: DiscoveryModalProps) =>
         ? `https://image.tmdb.org/t/p/w780${backdropPath}`
         : (posterPath ? `https://image.tmdb.org/t/p/w780${posterPath}` : null);
 
-    const detailsProviders = details?.['watch/providers']?.results?.[TMDB_REGION]?.flatrate;
-    const mediaProviders = media['watch/providers']?.results?.[TMDB_REGION]?.flatrate;
-    const providers = (detailsProviders && detailsProviders.length > 0) ? detailsProviders : (mediaProviders || []);
-    const watchLink = details?.['watch/providers']?.results?.[TMDB_REGION]?.link || media['watch/providers']?.results?.[TMDB_REGION]?.link;
+    const providers = getWatchProviders(media, details, TMDB_REGION);
+    const watchLink = getWatchLink(media, details, TMDB_REGION);
 
     const showStats = calculateShowStats(media, details);
     const runtimeDisplay = type === 'movie' ? (details?.runtime || media.runtime) : showStats?.avgRuntime;
