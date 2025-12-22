@@ -208,7 +208,12 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
 
         const { data: insertedData, error } = await supabase.from('watchlist').insert(finalItem).select().single();
         if (error) {
-            alert('Error adding to watchlist: ' + error.message);
+            console.error('Watchlist Insert Error:', error);
+            if (error.code === '23503') { // Foreign Key Violation
+                alert('Session Error: Your user ID not found in database. Please Sign Out and Log In again.');
+            } else {
+                alert('Error adding to watchlist: ' + error.message);
+            }
         } else if (insertedData) {
             setWatchlist((prev) => [insertedData, ...prev]);
         }
@@ -248,21 +253,24 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
 
         // 3. Whitelist Essential Keys
         // We do NOT store credits, production_companies, languages, etc.
+        // We ALSO exclude top-level columns (title, poster, vote_average, id) to avoid duplication (Schema Optimization)
         const {
-            id, title, name, poster_path, backdrop_path, overview,
+            // These we want to keep
+            backdrop_path, overview,
             release_date, first_air_date, runtime, status,
             next_episode_to_air, seasons, external_ids,
-            vote_average, genres, number_of_episodes, number_of_seasons,
+            genres, number_of_episodes, number_of_seasons,
             episode_run_time, tvmaze_runtime,
             digital_release_date, theatrical_release_date, moved_to_library,
             manual_date_override, manual_ott_name, dismissed_from_upcoming
         } = meta;
 
         return {
-            id, title, name, poster_path, backdrop_path, overview,
+            // id, title, name, poster_path, vote_average, // EXCLUDED
+            backdrop_path, overview,
             release_date, first_air_date, runtime, status,
             next_episode_to_air, seasons, external_ids,
-            vote_average, genres, number_of_episodes, number_of_seasons,
+            genres, number_of_episodes, number_of_seasons,
             episode_run_time, tvmaze_runtime,
             digital_release_date, theatrical_release_date, moved_to_library,
             manual_date_override, manual_ott_name, dismissed_from_upcoming,
