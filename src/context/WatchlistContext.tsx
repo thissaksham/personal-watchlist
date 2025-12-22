@@ -193,7 +193,9 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
             console.error("Enrichment failed", err);
         }
 
-        const finalItem = { ...newItemBase, metadata: finalMetadata };
+
+        const prunedMetadata = pruneMetadata(finalMetadata);
+        const finalItem = { ...newItemBase, metadata: prunedMetadata };
 
         if (!user) {
             const local = JSON.parse(localStorage.getItem('watchlist') || '[]');
@@ -210,6 +212,63 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
         } else if (insertedData) {
             setWatchlist((prev) => [insertedData, ...prev]);
         }
+    };
+
+    // Helper to reduce storage size (Data Diet)
+    const pruneMetadata = (meta: any) => {
+        if (!meta) return meta;
+
+        // 1. Strict Filter Providers (Only India)
+        const providers = meta['watch/providers']?.results;
+        let leanProviders = {};
+        if (providers && providers[TMDB_REGION]) {
+            leanProviders = {
+                results: {
+                    [TMDB_REGION]: providers[TMDB_REGION]
+                }
+            };
+        } else if (providers && providers['IN']) {
+            leanProviders = {
+                results: {
+                    ['IN']: providers['IN']
+                }
+            };
+        }
+
+        // 2. Prune Videos (Keep only first trailer)
+        let leanVideos = meta.videos;
+        if (meta.videos?.results) {
+            const trailer = meta.videos.results.find((v: any) => v.type === 'Trailer' && v.site === 'YouTube');
+            if (trailer) {
+                leanVideos = { results: [trailer] };
+            } else {
+                leanVideos = { results: [] };
+            }
+        }
+
+        // 3. Whitelist Essential Keys
+        // We do NOT store credits, production_companies, languages, etc.
+        const {
+            id, title, name, poster_path, backdrop_path, overview,
+            release_date, first_air_date, runtime, status,
+            next_episode_to_air, seasons, external_ids,
+            vote_average, genres, number_of_episodes, number_of_seasons,
+            episode_run_time, tvmaze_runtime,
+            digital_release_date, theatrical_release_date, moved_to_library,
+            manual_date_override, manual_ott_name, dismissed_from_upcoming
+        } = meta;
+
+        return {
+            id, title, name, poster_path, backdrop_path, overview,
+            release_date, first_air_date, runtime, status,
+            next_episode_to_air, seasons, external_ids,
+            vote_average, genres, number_of_episodes, number_of_seasons,
+            episode_run_time, tvmaze_runtime,
+            digital_release_date, theatrical_release_date, moved_to_library,
+            manual_date_override, manual_ott_name, dismissed_from_upcoming,
+            'watch/providers': leanProviders,
+            videos: leanVideos
+        };
     };
 
     const removeFromWatchlist = async (tmdbId: number, type: 'movie' | 'show') => {
@@ -355,13 +414,14 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
     };
 
     const updateWatchlistItemMetadata = async (tmdbId: number, type: 'movie' | 'show', newMetadata: any) => {
-        setWatchlist(prev => prev.map(i => (i.tmdb_id === tmdbId && i.type === type) ? { ...i, metadata: newMetadata } : i));
+        const pruned = pruneMetadata(newMetadata);
+        setWatchlist(prev => prev.map(i => (i.tmdb_id === tmdbId && i.type === type) ? { ...i, metadata: pruned } : i));
         if (!user) {
             const local = JSON.parse(localStorage.getItem('watchlist') || '[]');
-            localStorage.setItem('watchlist', JSON.stringify(local.map((i: any) => (i.tmdb_id === tmdbId && i.type === type) ? { ...i, metadata: newMetadata } : i)));
+            localStorage.setItem('watchlist', JSON.stringify(local.map((i: any) => (i.tmdb_id === tmdbId && i.type === type) ? { ...i, metadata: pruned } : i)));
             return;
         }
-        await supabase.from('watchlist').update({ metadata: newMetadata }).eq('user_id', user.id).eq('tmdb_id', tmdbId).eq('type', type);
+        await supabase.from('watchlist').update({ metadata: pruned }).eq('user_id', user.id).eq('tmdb_id', tmdbId).eq('type', type);
     };
 
     return (
