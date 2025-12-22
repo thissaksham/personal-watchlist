@@ -81,9 +81,9 @@ export const Trending = () => {
                         <div key={`${media.media_type}-${media.id}`}>
                             <DiscoveryCard
                                 media={media}
+                                isAdded={isInWatchlist(media.id, media.media_type === 'tv' ? 'show' : 'movie')}
                                 onAdd={() => handleAdd(media)}
                                 onClick={() => setSelectedMedia(media)}
-                                isInWatchlist={isInWatchlist(media.id, media.media_type === 'tv' ? 'show' : 'movie')}
                             />
                         </div>
                     ))}

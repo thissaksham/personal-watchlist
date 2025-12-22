@@ -1,15 +1,13 @@
 import { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LogOut, Clapperboard, MonitorPlay, Calendar, Gamepad2, Menu, X, Search, Plus } from 'lucide-react';
+import { LogOut, Clapperboard, MonitorPlay, Calendar, Gamepad2, Menu, X, Plus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useGlobalSearch } from '../context/GlobalSearchContext';
 import { SearchModal } from './SearchModal';
 import { WatchlistModal } from './modals/WatchlistModal';
 import type { TMDBMedia } from '../lib/tmdb';
 
 export default function Layout() {
     const { signOut, user } = useAuth();
-    const { searchQuery, setSearchQuery } = useGlobalSearch();
     const navigate = useNavigate();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [isAddOpen, setIsAddOpen] = useState(false);
@@ -69,34 +67,16 @@ export default function Layout() {
             `}</style>
                 </div>
 
-                {/* Right: Search Input & Profile */}
+                {/* Right: Add Button & Profile */}
                 <div className="flex-center">
-                    {/* Global Search Bar */}
-                    <div className="search-bar" style={{ position: 'relative', width: '250px', marginRight: '1rem' }}>
-                        <Search size={16} color="#9ca3af" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-                        <input
-                            type="text"
-                            placeholder="Search library..."
-                            className="search-input"
-                            style={{ width: '100%' }}
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter' && searchQuery.trim()) {
-                                    setIsAddOpen(true);
-                                }
-                            }}
-                        />
-                    </div>
-
-                    {/* Global Add Button */}
+                    {/* Global Add Button (Elongated) */}
                     <button
-                        className="add-btn"
+                        className="navbar-add-btn"
                         onClick={() => setIsAddOpen(true)}
-                        style={{ marginRight: '1rem', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--primary)', color: 'white', border: 'none', cursor: 'pointer' }}
                         title="Add Movie or Show"
                     >
-                        <Plus size={20} />
+                        <Plus size={18} />
+                        <span>Add Something new</span>
                     </button>
 
                     <div className="profile-pill">
@@ -161,7 +141,6 @@ export default function Layout() {
                         setRecentlyAddedMedia(media);
                     }
                 }}
-                initialQuery={searchQuery}
             />
 
             {recentlyAddedMedia && (

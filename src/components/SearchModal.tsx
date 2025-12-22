@@ -1,31 +1,61 @@
-import { useState, useEffect } from 'react';
-import { Search, X, Loader, Plus } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Search, X, LoaderCircle } from 'lucide-react';
 import { tmdb, type TMDBMedia } from '../lib/tmdb';
 import { useWatchlist } from '../context/WatchlistContext';
+import { SlidingToggle } from './common/SlidingToggle';
+import { DiscoveryCard } from './cards/DiscoveryCard';
+import { WatchlistModal } from './modals/WatchlistModal';
 
 interface SearchModalProps {
     isOpen: boolean;
     onClose: () => void;
-    type: 'movie' | 'tv' | 'multi'; // Context sensitive search
+    type: 'movie' | 'tv' | 'multi';
     onSuccess?: (media: TMDBMedia) => void;
     initialQuery?: string;
 }
 
-export const SearchModal = ({ isOpen, onClose, type, onSuccess, initialQuery = '' }: SearchModalProps) => {
+export const SearchModal = ({ isOpen, onClose, type: initialType, onSuccess, initialQuery = '' }: SearchModalProps) => {
     const [query, setQuery] = useState(initialQuery);
+    const [searchType, setSearchType] = useState<'multi' | 'movie' | 'tv'>(initialType);
     const [results, setResults] = useState<TMDBMedia[]>([]);
+    const [trending, setTrending] = useState<TMDBMedia[]>([]);
     const [loading, setLoading] = useState(false);
+    const [selectedMedia, setSelectedMedia] = useState<TMDBMedia | null>(null);
+
     const { addToWatchlist, isInWatchlist } = useWatchlist();
 
+    // Removed useEffect for initialQuery as useState handles it now.
+
+    // Reset state on open
     useEffect(() => {
-        if (isOpen && initialQuery) {
+        if (isOpen) {
             setQuery(initialQuery);
-        } else if (isOpen && !initialQuery) {
-            // If opened without query, maybe clear or keep previous?
-            // Usually better to start fresh or keep input if user typed in header.
-            // If initialQuery is passed, use it.
+            setSearchType(initialType);
+            setResults([]);
         }
-    }, [isOpen, initialQuery]);
+    }, [isOpen, initialType, initialQuery]);
+
+    // Fetch trending on mount or when open
+    useEffect(() => {
+        if (isOpen) {
+            setLoading(true);
+            const tmdbType = searchType === 'multi' ? 'all' : (searchType === 'tv' ? 'tv' : 'movie');
+            tmdb.getTrending(tmdbType as any)
+                .then(data => {
+                    setTrending(data.results || []);
+                })
+                .finally(() => setLoading(false));
+
+            // Lock body scroll
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => { document.body.style.overflow = ''; };
+    }, [isOpen, searchType]);
+
+    // Search Logic with Instant Tab Switching
+    const prevSearchType = useRef(searchType);
 
     useEffect(() => {
         const performSearch = async () => {
@@ -33,20 +63,11 @@ export const SearchModal = ({ isOpen, onClose, type, onSuccess, initialQuery = '
                 setResults([]);
                 return;
             }
+
             setLoading(true);
             try {
-                // @ts-ignore
-                const data = await tmdb.search(query, type as 'movie' | 'tv');
-                let rawResults = data.results || [];
-
-                // Filter for "Next Release Date Known" (Client-side)
-                // We keep items that have a release_date or first_air_date
-                // AND we sort them by popularity to keep good results at top
-                rawResults = rawResults.filter((item: TMDBMedia) => {
-                    return !!(item.release_date || item.first_air_date);
-                });
-
-                setResults(rawResults);
+                const data = await tmdb.search(query, searchType);
+                setResults(data.results || []);
             } catch (err) {
                 console.error(err);
             } finally {
@@ -54,21 +75,21 @@ export const SearchModal = ({ isOpen, onClose, type, onSuccess, initialQuery = '
             }
         };
 
-        const timer = setTimeout(performSearch, 500);
+        // If searchType changed but query is the same, fetch immediately
+        if (prevSearchType.current !== searchType && query.trim()) {
+            prevSearchType.current = searchType;
+            performSearch();
+            return;
+        }
+
+        prevSearchType.current = searchType;
+        const timer = setTimeout(() => performSearch(), 500);
         return () => clearTimeout(timer);
-    }, [query, type]);
+    }, [query, searchType]);
 
     const handleAdd = async (media: TMDBMedia) => {
-        let targetType: 'movie' | 'show';
-
-        if (type === 'multi') {
-            // For multi search, rely on media_type property from result
-            if (media.media_type === 'movie') targetType = 'movie';
-            else if (media.media_type === 'tv') targetType = 'show';
-            else return; // Unknown type
-        } else {
-            targetType = type === 'tv' ? 'show' : 'movie';
-        }
+        const mediaType = media.media_type || (searchType === 'tv' ? 'tv' : 'movie');
+        const targetType: 'movie' | 'show' = mediaType === 'tv' ? 'show' : 'movie';
 
         if (isInWatchlist(media.id, targetType)) return;
         await addToWatchlist(media, targetType);
@@ -78,95 +99,98 @@ export const SearchModal = ({ isOpen, onClose, type, onSuccess, initialQuery = '
 
     if (!isOpen) return null;
 
+    const displayResults = query.trim() ? results : trending;
+    const itemsToShow = displayResults.filter(item => {
+        const hasPosterAndDate = item.poster_path && (item.release_date || item.first_air_date);
+        if (!hasPosterAndDate) return false;
+
+        // Filter by media_type if searchType is not 'multi'
+        if (searchType !== 'multi') {
+            // If media_type is missing, assume it matches searchType for specific categories
+            const itemMediaType = item.media_type || searchType;
+            return itemMediaType === searchType;
+        }
+        return true;
+    });
+
     return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="search-modal-content" onClick={e => e.stopPropagation()}>
-                <div className="search-header">
-                    <Search className="text-gray-400" size={20} />
-                    <input
-                        autoFocus
-                        type="text"
-                        placeholder={type === 'multi' ? "Search for movies or TV shows..." : `Search for a ${type === 'movie' ? 'movie' : 'TV show'} to add...`}
-                        className="search-modal-input"
-                        value={query}
-                        onChange={e => setQuery(e.target.value)}
-                    />
-                    <button onClick={onClose} className="p-1 hover:bg-white/10 rounded-full">
-                        <X size={20} className="text-gray-400" />
-                    </button>
-                </div>
+        <div className="search-overlay animate-fade-in" onClick={onClose}>
+            {/* Centered Search Container */}
+            <div className="search-container" onClick={e => e.stopPropagation()}>
 
-                <div className="search-results">
-                    {loading && (
-                        <div className="u-full-center py-8">
-                            <Loader className="animate-spin text-[var(--primary)]" />
+                {/* Close Button Top Right */}
+                <button className="search-close-top" onClick={onClose}>
+                    <X size={24} />
+                </button>
+
+                <div className="search-content-wrapper">
+                    <div className="search-bar-hero">
+                        <div className="search-input-wrapper">
+                            <Search className="search-icon" size={28} />
+                            <input
+                                autoFocus
+                                type="text"
+                                placeholder="Search for movies, TV shows..."
+                                className="search-hero-input"
+                                value={query}
+                                onChange={e => setQuery(e.target.value)}
+                            />
+                            {loading && <LoaderCircle className="animate-spin text-teal-400" size={24} />}
                         </div>
-                    )}
 
-                    {!loading && results.length === 0 && query && (
-                        <div className="text-center py-8 text-gray-500">
-                            No results found.
-                        </div>
-                    )}
-
-                    {!loading && !query && (
-                        <div className="text-center py-8 text-gray-500">
-                            Type to search...
-                        </div>
-                    )}
-
-                    {results.map(media => {
-                        const itemType = type === 'multi' ? (media.media_type === 'tv' ? 'show' : 'movie') : (type === 'tv' ? 'show' : 'movie');
-                        const displayTitle = media.title || media.name || 'Unknown';
-                        const posterUrl = media.poster_path
-                            ? (media.poster_path.startsWith('http') ? media.poster_path : `https://image.tmdb.org/t/p/w92${media.poster_path}`)
-                            : `https://placehold.co/92x138/1f2937/ffffff?text=${encodeURIComponent(displayTitle)}`;
-
-                        return (
-                            <div
-                                key={media.id}
-                                className="search-result-item group"
-                                onClick={() => {
-                                    if (!isInWatchlist(Number(media.id), itemType)) {
-                                        handleAdd(media);
-                                    }
+                        <div className="search-filters">
+                            <SlidingToggle
+                                options={['All', 'Movies', 'TV Shows']}
+                                activeOption={searchType === 'multi' ? 'All' : (searchType === 'movie' ? 'Movies' : 'TV Shows')}
+                                onToggle={(val) => {
+                                    if (val === 'All') setSearchType('multi');
+                                    else if (val === 'Movies') setSearchType('movie');
+                                    else setSearchType('tv');
                                 }}
-                            >
-                                <img
-                                    src={posterUrl}
-                                    alt={media.title || media.name}
-                                    className="search-poster"
-                                />
-                                <div className="search-info">
-                                    <div className="flex items-center justify-between">
-                                        <h4 className="search-title group-hover:text-[var(--primary)] transition-colors">
-                                            {media.title || media.name}
-                                        </h4>
-                                    </div>
-                                    <p className="search-meta">
-                                        {(media.release_date || media.first_air_date)?.substring(0, 4)} • ⭐ {media.vote_average?.toFixed(1) || '0.0'}
-                                    </p>
-                                    <p className="text-xs text-gray-500 line-clamp-2 mt-1">{media.overview}</p>
-                                </div>
-                                <div className="flex items-center px-2">
-                                    {isInWatchlist(Number(media.id), itemType) ? (
-                                        <span className="text-xs font-bold text-gray-500 bg-gray-800 px-2 py-1 rounded-full">
-                                            Added
-                                        </span>
-                                    ) : (
-                                        <button
-                                            className="p-2 rounded-full bg-[var(--surface-hover)] hover:bg-[var(--primary)] text-white transition-all"
-                                            title="Add to Library"
-                                        >
-                                            <Plus size={20} />
-                                        </button>
-                                    )}
-                                </div>
+                            />
+                        </div>
+                    </div>
+
+                    <div className="search-results-grid no-scrollbar">
+                        <div className="grid-header">
+                            <h3 className="text-xl font-bold text-white mb-6">
+                                {query.trim() ? '' : 'Trending Now'}
+                            </h3>
+                        </div>
+
+                        {itemsToShow.length === 0 && !loading ? (
+                            <div className="text-center py-20 text-gray-400">
+                                No discovery found. Try a different search!
                             </div>
-                        );
-                    })}
+                        ) : (
+                            <div className={`media-grid ${loading ? 'loading-state' : ''}`}>
+                                {itemsToShow.map(media => {
+                                    const mType = media.media_type || (searchType === 'tv' ? 'tv' : 'movie');
+                                    const targetType = mType === 'tv' ? 'show' : 'movie';
+
+                                    return (
+                                        <DiscoveryCard
+                                            key={media.id}
+                                            media={media}
+                                            isAdded={isInWatchlist(media.id, targetType)}
+                                            onAdd={() => handleAdd(media)}
+                                            onClick={() => setSelectedMedia(media)}
+                                        />
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
+
+            {selectedMedia && (
+                <WatchlistModal
+                    media={selectedMedia}
+                    type={(selectedMedia.media_type || (searchType === 'tv' ? 'tv' : 'movie')) as 'movie' | 'tv'}
+                    onClose={() => setSelectedMedia(null)}
+                />
+            )}
         </div>
     );
 };

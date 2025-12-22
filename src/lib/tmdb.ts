@@ -107,7 +107,7 @@ export const tmdb = {
         return fetchTMDB(`/trending/${type}/${timeWindow}`);
     },
 
-    search: async (query: string, type: 'movie' | 'tv') => {
+    search: async (query: string, type: 'movie' | 'tv' | 'multi') => {
         console.log(`[TMDB] search called: query="${query}", type="${type}"`);
         if (!query.trim()) return { results: [] };
 
