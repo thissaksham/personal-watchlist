@@ -27,7 +27,7 @@ import { UpcomingModal } from '../components/modals/UpcomingModal';
 import { ManualDateModal } from '../components/modals/ManualDateModal';
 
 export const Upcoming = () => {
-    const { watchlist, markAsWatched, dismissFromUpcoming, removeFromWatchlist, updateWatchlistItemMetadata } = useWatchlist();
+    const { watchlist, markAsWatched, dismissFromUpcoming, removeFromWatchlist, updateWatchlistItemMetadata, updateStatus, moveToLibrary } = useWatchlist();
     const [selectedMedia, setSelectedMedia] = useState<any | null>(null);
     const [viewMode, setViewMode] = useState<string>('On OTT');
     const [showDatePicker, setShowDatePicker] = useState<any | null>(null);
@@ -39,6 +39,14 @@ export const Upcoming = () => {
 
         const items = watchlist.map(item => {
             const meta = (item.metadata || {}) as any;
+
+            // Strict Status check first
+            // If item is already in Library (unwatched/watched), skip it.
+            if (item.status === 'unwatched' || item.status === 'watched') return null;
+            if (item.status === 'dropped') return null;
+
+            // ... (rest of metadata extraction for display) ...
+
             let targetDate: Date | null = null;
             let seasonInfo = '';
             let providerLogo = null;
@@ -46,25 +54,18 @@ export const Upcoming = () => {
             // Check if dismissed
             if (meta.dismissed_from_upcoming) return null;
 
-            // Extract Provider (IN region) - Robust check for multiple possible keys
             const providerInfo = meta['watch/providers'] || meta['watch_providers'] || meta['providers'];
             const regionData = providerInfo?.results?.[TMDB_REGION] || {};
             const flatrate = regionData.flatrate || [];
-            const ads = regionData.ads || [];
-            const free = regionData.free || [];
-            const rent = regionData.rent || [];
-            const buy = regionData.buy || [];
-            const allStreamingOrRental = [...flatrate, ...ads, ...free, ...rent, ...buy];
+            // ... (rest of provider logic for logo) ...
+            const allStreamingOrRental = [...flatrate, ...(regionData.ads || []), ...(regionData.free || []), ...(regionData.rent || []), ...(regionData.buy || [])];
 
-            // Step 1: If currently streaming or rentable/buyable, skip from upcoming (movie-specific)
-            if (item.type === 'movie' && allStreamingOrRental.length > 0) {
-                return null;
-            }
-
-            // If there are streaming providers, capture the logo for display if needed later
             if (allStreamingOrRental.length > 0) {
                 providerLogo = allStreamingOrRental[0].logo_path;
             }
+
+            // Category determination based on STATUS now, but fallback to metadata for "date" display
+            // Actually, we still need to calculate dates for sorting and display.
 
             let category: 'ott' | 'theatrical' | 'other' = 'other';
 
@@ -77,62 +78,49 @@ export const Upcoming = () => {
                 const tDate = theatricalDateStr ? new Date(theatricalDateStr) : null;
                 const rDate = releaseDateStr ? new Date(releaseDateStr) : null;
 
-                // Step 2: Upcoming OTT Release Date Mentioned
-                if (dDate && dDate > today) {
+                if (item.status === 'movie_on_ott') {
                     category = 'ott';
-                    targetDate = dDate;
-                    seasonInfo = '';
-                }
-                // Step 3: Else (Theatrical or Fallback)
-                else {
-                    category = 'theatrical';
-                    // Determine best target date and label for Step 3
-                    if (tDate) {
-                        targetDate = tDate;
-                        seasonInfo = tDate > today ? 'Releasing in Theatres' : 'Released';
-                    } else if (dDate) {
-                        // Past digital date but no active providers (else Step 1 would have caught it)
-                        targetDate = dDate;
-                        seasonInfo = 'Released';
-                    } else if (rDate) {
-                        targetDate = rDate;
-                        seasonInfo = rDate > today ? 'Coming Soon' : 'Released';
+                    targetDate = dDate || rDate || today;
+                    if (targetDate > today) {
+                        const ottName = meta.manual_ott_name || meta.digital_release_note;
+                        seasonInfo = ottName ? `Coming to ${ottName}` : 'Coming to OTT';
                     } else {
-                        // Catch-all today
-                        targetDate = today;
-                        seasonInfo = 'Released';
+                        seasonInfo = 'Streaming Now';
                     }
+                } else if (item.status === 'movie_coming_soon') {
+                    category = 'theatrical';
+                    targetDate = tDate || rDate || today;
+                    seasonInfo = targetDate > today ? 'Releasing in Theatres' : 'Released';
+                } else if (item.status === 'plan_to_watch') {
+                    // Legacy fallback: Keep existing logic for un-migrated items
+                    if (dDate && dDate > today) { category = 'ott'; targetDate = dDate; }
+                    else { category = 'theatrical'; targetDate = tDate || rDate || today; seasonInfo = targetDate > today ? 'Releasing' : 'Released'; }
                 }
-            }
-            // Logic for TV Shows (Always OTT)
-            else if (item.type === 'show') {
+            } else {
+                // Shows
                 category = 'ott';
                 const nextEp = meta.next_episode_to_air;
                 if (nextEp && nextEp.air_date) {
-                    const airDate = new Date(nextEp.air_date);
-                    targetDate = airDate;
-                    if (airDate >= today) {
-                        seasonInfo = nextEp.episode_number === 1 ? 'New Season' : 'New Episode';
-                    } else {
-                        seasonInfo = 'Now Airing';
-                    }
+                    targetDate = new Date(nextEp.air_date);
+                    seasonInfo = 'New Episode';
                 }
             }
 
+            if (!targetDate && item.type === 'movie') targetDate = today; // Fallback
             if (!targetDate) return null;
 
-            // Calculate runtime/binge time (approx)
             const runtime = calculateMediaRuntime(item);
 
             return {
-                ...meta, // Pass full metadata for Modal to work nicely initially
-                id: item.tmdb_id, // Use TMDB ID (number) not Supabase UUID
-                supabaseId: item.id, // Keep UUID if needed
+                ...meta,
+                id: item.tmdb_id,
+                supabaseId: item.id,
+                status: item.status,
                 title: item.title,
                 poster_path: item.poster_path,
                 vote_average: item.vote_average,
                 date: targetDate.toISOString(),
-                tmdbMediaType: item.type === 'movie' ? 'movie' : 'tv', // For Modal
+                tmdbMediaType: item.type === 'movie' ? 'movie' : 'tv',
                 totalHours: runtime,
                 seasonInfo,
                 providerLogo,
@@ -141,38 +129,32 @@ export const Upcoming = () => {
         }).filter((item): item is NonNullable<typeof item> => item !== null)
             .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-        // Apply View Mode Filter
+        // Strict Status-Based Filtering
         return items.filter(item => {
-            const meta = item as any;
-
-            // Critical Change: Items stay in Upcoming until explicitly moved
-            const isAcknowledged = meta.moved_to_library === true;
-
             if (viewMode === 'On OTT') {
-                return item.tabCategory === 'ott' && !isAcknowledged;
+                return item.status === 'movie_on_ott' || item.tmdbMediaType === 'tv'; // Shows default to OTT
             }
             if (viewMode === 'Coming Soon') {
-                return item.tabCategory === 'theatrical' && !isAcknowledged;
+                return item.status === 'movie_coming_soon';
             }
-            return !isAcknowledged;
+            return true;
         });
     }, [watchlist, viewMode]);
 
     const handleMoveToLibrary = async (media: any) => {
-        const item = watchlist.find(i => i.tmdb_id === media.id && i.type === (media.tmdbMediaType === 'movie' ? 'movie' : 'show'));
-        if (!item) return;
-
-        await updateWatchlistItemMetadata(Number(media.id), item.type, {
-            ...item.metadata,
-            moved_to_library: true
-        });
+        await moveToLibrary(Number(media.id), media.tmdbMediaType === 'movie' ? 'movie' : 'show');
     };
 
     const handleSaveManualDate = async (date: string, ottName: string) => {
         if (!showDatePicker) return;
 
-        const item = watchlist.find(i => i.tmdb_id === showDatePicker.id && i.type === showDatePicker.tmdbMediaType);
-        if (!item) return;
+        // Use supabaseId for reliable lookup
+        const item = watchlist.find(i => i.id === showDatePicker.supabaseId);
+        if (!item) {
+            console.error("Manual Date Save: Item not found in watchlist", showDatePicker);
+            return;
+        }
+        console.log("Manual Date Save: Found item", item.title);
 
         const newMeta = {
             ...(item.metadata || {}),
@@ -181,7 +163,13 @@ export const Upcoming = () => {
             manual_date_override: true
         };
 
-        await updateWatchlistItemMetadata(showDatePicker.id, showDatePicker.tmdbMediaType, newMeta);
+        await updateWatchlistItemMetadata(item.tmdb_id, item.type, newMeta);
+
+        // Also force status to 'movie_on_ott' so it moves to the OTT tab
+        await updateStatus(item.tmdb_id, item.type, 'movie_on_ott');
+
+        // Optimistic UI update/Selection clear
+        setShowDatePicker(null);
     };
 
     return (

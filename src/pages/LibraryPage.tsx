@@ -115,10 +115,17 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
 
             // Logic for Movies (Manual)
             if (viewMode === 'Unwatched') {
-                if (item.status === 'plan_to_watch' || !item.status) {
-                    const meta = (item.metadata || {}) as any;
+                // New logic: Only show if status is explicitly 'unwatched'
+                // Or if it's 'plan_to_watch' but strictly available (Legacy support, but we should prioritize new status)
+                if (item.status === 'unwatched') return true;
 
-                    // Step 1 Override: If streaming now -> SHOW IMMEDIATELY (Overrides moved_to_library)
+                // Legacy Fallback for older items not yet migrated
+                if (item.status === 'plan_to_watch') {
+                    const meta = (item.metadata || {}) as any;
+                    // Only show if explicitly marked as moved_to_library (which we set)
+                    if (meta.moved_to_library === true) return true;
+
+                    // Or if streaming is strictly available (Legacy Check)
                     const providerInfo = meta['watch/providers'] || meta['watch_providers'] || meta['providers'];
                     const regionData = providerInfo?.results?.[TMDB_REGION] || {};
                     const isAvailableNow = (regionData.flatrate || []).length > 0 ||
@@ -127,24 +134,8 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
                         (regionData.rent || []).length > 0 ||
                         (regionData.buy || []).length > 0;
                     if (isAvailableNow) return true;
-
-                    // Step 2 & 3: Hide if still in Upcoming and not streaming yet
-                    if (meta.moved_to_library === false) return false;
-
-                    // Fallback Date Logic (for manually moved items or edge cases)
-                    const digitalDateStr = meta.digital_release_date;
-                    const theatricalDateStr = meta.theatrical_release_date;
-                    const releaseDateStr = meta.release_date;
-
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-
-                    if (digitalDateStr) return new Date(digitalDateStr) <= today;
-                    if (theatricalDateStr) return new Date(theatricalDateStr) <= today;
-                    if (releaseDateStr) return new Date(releaseDateStr) <= today;
-
-                    return true;
                 }
+
                 return false;
             }
 

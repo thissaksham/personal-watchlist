@@ -19,11 +19,23 @@ export const Watchlist = () => {
         const loadWatchlistData = async () => {
             setLoading(true);
             try {
-                const items = watchlist
-                    .filter(item => item.status !== 'watched') // Watchlist should typically be "plan to watch"
+                console.log("Watchlist Page: Loading data...");
+                console.log("Raw Watchlist:", watchlist);
+                const unwatched = watchlist.filter(item => item.status === 'unwatched');
+                console.log("Unwatched Items:", unwatched);
+
+                const items = unwatched
                     .map(item => {
-                        const media = item.metadata as TMDBMedia;
-                        return { ...media, id: item.tmdb_id, media_type: item.type } as TMDBMedia;
+                        const media = (item.metadata || {}) as TMDBMedia;
+                        return {
+                            ...media,
+                            id: item.tmdb_id,
+                            media_type: item.type,
+                            title: item.title || media.title || media.name,
+                            name: item.title || media.name || media.title,
+                            poster_path: item.poster_path || media.poster_path,
+                            vote_average: item.vote_average || media.vote_average
+                        } as TMDBMedia;
                     });
 
                 setEnrichedWatchlist(items);
@@ -40,6 +52,8 @@ export const Watchlist = () => {
     // Extract Providers
     const allProviders = useMediaProviders(enrichedWatchlist);
 
+    console.log('DEBUG: Enriched Watchlist:', enrichedWatchlist);
+
     // Apply Filters
     const filteredList = useMemo(() => {
         return enrichedWatchlist.filter(media => {
@@ -54,6 +68,7 @@ export const Watchlist = () => {
         });
     }, [enrichedWatchlist, filterProvider]);
 
+    console.log('DEBUG: Filtered List:', filteredList);
 
     const handleRemove = async (mediaId: number, type: 'movie' | 'show') => {
         await removeFromWatchlist(mediaId, type);

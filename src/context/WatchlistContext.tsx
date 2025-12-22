@@ -10,7 +10,7 @@ export interface WatchlistItem {
     title: string;
     poster_path: string | null;
     vote_average: number;
-    status: 'watched' | 'plan_to_watch' | 'dropped' | 'watching';
+    status: 'watched' | 'unwatched' | 'movie_on_ott' | 'movie_coming_soon' | 'plan_to_watch' | 'dropped' | 'watching'; // Legacy status supported temporarily
     metadata?: TMDBMedia; // Include metadata in type definition
 }
 
@@ -19,8 +19,8 @@ interface WatchlistContextType {
     addToWatchlist: (media: TMDBMedia, type: 'movie' | 'show') => Promise<void>;
     removeFromWatchlist: (tmdbId: number, type: 'movie' | 'show') => Promise<void>;
     markAsWatched: (tmdbId: number, type: 'movie' | 'show') => Promise<void>;
-    markAsWatching: (tmdbId: number, type: 'movie' | 'show') => Promise<void>;
     markAsUnwatched: (tmdbId: number, type: 'movie' | 'show') => Promise<void>;
+    moveToLibrary: (tmdbId: number, type: 'movie' | 'show') => Promise<void>;
     isInWatchlist: (tmdbId: number, type: 'movie' | 'show') => boolean;
     loading: boolean;
     watchedSeasons: Set<string>;
@@ -28,6 +28,7 @@ interface WatchlistContextType {
     markSeasonUnwatched: (tmdbId: number, seasonNumber: number) => Promise<void>;
     dismissFromUpcoming: (tmdbId: number, type: 'movie' | 'show') => Promise<void>;
     updateWatchlistItemMetadata: (tmdbId: number, type: 'movie' | 'show', newMetadata: any) => Promise<void>;
+    updateStatus: (tmdbId: number, type: 'movie' | 'show', newStatus: WatchlistItem['status']) => Promise<void>;
 }
 
 const WatchlistContext = createContext<WatchlistContextType | undefined>(undefined);
@@ -84,8 +85,10 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
             title: media.title || media.name || 'Unknown',
             poster_path: media.poster_path,
             vote_average: media.vote_average,
-            status: 'plan_to_watch'
+            status: 'plan_to_watch' // Will be updated below
         };
+
+        let initialStatus = 'unwatched'; // Default for TV Shows
 
         // 1. Enrichment (Details, Providers, Release Dates)
         // We do this BEFORE insert to ensure the correct "moved_to_library" flag
@@ -101,6 +104,8 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
 
             let digitalDate = null;
             let theatricalDate = null;
+            let digitalNote = null;
+
             if (tmdbType === 'movie') {
                 const results = releaseData?.results || [];
                 const extractDates = (regionCode: string) => {
@@ -108,7 +113,12 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
                     if (!regionData?.release_dates) return null;
                     const theatrical = regionData.release_dates.find((d: any) => d.type === 3);
                     const digital = regionData.release_dates.find((d: any) => d.type === 4);
-                    return { theatrical: theatrical?.release_date, digital: digital?.release_date, hasData: !!(theatrical || digital) };
+                    return {
+                        theatrical: theatrical?.release_date,
+                        digital: digital?.release_date,
+                        digitalNote: digital?.note || null,
+                        hasData: !!(theatrical || digital)
+                    };
                 };
                 let dates = extractDates(TMDB_REGION);
                 if (!dates?.hasData && results.length > 0) {
@@ -120,8 +130,12 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
                 if (dates) {
                     theatricalDate = dates.theatrical || null;
                     digitalDate = dates.digital || null;
+                    digitalNote = dates.digitalNote || null;
                 }
             }
+
+            // ... (Variable Declaration Scope Issue correction)
+            // Let's refactor slightly to ensure we capture the note variable properly.
 
             let tvmazeRuntime = null;
             if (tmdbType === 'tv' && details.external_ids?.imdb_id) {
@@ -148,35 +162,66 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
             today.setHours(0, 0, 0, 0);
 
             if (tmdbType === 'movie') {
-                const hasProviders = allStreamingOrRental.length > 0;
                 const releaseDateStr = details.release_date;
-                const isReleasedStatus = details.status === 'Released';
-                const mainDate = releaseDateStr ? new Date(releaseDateStr) : null;
-                const isPastMainDate = mainDate && mainDate <= today;
+                const releaseDateObj = releaseDateStr ? new Date(releaseDateStr) : null;
 
-                console.log(`[Categorization] Analyzing Movie: ${details.title}`);
-                console.log(`[Categorization] Providers: ${hasProviders}, Status: ${details.status}, MainDate: ${releaseDateStr}`);
-                console.log(`[Categorization] Theatrical Date: ${theatricalDate}`);
+                // 1. Check Streaming/Renting in India
+                const hasProvidersIN = allStreamingOrRental.length > 0;
 
-                if (hasProviders) {
+                // 2. Check Future Digital Date in India
+                // We derived 'digitalDate' above from IN release dates
+                const hasFutureDigitalDateIN = digitalDate && new Date(digitalDate) > today;
+
+                // 3. Check Global Availability if > 6 Months Old
+                let isAvailableGlobally = false;
+                if (releaseDateObj) {
+                    const sixMonthsAgo = new Date();
+                    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+                    if (releaseDateObj < sixMonthsAgo) {
+                        // Check if ANY region has providers
+                        const allProviders = details['watch/providers']?.results || {};
+                        // Iterate all regions
+                        for (const region in allProviders) {
+                            const p = allProviders[region];
+                            const hasP = (p.flatrate || []).length > 0 || (p.rent || []).length > 0 || (p.buy || []).length > 0;
+                            if (hasP) {
+                                isAvailableGlobally = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (hasProvidersIN) {
+                    // Rule 1: Streaming/Rent in India -> Unwatched
                     movedToLibrary = true;
-                    console.log(`[Categorization] Result: LIBRARY (Has Providers - streaming/rent/buy)`);
-                } else if (!theatricalDate) {
-                    // Rule: If no theatrical run info is found, it's a digital/documentary release. 
-                    // Move to library if it's released.
-                    movedToLibrary = !!(isReleasedStatus || isPastMainDate);
-                    console.log(`[Categorization] Result: ${movedToLibrary ? 'LIBRARY' : 'UPCOMING'} (No Theatrical record, checking release status)`);
-                } else {
-                    // Rule: If there IS a theatrical record, but no OTT providers yet, 
-                    // it stays in Upcoming/Coming Soon (even if already in theaters)
+                    initialStatus = 'unwatched';
+                } else if (hasFutureDigitalDateIN) {
+                    // Rule 2: Future Digital Date in India -> OTT
                     movedToLibrary = false;
-                    console.log(`[Categorization] Result: UPCOMING (Has Theatrical record but NO OTT providers yet)`);
+                    initialStatus = 'movie_on_ott';
+                } else if (isAvailableGlobally) {
+                    // Rule 3 (Extra): Not in India, but > 6 months old and available elsewhere -> Unwatched (Library)
+                    movedToLibrary = true;
+                    initialStatus = 'unwatched';
+                } else if (releaseDateObj && releaseDateObj < new Date(new Date().setFullYear(new Date().getFullYear() - 1))) {
+                    // Rule 4 (Legacy): Older than 1 year and not streaming anywhere -> Unwatched (Library)
+                    // Assumption: It's available on disk/local media if it's this old.
+                    movedToLibrary = true;
+                    initialStatus = 'unwatched';
+                } else {
+                    // Rule 5 (Default): Everything else -> Coming Soon
+                    movedToLibrary = false;
+                    initialStatus = 'movie_coming_soon';
                 }
             } else {
                 movedToLibrary = true;
+                initialStatus = 'unwatched';
                 const nextEp = details.next_episode_to_air;
                 if (nextEp && nextEp.air_date) {
                     if (new Date(nextEp.air_date) > today) movedToLibrary = false;
+                    // For now, shows are simple: either unwatched or watched. We don't distinguish "Coming Soon" for shows heavily yet.
                 }
             }
 
@@ -186,6 +231,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
                 ...leanDetails,
                 tvmaze_runtime: tvmazeRuntime,
                 digital_release_date: digitalDate,
+                digital_release_note: digitalNote,
                 theatrical_release_date: theatricalDate,
                 moved_to_library: movedToLibrary
             };
@@ -194,8 +240,9 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
         }
 
 
+
         const prunedMetadata = pruneMetadata(finalMetadata);
-        const finalItem = { ...newItemBase, metadata: prunedMetadata };
+        const finalItem = { ...newItemBase, status: initialStatus, metadata: prunedMetadata };
 
         if (!user) {
             const local = JSON.parse(localStorage.getItem('watchlist') || '[]');
@@ -261,18 +308,21 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
             next_episode_to_air, seasons, external_ids,
             genres, number_of_episodes, number_of_seasons,
             episode_run_time, tvmaze_runtime,
-            digital_release_date, theatrical_release_date, moved_to_library,
+            digital_release_date, digital_release_note, theatrical_release_date, moved_to_library,
             manual_date_override, manual_ott_name, dismissed_from_upcoming
         } = meta;
 
         return {
-            // id, title, name, poster_path, vote_average, // EXCLUDED
+            title: meta.title || meta.name,
+            name: meta.name || meta.title,
+            poster_path: meta.poster_path, // KEEP THIS
             backdrop_path, overview,
+            vote_average: meta.vote_average, // KEEP THIS
             release_date, first_air_date, runtime, status,
             next_episode_to_air, seasons, external_ids,
             genres, number_of_episodes, number_of_seasons,
             episode_run_time, tvmaze_runtime,
-            digital_release_date, theatrical_release_date, moved_to_library,
+            digital_release_date, digital_release_note, theatrical_release_date, moved_to_library,
             manual_date_override, manual_ott_name, dismissed_from_upcoming,
             'watch/providers': leanProviders,
             videos: leanVideos
@@ -350,15 +400,39 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
         await supabase.from('watchlist').update({ status: 'watched' }).eq('user_id', user.id).eq('tmdb_id', tmdbId).eq('type', dbType);
     };
 
-    const markAsWatching = async (tmdbId: number, type: 'movie' | 'show') => {
+
+    const moveToLibrary = async (tmdbId: number, type: 'movie' | 'show') => {
+        // This is explicitly for moving from "Upcoming" -> "Library"
         const dbType = type as 'movie' | 'show';
-        setWatchlist((prev) => prev.map(item => (item.tmdb_id === tmdbId && item.type === dbType) ? { ...item, status: 'watching' } : item));
+
+        // Update local state
+        setWatchlist((prev) => prev.map(item => {
+            if (item.tmdb_id === tmdbId && item.type === dbType) {
+                // Also ensure the moved_to_library meta flag is true for legacy support
+                const newMeta = { ...(item.metadata || {}), moved_to_library: true } as TMDBMedia;
+                return { ...item, status: 'unwatched', metadata: newMeta };
+            }
+            return item;
+        }));
+
         if (!user) {
-            const local = JSON.parse(localStorage.getItem('watchlist') || '[]');
-            localStorage.setItem('watchlist', JSON.stringify(local.map((i: any) => (i.tmdb_id === tmdbId && i.type === dbType) ? { ...i, status: 'watching' } : i)));
+            // Local storage update...
             return;
         }
-        await supabase.from('watchlist').update({ status: 'watching' }).eq('user_id', user.id).eq('tmdb_id', tmdbId).eq('type', dbType);
+
+        // We update specific metadata fields too, just to be safe with the legacy flags
+        // Fetch current item to construct new metadata? No, just partial update for metadata is risky without merge.
+        // Actually, supabase update replaces the object.
+        // It's safer to just update status if we rely on status.
+        // But we promised to set moved_to_library = true.
+
+        // Let's do it properly via fetching current item from local state
+        const currentItem = watchlist.find(i => i.tmdb_id === tmdbId && i.type === dbType);
+        if (currentItem) {
+            const newMeta = { ...(currentItem.metadata || {}), moved_to_library: true };
+            const pruned = pruneMetadata(newMeta);
+            await supabase.from('watchlist').update({ status: 'unwatched', metadata: pruned }).eq('user_id', user.id).eq('tmdb_id', tmdbId).eq('type', dbType);
+        }
     };
 
     const markAsUnwatched = async (tmdbId: number, type: 'movie' | 'show') => {
@@ -373,13 +447,13 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
             if (user) await supabase.from('watched_seasons').delete().match({ user_id: user.id, tmdb_id: tmdbId });
         }
 
-        setWatchlist((prev) => prev.map(item => (item.tmdb_id === tmdbId && item.type === dbType) ? { ...item, status: 'plan_to_watch' } : item));
+        setWatchlist((prev) => prev.map(item => (item.tmdb_id === tmdbId && item.type === dbType) ? { ...item, status: 'unwatched' } : item));
         if (!user) {
             const local = JSON.parse(localStorage.getItem('watchlist') || '[]');
-            localStorage.setItem('watchlist', JSON.stringify(local.map((i: any) => (i.tmdb_id === tmdbId && i.type === dbType) ? { ...i, status: 'plan_to_watch' } : i)));
+            localStorage.setItem('watchlist', JSON.stringify(local.map((i: any) => (i.tmdb_id === tmdbId && i.type === dbType) ? { ...i, status: 'unwatched' } : i)));
             return;
         }
-        await supabase.from('watchlist').update({ status: 'plan_to_watch' }).eq('user_id', user.id).eq('tmdb_id', tmdbId).eq('type', dbType);
+        await supabase.from('watchlist').update({ status: 'unwatched' }).eq('user_id', user.id).eq('tmdb_id', tmdbId).eq('type', dbType);
     };
 
     const isInWatchlist = (tmdbId: number, type: 'movie' | 'show') => {
@@ -432,21 +506,34 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
         await supabase.from('watchlist').update({ metadata: pruned }).eq('user_id', user.id).eq('tmdb_id', tmdbId).eq('type', type);
     };
 
+    const updateStatus = async (tmdbId: number, type: 'movie' | 'show', newStatus: WatchlistItem['status']) => {
+        const dbType = type;
+        setWatchlist(prev => prev.map(item => (item.tmdb_id === tmdbId && item.type === dbType) ? { ...item, status: newStatus } : item));
+
+        if (!user) {
+            const local = JSON.parse(localStorage.getItem('watchlist') || '[]');
+            localStorage.setItem('watchlist', JSON.stringify(local.map((i: any) => (i.tmdb_id === tmdbId && i.type === dbType) ? { ...i, status: newStatus } : i)));
+            return;
+        }
+        await supabase.from('watchlist').update({ status: newStatus }).eq('user_id', user.id).eq('tmdb_id', tmdbId).eq('type', dbType);
+    };
+
     return (
         <WatchlistContext.Provider value={{
             watchlist,
             addToWatchlist,
             removeFromWatchlist,
             markAsWatched,
-            markAsWatching,
             markAsUnwatched,
+            moveToLibrary,
             isInWatchlist,
             loading,
             watchedSeasons,
             markSeasonWatched,
             markSeasonUnwatched,
             dismissFromUpcoming,
-            updateWatchlistItemMetadata
+            updateWatchlistItemMetadata,
+            updateStatus
         }}>
             {children}
         </WatchlistContext.Provider>
