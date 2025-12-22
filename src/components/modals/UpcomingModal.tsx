@@ -13,7 +13,7 @@ interface UpcomingModalProps {
 }
 
 export const UpcomingModal = ({ media, type, onClose }: UpcomingModalProps) => {
-    const { watchedSeasons, markSeasonWatched, markSeasonUnwatched } = useWatchlist();
+    const { watchlist, markSeasonWatched, markSeasonUnwatched } = useWatchlist();
 
     const [details, setDetails] = useState<any>(null);
     const [hoveredSeason, setHoveredSeason] = useState<number | null>(null);
@@ -133,7 +133,10 @@ export const UpcomingModal = ({ media, type, onClose }: UpcomingModalProps) => {
                                     {(details?.seasons || media.seasons).filter((s: any) => s.season_number > 0).map((season: any) => {
                                         const showId = Number(media.id);
                                         const seasonNum = Number(season.season_number);
-                                        const isWatched = watchedSeasons.has(`${showId}-${seasonNum}`);
+
+                                        const watchlistItem = watchlist.find(i => i.tmdb_id === showId && i.type === 'show');
+                                        const lastWatched = watchlistItem?.last_watched_season || 0;
+                                        const isWatched = seasonNum <= lastWatched;
 
                                         // Future Season Logic
                                         let isFuture = false;
@@ -150,10 +153,9 @@ export const UpcomingModal = ({ media, type, onClose }: UpcomingModalProps) => {
 
                                         let isPreview = false;
                                         if (hoveredSeason !== null) {
-                                            const cursorKey = `${showId}-${hoveredSeason}`;
-                                            const targetIsWatched = watchedSeasons.has(cursorKey);
-                                            if (!targetIsWatched) {
-                                                if (seasonNum <= hoveredSeason && !isWatched) isPreview = true;
+                                            // Preview logic
+                                            if (!isWatched && seasonNum <= hoveredSeason) {
+                                                isPreview = true;
                                             }
                                         }
 
@@ -170,10 +172,9 @@ export const UpcomingModal = ({ media, type, onClose }: UpcomingModalProps) => {
 
                                         if (isSolid) {
                                             if (isOngoing) {
-                                                // Half-colored for ongoing but caught-up seasons
                                                 background = 'linear-gradient(90deg, #0f766e 50%, rgba(45, 212, 191, 0.2) 50%)';
-                                                border = '1px solid #0f766e'; // Match the solid part
-                                                color = '#ffffff'; // White text for contrast
+                                                border = '1px solid #0f766e';
+                                                color = '#ffffff';
                                                 boxShadow = '0 0 8px rgba(45,212,191,0.4)';
                                                 fontWeight = 'bold';
                                             } else {
@@ -199,20 +200,16 @@ export const UpcomingModal = ({ media, type, onClose }: UpcomingModalProps) => {
                                                     onMouseEnter={() => !isFuture && setHoveredSeason(seasonNum)}
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        const allSeasons = (details?.seasons || media.seasons);
-                                                        allSeasons.forEach((s: any) => {
-                                                            const sNum = Number(s.season_number);
-                                                            if (sNum <= 0) return;
-                                                            const sKey = `${showId}-${sNum}`;
-                                                            const sIsWatched = watchedSeasons.has(sKey);
 
-                                                            if (isWatched) {
-                                                                if (sNum >= seasonNum && sIsWatched) markSeasonUnwatched(showId, sNum);
+                                                        if (isWatched) {
+                                                            if (seasonNum === lastWatched) {
+                                                                markSeasonUnwatched(showId, seasonNum);
                                                             } else {
-                                                                if (sNum <= seasonNum) { if (!sIsWatched) markSeasonWatched(showId, sNum); }
-                                                                else { if (sIsWatched) markSeasonUnwatched(showId, sNum); }
+                                                                markSeasonWatched(showId, seasonNum);
                                                             }
-                                                        });
+                                                        } else {
+                                                            markSeasonWatched(showId, seasonNum);
+                                                        }
                                                     }}
                                                     className="transition-transform duration-200 active:scale-95"
                                                     style={{

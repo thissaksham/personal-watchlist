@@ -10,8 +10,9 @@ export interface WatchlistItem {
     title: string;
     poster_path: string | null;
     vote_average: number;
-    status: 'watched' | 'unwatched' | 'movie_on_ott' | 'movie_coming_soon' | 'plan_to_watch' | 'dropped' | 'watching'; // Legacy status supported temporarily
-    metadata?: TMDBMedia; // Include metadata in type definition
+    status: 'watched' | 'unwatched' | 'plan_to_watch' | 'dropped' | 'movie_on_ott' | 'movie_coming_soon' | 'show_finished' | 'show_ongoing' | 'show_watched' | 'show_watching' | 'show_returning' | 'show_new' | 'watching';
+    metadata?: TMDBMedia;
+    last_watched_season?: number;
 }
 
 interface WatchlistContextType {
@@ -23,7 +24,7 @@ interface WatchlistContextType {
     moveToLibrary: (tmdbId: number, type: 'movie' | 'show') => Promise<void>;
     isInWatchlist: (tmdbId: number, type: 'movie' | 'show') => boolean;
     loading: boolean;
-    watchedSeasons: Set<string>;
+    watchedSeasons: never; // Deprecated
     markSeasonWatched: (tmdbId: number, seasonNumber: number) => Promise<void>;
     markSeasonUnwatched: (tmdbId: number, seasonNumber: number) => Promise<void>;
     dismissFromUpcoming: (tmdbId: number, type: 'movie' | 'show') => Promise<void>;
@@ -38,17 +39,15 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
     const { user } = useAuth();
     const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
     const [loading, setLoading] = useState(false);
-    const [watchedSeasons, setWatchedSeasons] = useState<Set<string>>(new Set());
+    // V3: last_watched_season replaces watchedSeasons set. No separate state needed.
 
     useEffect(() => {
         if (user) {
             fetchWatchlist();
-            fetchWatchedSeasons();
+            // fetchWatchedSeasons(); // Deprecated V3
         } else {
             const localWl = JSON.parse(localStorage.getItem('watchlist') || '[]');
             setWatchlist(localWl);
-            const localSeasons = JSON.parse(localStorage.getItem('watched_seasons') || '[]');
-            setWatchedSeasons(new Set(localSeasons));
         }
     }, [user]);
 
@@ -67,13 +66,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
     };
 
-    const fetchWatchedSeasons = async () => {
-        const { data } = await supabase.from('watched_seasons').select('*');
-        if (data) {
-            const loaded = new Set(data.map((row: any) => `${row.tmdb_id}-${row.season_number}`));
-            setWatchedSeasons(loaded);
-        }
-    };
+    // fetchWatchedSeasons Deprecated V3
 
     // Helper to reduce storage size (Data Diet)
     const pruneMetadata = (meta: any) => {
@@ -267,11 +260,39 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
                 movedToLibrary = true;
             }
         } else {
-            movedToLibrary = true;
-            initialStatus = 'unwatched';
+            // TV Show Logic V3
             const nextEp = details.next_episode_to_air;
-            if (nextEp && nextEp.air_date && new Date(nextEp.air_date) > today) {
+            const lastEp = details.last_episode_to_air;
+            const lastWatched = existingMetadata?.last_watched_season || 0;
+
+            if (!lastEp) {
+                // No aired episodes -> show_new
+                initialStatus = 'show_new';
                 movedToLibrary = false;
+            } else {
+                // Has aired content
+                const isEnded = details.status === 'Ended' || details.status === 'Canceled';
+
+                if (lastWatched === 0 && !currentStatus) {
+                    // Not started
+                    if (isEnded) initialStatus = 'show_finished';
+                    else initialStatus = 'show_ongoing';
+                    movedToLibrary = true; // "To Watch" tab
+                } else {
+                    // Started or Refreshing
+                    // logic handled by recalculateShowStatus usually, but for initial/enrich:
+                    // We rely on currentStatus if valid, or recalculate logic?
+                    // Let's implement basic checks for initial add
+                    if (currentStatus) {
+                        initialStatus = currentStatus;
+                        movedToLibrary = true;
+                    } else {
+                        // Default to show_ongoing logic if lastWatched is 0
+                        if (isEnded) initialStatus = 'show_finished';
+                        else initialStatus = 'show_ongoing';
+                        movedToLibrary = true;
+                    }
+                }
             }
         }
 
@@ -333,35 +354,25 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
     const removeFromWatchlist = async (tmdbId: number, type: 'movie' | 'show') => {
         setWatchlist((prev) => prev.filter((item) => !(item.tmdb_id == tmdbId && item.type === type)));
 
-        if (type === 'show') {
-            setWatchedSeasons(prev => {
-                const next = new Set(prev);
-                Array.from(next).forEach(key => { if (key.startsWith(`${tmdbId}-`)) next.delete(key); });
-                if (!user) localStorage.setItem('watched_seasons', JSON.stringify(Array.from(next)));
-                return next;
-            });
-        }
-
         if (!user) {
             const local = JSON.parse(localStorage.getItem('watchlist') || '[]');
             localStorage.setItem('watchlist', JSON.stringify(local.filter((item: any) => !(item.tmdb_id == tmdbId && item.type === type))));
-            if (type === 'show') {
-                const seasons = JSON.parse(localStorage.getItem('watched_seasons') || '[]');
-                localStorage.setItem('watched_seasons', JSON.stringify(seasons.filter((s: string) => !s.startsWith(`${tmdbId}-`))));
-            }
+            // V3: No separate watched_seasons to clean up here for local
             return;
         }
 
-        await supabase.from('watchlist').delete().eq('user_id', user.id).eq('tmdb_id', tmdbId).eq('type', type);
-        if (type === 'show') {
-            await supabase.from('watched_seasons').delete().eq('user_id', user.id).eq('tmdb_id', tmdbId);
-        }
+        const { error } = await supabase.from('watchlist').delete().eq('user_id', user.id).eq('tmdb_id', tmdbId).eq('type', type);
+        if (error) console.error('Error removing from watchlist:', error);
     };
 
     const markAsWatched = async (tmdbId: number, type: 'movie' | 'show') => {
+        let newStatus: WatchlistItem['status'] = 'watched';
+
         if (type === 'show') {
             const item = watchlist.find(i => i.tmdb_id === tmdbId && i.type === 'show');
-            let seasons = item?.metadata?.seasons;
+            const meta = item?.metadata;
+
+            let seasons = meta?.seasons;
             if (!seasons) {
                 try {
                     const details = await tmdb.getDetails(tmdbId, 'tv');
@@ -370,30 +381,45 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
             }
             const today = new Date();
             today.setHours(0, 0, 0, 0);
+
+            // For V3: Mark as watched means last_watched_season = total seasons
+            // But strict linear progress means we should probably set it to the max season number.
             const released = (seasons || []).filter((s: any) => s.season_number > 0 && s.air_date && new Date(s.air_date) <= today);
-            const nums = released.map((s: any) => s.season_number);
+            const maxSeason = released.length > 0 ? released[released.length - 1].season_number : 0;
 
-            setWatchedSeasons(prev => {
-                const next = new Set(prev);
-                nums.forEach((n: number) => next.add(`${tmdbId}-${n}`));
-                if (!user) localStorage.setItem('watched_seasons', JSON.stringify(Array.from(next)));
-                return next;
-            });
+            await updateWatchlistItemMetadata(tmdbId, 'show', { ...(item?.metadata || {}), last_watched_season: maxSeason, seasons: seasons });
 
+            // Update LOCAL State (Optimistic)
+            setWatchlist(prev => prev.map(i => {
+                if (i.tmdb_id === tmdbId && i.type === 'show') {
+                    const newMeta = { ...(i.metadata || {}), last_watched_season: maxSeason, seasons: seasons } as any;
+                    return { ...i, last_watched_season: maxSeason, metadata: newMeta };
+                }
+                return i;
+            }));
+
+            // Force DB update for top-level last_watched_season
             if (user) {
-                const updates = nums.map((n: number) => ({ user_id: user.id, tmdb_id: tmdbId, season_number: n }));
-                if (updates.length > 0) await supabase.from('watched_seasons').upsert(updates, { onConflict: 'user_id, tmdb_id, season_number' });
+                await supabase.from('watchlist').update({ last_watched_season: maxSeason }).eq('user_id', user.id).eq('tmdb_id', tmdbId);
+            } else {
+                const local = JSON.parse(localStorage.getItem('watchlist') || '[]');
+                const updatedLocal = local.map((i: any) => (i.tmdb_id === tmdbId && i.type === 'show') ? { ...i, last_watched_season: maxSeason, metadata: { ...(item?.metadata || {}), last_watched_season: maxSeason, seasons: seasons } } : i);
+                localStorage.setItem('watchlist', JSON.stringify(updatedLocal));
             }
-        }
 
-        setWatchlist((prev) => prev.map(item => (item.tmdb_id === tmdbId && item.type === type) ? { ...item, status: 'watched' } : item));
-        if (!user) {
-            const local = JSON.parse(localStorage.getItem('watchlist') || '[]');
-            localStorage.setItem('watchlist', JSON.stringify(local.map((i: any) => (i.tmdb_id === tmdbId && i.type === type) ? { ...i, status: 'watched' } : i)));
+            // Recalculate status with FRESH metadata
+            await recalculateShowStatus(tmdbId, maxSeason, { ...(item?.metadata || {}), last_watched_season: maxSeason, seasons: seasons });
             return;
         }
 
-        await supabase.from('watchlist').update({ status: 'watched' }).eq('user_id', user.id).eq('tmdb_id', tmdbId).eq('type', type);
+        setWatchlist((prev) => prev.map(item => (item.tmdb_id === tmdbId && item.type === type) ? { ...item, status: newStatus } : item));
+        if (!user) {
+            const local = JSON.parse(localStorage.getItem('watchlist') || '[]');
+            localStorage.setItem('watchlist', JSON.stringify(local.map((i: any) => (i.tmdb_id === tmdbId && i.type === type) ? { ...i, status: newStatus } : i)));
+            return;
+        }
+
+        await supabase.from('watchlist').update({ status: newStatus }).eq('user_id', user.id).eq('tmdb_id', tmdbId).eq('type', type);
     };
 
     const moveToLibrary = async (tmdbId: number, type: 'movie' | 'show') => {
@@ -417,13 +443,28 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
 
     const markAsUnwatched = async (tmdbId: number, type: 'movie' | 'show') => {
         if (type === 'show') {
-            setWatchedSeasons(prev => {
-                const next = new Set(prev);
-                Array.from(next).forEach(k => { if (k.startsWith(`${tmdbId}-`)) next.delete(k); });
-                if (!user) localStorage.setItem('watched_seasons', JSON.stringify(Array.from(next)));
-                return next;
-            });
-            if (user) await supabase.from('watched_seasons').delete().match({ user_id: user.id, tmdb_id: tmdbId });
+            // Mark as unwatched means 0 progress
+            await updateWatchlistItemMetadata(tmdbId, 'show', { ...((watchlist.find(i => i.tmdb_id === tmdbId)?.metadata) || {}), last_watched_season: 0 });
+
+            // Update LOCAL State (Optimistic)
+            setWatchlist(prev => prev.map(i => {
+                if (i.tmdb_id === tmdbId && i.type === 'show') {
+                    const newMeta = { ...(i.metadata || {}), last_watched_season: 0 } as any;
+                    return { ...i, last_watched_season: 0, metadata: newMeta };
+                }
+                return i;
+            }));
+
+            if (user) {
+                await supabase.from('watchlist').update({ last_watched_season: 0 }).eq('user_id', user.id).eq('tmdb_id', tmdbId);
+            } else {
+                const local = JSON.parse(localStorage.getItem('watchlist') || '[]');
+                const updatedLocal = local.map((i: any) => (i.tmdb_id === tmdbId && i.type === 'show') ? { ...i, last_watched_season: 0, metadata: { ...((watchlist.find(j => j.tmdb_id === tmdbId)?.metadata) || {}), last_watched_season: 0 } } : i);
+                localStorage.setItem('watchlist', JSON.stringify(updatedLocal));
+            }
+
+            await recalculateShowStatus(tmdbId, 0, { ...((watchlist.find(i => i.tmdb_id === tmdbId)?.metadata) || {}), last_watched_season: 0 });
+            return;
         }
 
         setWatchlist((prev) => prev.map(item => (item.tmdb_id === tmdbId && item.type === type) ? { ...item, status: 'unwatched' } : item));
@@ -439,26 +480,149 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
         return watchlist.some((item) => item.tmdb_id == tmdbId && item.type === type);
     };
 
+    const recalculateShowStatus = async (tmdbId: number, lastWatchedSeason: number, overrideMetadata?: any) => {
+        const item = watchlist.find(i => i.tmdb_id === tmdbId && i.type === 'show');
+        if (!item) return;
+
+        const meta = overrideMetadata || item.metadata;
+        let seasons = meta?.seasons || [];
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // Filter released seasons
+        // NOTE: TMDB/TVMaze usually gives reliable season numbers.
+        const releasedSeasons = (seasons || []).filter((s: any) => s.season_number > 0 && s.air_date && new Date(s.air_date) <= today);
+        const totalReleased = releasedSeasons.length;
+
+        let newStatus: WatchlistItem['status'] = 'show_ongoing'; // default fallback
+
+        if (totalReleased === 0) {
+            // No aired contents but might be show_new if no episodes at all
+            if (!meta?.last_episode_to_air) {
+                newStatus = 'show_new';
+            } else {
+                // Has aired before? but noreleased seasons? Weird edge case.
+                newStatus = 'show_ongoing';
+            }
+        } else if (lastWatchedSeason === 0) {
+            // Not started
+            const isEnded = meta?.status === 'Ended' || meta?.status === 'Canceled';
+            newStatus = isEnded ? 'show_finished' : 'show_ongoing';
+        } else {
+            // Started
+            if (lastWatchedSeason < totalReleased) {
+                // Partially watched relative to Release
+                // User Requirement: If I finished S1, but S2 is out, keep me in 'show_returning' (waiting to start S2).
+                // "if the user has only clicked on S1 ... keep this in show_returning"
+                newStatus = 'show_returning';
+            } else {
+                // Caught Up (lastWatchedSeason >= totalReleased)
+                // Check future
+                if (meta?.next_episode_to_air?.air_date) {
+                    const nextEp = meta.next_episode_to_air;
+                    const nextDate = new Date(nextEp.air_date);
+
+                    // Logic update for "Ongoing" status handling
+                    if (nextDate > today) {
+                        // Future episode exists.
+                        // If it's in the SAME season we just "finished" (caught up to), it implies the season is ONGOING.
+                        // User wants 'show_watching' for this state.
+                        if (nextEp.season_number === lastWatchedSeason) {
+                            newStatus = 'show_watching';
+                        } else {
+                            newStatus = 'show_returning';
+                        }
+                    } else {
+                        // If next ep date is <= today (or just today), implies new content is out.
+                        // And since user is marked "Caught Up" to PREVIOUS totalReleased, this implies mismatch or just-dropped.
+                        // Usually 'releasedSeasons' filter handles this (would increment totalReleased if aired).
+                        // So this block might be unreachable if releasedSeasons logic works perfectly, but as safety:
+                        newStatus = 'show_watching';
+                    }
+                }
+            }
+        }
+
+        // Update both Status and last_watched_season in DB/State
+        // We assume last_watched_season is already updated in metadata by the caller (markSeasonWatched etc)
+        // BE CAREFUL: updateStatus only updates status column. updateWatchlistItemMetadata updates metadata.
+        // We should ensure both are synced.
+
+        if (item.status !== newStatus) {
+            await updateStatus(tmdbId, 'show', newStatus);
+        }
+        // Force refresh local state reference just in case?
+        // setWatchlist triggers re-render.
+    };
+
     const markSeasonWatched = async (tmdbId: number, seasonNumber: number) => {
-        const key = `${tmdbId}-${seasonNumber}`;
-        setWatchedSeasons(prev => {
-            const next = new Set(prev);
-            next.add(key);
-            if (!user) localStorage.setItem('watched_seasons', JSON.stringify(Array.from(next)));
-            return next;
-        });
-        if (user) await supabase.from('watched_seasons').upsert({ user_id: user.id, tmdb_id: tmdbId, season_number: seasonNumber });
+        // 1. Update LOCAL State (Optimistic)
+        // We must update both metadata (for consistency) AND the top-level last_watched_season property
+        setWatchlist(prev => prev.map(item => {
+            if (item.tmdb_id === tmdbId && item.type === 'show') {
+                const newMeta = { ...(item.metadata || {}), last_watched_season: seasonNumber } as any;
+                return { ...item, last_watched_season: seasonNumber, metadata: newMeta };
+            }
+            return item;
+        }));
+
+        // 2. Persist to DB
+        // Update Metadata Column (legacy/backup)
+        // await updateWatchlistItemMetadata(...) -> We skip calling this helper to avoid double state update, 
+        // we'll do direct DB call or call a specialized helper that doesn't set state? 
+        // Actually, let's just use updateWatchlistItemMetadata BUT we already updated state above. 
+        // Calling it again is fine for React, but verify behavior.
+        // Better to just DO the DB update manually here to be safe and clean.
+
+        const item = watchlist.find(i => i.tmdb_id === tmdbId && i.type === 'show');
+        const MetaWithUpdate = { ...(item?.metadata || {}), last_watched_season: seasonNumber };
+        const prunned = pruneMetadata(MetaWithUpdate);
+
+        if (user) {
+            await supabase.from('watchlist').update({
+                last_watched_season: seasonNumber,
+                metadata: prunned
+            }).eq('user_id', user.id).eq('tmdb_id', tmdbId);
+        } else {
+            // Local Storage Update
+            const local = JSON.parse(localStorage.getItem('watchlist') || '[]');
+            const updatedLocal = local.map((i: any) => (i.tmdb_id === tmdbId && i.type === 'show') ? { ...i, last_watched_season: seasonNumber, metadata: MetaWithUpdate } : i);
+            localStorage.setItem('watchlist', JSON.stringify(updatedLocal));
+        }
+
+        await recalculateShowStatus(tmdbId, seasonNumber);
     };
 
     const markSeasonUnwatched = async (tmdbId: number, seasonNumber: number) => {
-        const key = `${tmdbId}-${seasonNumber}`;
-        setWatchedSeasons(prev => {
-            const next = new Set(prev);
-            next.delete(key);
-            if (!user) localStorage.setItem('watched_seasons', JSON.stringify(Array.from(next)));
-            return next;
-        });
-        if (user) await supabase.from('watched_seasons').delete().match({ user_id: user.id, tmdb_id: tmdbId, season_number: seasonNumber });
+        const newLastWatched = Math.max(0, seasonNumber - 1);
+
+        // 1. Update LOCAL State
+        setWatchlist(prev => prev.map(item => {
+            if (item.tmdb_id === tmdbId && item.type === 'show') {
+                const newMeta = { ...(item.metadata || {}), last_watched_season: newLastWatched } as any;
+                return { ...item, last_watched_season: newLastWatched, metadata: newMeta };
+            }
+            return item;
+        }));
+
+        // 2. Persist
+        const item = watchlist.find(i => i.tmdb_id === tmdbId && i.type === 'show');
+        const MetaWithUpdate = { ...(item?.metadata || {}), last_watched_season: newLastWatched };
+        const prunned = pruneMetadata(MetaWithUpdate);
+
+        if (user) {
+            await supabase.from('watchlist').update({
+                last_watched_season: newLastWatched,
+                metadata: prunned
+            }).eq('user_id', user.id).eq('tmdb_id', tmdbId);
+        } else {
+            const local = JSON.parse(localStorage.getItem('watchlist') || '[]');
+            const updatedLocal = local.map((i: any) => (i.tmdb_id === tmdbId && i.type === 'show') ? { ...i, last_watched_season: newLastWatched, metadata: MetaWithUpdate } : i);
+            localStorage.setItem('watchlist', JSON.stringify(updatedLocal));
+        }
+
+        await recalculateShowStatus(tmdbId, newLastWatched);
     };
 
     const dismissFromUpcoming = async (tmdbId: number, type: 'movie' | 'show') => {
@@ -524,7 +688,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
             moveToLibrary,
             isInWatchlist,
             loading,
-            watchedSeasons,
+            watchedSeasons: undefined as never, // Deprecated
             markSeasonWatched,
             markSeasonUnwatched,
             dismissFromUpcoming,

@@ -90,6 +90,11 @@ export interface TMDBMedia {
         episode_number: number;
         air_date: string;
     };
+    next_episode_to_air?: {
+        season_number: number;
+        episode_number: number;
+        air_date: string;
+    };
     external_ids?: {
         imdb_id?: string;
     };

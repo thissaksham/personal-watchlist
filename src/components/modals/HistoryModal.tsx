@@ -13,7 +13,7 @@ interface HistoryModalProps {
 }
 
 export const HistoryModal = ({ media, type, onClose }: HistoryModalProps) => {
-    const { watchedSeasons, markSeasonWatched, markSeasonUnwatched } = useWatchlist();
+    const { watchlist, markSeasonWatched, markSeasonUnwatched } = useWatchlist();
 
     const [details, setDetails] = useState<any>(null);
     const [hoveredSeason, setHoveredSeason] = useState<number | null>(null);
@@ -133,7 +133,10 @@ export const HistoryModal = ({ media, type, onClose }: HistoryModalProps) => {
                                     {(details?.seasons || media.seasons).filter((s: any) => s.season_number > 0).map((season: any) => {
                                         const showId = Number(media.id);
                                         const seasonNum = Number(season.season_number);
-                                        const isWatched = watchedSeasons.has(`${showId}-${seasonNum}`);
+
+                                        const watchlistItem = watchlist.find(i => i.tmdb_id === showId && i.type === 'show');
+                                        const lastWatched = watchlistItem?.last_watched_season || 0;
+                                        const isWatched = seasonNum <= lastWatched;
 
                                         // Future Season Logic
                                         let isFuture = false;
@@ -150,11 +153,18 @@ export const HistoryModal = ({ media, type, onClose }: HistoryModalProps) => {
 
                                         let isPreview = false;
                                         if (hoveredSeason !== null) {
-                                            const cursorKey = `${showId}-${hoveredSeason}`;
-                                            const targetIsWatched = watchedSeasons.has(cursorKey);
-                                            if (!targetIsWatched) {
-                                                if (seasonNum <= hoveredSeason && !isWatched) isPreview = true;
+                                            // Preview Logic: if I am hovering season X
+                                            // And X > lastWatched: display checkmarks up to X
+                                            if (!isWatched && seasonNum <= hoveredSeason) {
+                                                isPreview = true;
                                             }
+                                            // If I am hovering season X and X < lastWatched (and X is watched)
+                                            // Then X is a "Unwatch Trigger"
+                                            // But for linear progress, unwatching X implies unwatching X+1...LastWatched
+                                            // Currently UI only shows ghost/solid.
+                                            // Let's keep it simple:
+                                            // Solid = Watched
+                                            // Ghost = Not Watched but Hovered (or part of range being marked)
                                         }
 
                                         const isSolid = isWatched;
@@ -188,20 +198,23 @@ export const HistoryModal = ({ media, type, onClose }: HistoryModalProps) => {
                                                     onMouseEnter={() => !isFuture && setHoveredSeason(seasonNum)}
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        const allSeasons = (details?.seasons || media.seasons);
-                                                        allSeasons.forEach((s: any) => {
-                                                            const sNum = Number(s.season_number);
-                                                            if (sNum <= 0) return;
-                                                            const sKey = `${showId}-${sNum}`;
-                                                            const sIsWatched = watchedSeasons.has(sKey);
+                                                        if (isWatched) {
+                                                            // Unwatch this season (and all after it? No, unwatch sets last watched to N-1)
+                                                            // If I click Season 5 (watched), I expect it to toggle off?
+                                                            // OR become the new Last Watched?
+                                                            // Current logic: click Last Watched -> Unwatch it (Last Watched = N-1)
+                                                            // Click older watched season -> Set Last Watched = N (Rewatch/Correction?)
 
-                                                            if (isWatched) {
-                                                                if (sNum >= seasonNum && sIsWatched) markSeasonUnwatched(showId, sNum);
+                                                            if (seasonNum === lastWatched) {
+                                                                markSeasonUnwatched(showId, seasonNum);
                                                             } else {
-                                                                if (sNum <= seasonNum) { if (!sIsWatched) markSeasonWatched(showId, sNum); }
-                                                                else { if (sIsWatched) markSeasonUnwatched(showId, sNum); }
+                                                                // Clicking an older season.
+                                                                // Usually user means "I only watched up to here"
+                                                                markSeasonWatched(showId, seasonNum);
                                                             }
-                                                        });
+                                                        } else {
+                                                            markSeasonWatched(showId, seasonNum);
+                                                        }
                                                     }}
                                                     className="transition-transform duration-200 active:scale-95"
                                                     style={{

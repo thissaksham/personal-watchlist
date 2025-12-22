@@ -21,7 +21,7 @@ interface LibraryPageProps {
 }
 
 export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMessage }: LibraryPageProps) => {
-    const { watchlist, removeFromWatchlist, markAsWatched, markAsUnwatched, watchedSeasons } = useWatchlist();
+    const { watchlist, removeFromWatchlist, markAsWatched, markAsUnwatched } = useWatchlist();
     const [selectedMedia, setSelectedMedia] = useState<TMDBMedia | null>(null);
     const [filterProvider, setFilterProvider] = useState<number | null>(null);
     const [seriesStatusFilter, setSeriesStatusFilter] = useState<string>('Finished');
@@ -47,59 +47,17 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
         };
     }, [isSortOpen]);
 
-    // Helper to determine Show status based on seasons
+    // Helper to determine Show status based on V3 logic
     const getShowStatus = (item: any): 'Unwatched' | 'Watching' | 'Watched' | 'Upcoming' => {
-        // Fallback or explicit status check if needed? No, user wants derived logic.
-        const meta = item.metadata || {};
-        const totalSeasons = meta.number_of_seasons || item.number_of_seasons || 0;
+        const s = item.status;
+        if (s === 'show_watched' || s === 'show_returning' || s === 'watched') return 'Watched';
+        if (s === 'show_watching' || s === 'watching') return 'Watching';
 
-        // Check for purely Upcoming shows (all seasons in future)
-        if (meta.seasons && Array.isArray(meta.seasons)) {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const validSeasons = meta.seasons.filter((s: any) => s.season_number > 0 && s.air_date);
-            if (validSeasons.length > 0) {
-                const allFuture = validSeasons.every((s: any) => new Date(s.air_date) > today);
-                if (allFuture) return 'Upcoming';
-            }
-        }
-
-        if (!totalSeasons) {
-            // If no season info, fallback to manual status if available, else Unwatched
-            // Or maybe treat as Unwatched?
-            if (item.status === 'watched') return 'Watched';
-            if (item.status === 'watching') return 'Watching';
-            return 'Unwatched';
-        }
-
-        let watchedCount = 0;
-        for (let i = 1; i <= totalSeasons; i++) {
-            if (watchedSeasons.has(`${item.tmdb_id}-${i}`)) {
-                watchedCount++;
-            }
-        }
-
-        if (watchedCount === 0) return 'Unwatched';
-
-        // If we have watched all available seasons...
-        if (watchedCount === totalSeasons) {
-            // ...but the current season has upcoming episodes (Weekly Release user case)
-            if (meta.next_episode_to_air && meta.next_episode_to_air.season_number === totalSeasons) {
-                return 'Watching';
-            }
-            return 'Watched';
-        }
-
-        // Check for unreleased future seasons
-        // If we have watched all *aired* seasons, we are 'Watched' (Caught up)
-        const lastEp = meta.last_episode_to_air;
-        if (lastEp && lastEp.season_number <= watchedCount) {
-            // Catch-up logic for shows between seasons
-            // If next season is announced but not aired, stay Watched
-            return 'Watched';
-        }
-
-        return 'Watching';
+        // show_finished, show_ongoing, unwatched, plan_to_watch
+        // Note: 'Upcoming' page handles show_new/show_coming_soon.
+        // If they appear here, map to Unwatched ('To Watch' tab equivalent)
+        // unless it's strictly show_finished/ongoing
+        return 'Unwatched';
     };
 
     // Filter from watchlist based on type and status

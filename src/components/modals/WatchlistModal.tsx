@@ -13,7 +13,7 @@ interface WatchlistModalProps {
 }
 
 export const WatchlistModal = ({ media, type, onClose }: WatchlistModalProps) => {
-    const { watchedSeasons, markSeasonWatched, markSeasonUnwatched } = useWatchlist();
+    const { watchlist, markSeasonWatched, markSeasonUnwatched } = useWatchlist();
 
     const [details, setDetails] = useState<any>(null);
     const [hoveredSeason, setHoveredSeason] = useState<number | null>(null);
@@ -127,11 +127,14 @@ export const WatchlistModal = ({ media, type, onClose }: WatchlistModalProps) =>
                         {type === 'tv' && (details?.seasons || media.seasons) && (
                             <div style={{ marginBottom: '24px', width: '100%' }}>
                                 <div style={{ textTransform: 'uppercase', fontSize: '12px', fontWeight: 'bold', letterSpacing: '0.1em', color: '#6b7280', marginBottom: '12px' }}>Seasons</div>
-                                <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '16px', overflowX: 'auto', padding: '16px', scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }} onMouseLeave={() => setHoveredSeason(null)}>
+                                <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: '16px', overflowX: 'auto', padding: '16px', scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }} onMouseLeave={() => setHoveredSeason(null)}>
                                     {(details?.seasons || media.seasons).filter((s: any) => s.season_number > 0).map((season: any) => {
                                         const showId = Number(media.id);
                                         const seasonNum = Number(season.season_number);
-                                        const isWatched = watchedSeasons.has(`${showId}-${seasonNum}`);
+
+                                        const watchlistItem = watchlist.find(i => i.tmdb_id === showId && i.type === 'show');
+                                        const lastWatched = watchlistItem?.last_watched_season || 0;
+                                        const isWatched = seasonNum <= lastWatched;
 
                                         // Future Season Logic
                                         let isFuture = false;
@@ -148,10 +151,8 @@ export const WatchlistModal = ({ media, type, onClose }: WatchlistModalProps) =>
 
                                         let isPreview = false;
                                         if (hoveredSeason !== null) {
-                                            const cursorKey = `${showId}-${hoveredSeason}`;
-                                            const targetIsWatched = watchedSeasons.has(cursorKey);
-                                            if (!targetIsWatched) {
-                                                if (seasonNum <= hoveredSeason && !isWatched) isPreview = true;
+                                            if (!isWatched) {
+                                                if (seasonNum <= hoveredSeason) isPreview = true;
                                             }
                                         }
 
@@ -167,15 +168,15 @@ export const WatchlistModal = ({ media, type, onClose }: WatchlistModalProps) =>
                                         let fontWeight = 'normal';
 
                                         if (isSolid) {
-                                            if (isOngoing) {
-                                                // Half-colored for ongoing but caught-up seasons
+                                            if (isOngoing && seasonNum === lastWatched && watchlistItem?.status === 'show_watching') {
+                                                // Partial Visualization for Ongoing Season I'm "Watching"
                                                 background = 'linear-gradient(90deg, #0f766e 50%, rgba(45, 212, 191, 0.2) 50%)';
-                                                border = '1px solid #0f766e'; // Match the solid part
-                                                color = '#ffffff'; // White text for contrast
+                                                border = '1px solid #0f766e';
+                                                color = '#ffffff';
                                                 boxShadow = '0 0 8px rgba(45,212,191,0.4)';
                                                 fontWeight = 'bold';
                                             } else {
-                                                // Full solid for completed seasons
+                                                // Full solid
                                                 background = 'radial-gradient(circle at center, #5eead4 0%, #0f766e 100%)';
                                                 border = 'none';
                                                 color = '#000000';
@@ -198,20 +199,14 @@ export const WatchlistModal = ({ media, type, onClose }: WatchlistModalProps) =>
                                                     onMouseEnter={() => !isFuture && setHoveredSeason(seasonNum)}
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        const allSeasons = (details?.seasons || media.seasons);
-                                                        allSeasons.forEach((s: any) => {
-                                                            const sNum = Number(s.season_number);
-                                                            if (sNum <= 0) return;
-                                                            const sKey = `${showId}-${sNum}`;
-                                                            const sIsWatched = watchedSeasons.has(sKey);
-
-                                                            if (isWatched) {
-                                                                if (sNum >= seasonNum && sIsWatched) markSeasonUnwatched(showId, sNum);
-                                                            } else {
-                                                                if (sNum <= seasonNum) { if (!sIsWatched) markSeasonWatched(showId, sNum); }
-                                                                else { if (sIsWatched) markSeasonUnwatched(showId, sNum); }
-                                                            }
-                                                        });
+                                                        // Linear Toggle Logic
+                                                        // If clicking the EXACT last watched season -> Unwatch it (step back by 1)
+                                                        if (seasonNum === lastWatched) {
+                                                            markSeasonUnwatched(showId, seasonNum);
+                                                        } else {
+                                                            // Otherwise, set progress TO this season
+                                                            markSeasonWatched(showId, seasonNum);
+                                                        }
                                                     }}
                                                     className="transition-transform duration-200 active:scale-95"
                                                     style={{
@@ -230,6 +225,11 @@ export const WatchlistModal = ({ media, type, onClose }: WatchlistModalProps) =>
                                                 {isFuture && (
                                                     <span style={{ fontSize: '9px', color: '#6b7280', whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                                                         Upcoming {airDateLabel}
+                                                    </span>
+                                                )}
+                                                {isOngoing && !isFuture && (
+                                                    <span style={{ fontSize: '9px', color: '#2dd4bf', whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 'bold' }}>
+                                                        Ongoing
                                                     </span>
                                                 )}
                                             </div>

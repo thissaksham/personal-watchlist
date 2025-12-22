@@ -21,7 +21,7 @@ export const UpcomingCard = ({
     showDateOverride,
     onClick,
 }: UpcomingCardProps) => {
-    const { watchedSeasons } = useWatchlist();
+    const { watchlist } = useWatchlist();
     const title = media.title || media.name || 'Unknown';
     const imageUrl = media.poster_path
         ? (media.poster_path.startsWith('http') ? media.poster_path : `https://image.tmdb.org/t/p/w500${media.poster_path}`)
@@ -57,35 +57,32 @@ export const UpcomingCard = ({
 
         if (!totalSeasons && !media.number_of_seasons) return null;
 
-        let watchedCount = 0;
-        // Count how many *Released* seasons are watched.
-        if (seasonsList && Array.isArray(seasonsList)) {
-            watchedCount = seasonsList.filter((s: any) => watchedSeasons.has(`${media.id}-${s.season_number}`)).length;
-        } else {
-            for (let i = 1; i <= totalSeasons; i++) {
-                if (watchedSeasons.has(`${media.id}-${i}`)) {
-                    watchedCount++;
-                }
-            }
-        }
+        const watchlistItem = watchlist.find(i => i.tmdb_id === media.id && i.type === 'show');
+        const lastWatched = watchlistItem?.last_watched_season || 0;
 
+        const watchedCount = lastWatched;
         const remainingSeasons = Math.max(0, totalSeasons - watchedCount);
 
         let remainingEpisodes = totalEpisodes;
         if (seasonsList && Array.isArray(seasonsList)) {
-            const watchedSeasonNums = new Set();
-            seasonsList.forEach((s: any) => {
-                if (watchedSeasons.has(`${media.id}-${s.season_number}`)) {
-                    watchedSeasonNums.add(s.season_number);
-                }
-            });
-
             remainingEpisodes = seasonsList.reduce((acc: number, season: any) => {
-                if (!watchedSeasonNums.has(season.season_number)) {
+                if (season.season_number > 0 && season.season_number > lastWatched) {
                     // Cap episodes to what has actually aired
                     let count = season.episode_count || 0;
 
-                    if (media.last_episode_to_air) {
+                    if (media.next_episode_to_air) {
+                        const nextSeason = media.next_episode_to_air.season_number;
+                        const nextEpNum = media.next_episode_to_air.episode_number;
+
+                        if (season.season_number === nextSeason) {
+                            // If we are in the season that is currently airing (next ep exists),
+                            // then the valid "released" count is just before the next one.
+                            count = Math.max(0, nextEpNum - 1);
+                        } else if (season.season_number > nextSeason) {
+                            count = 0; // Future season
+                        }
+                    } else if (media.last_episode_to_air) {
+                        // Fallback to last_episode_to_air if next_episode_to_air is null (e.g. season finished)
                         const lastSeason = media.last_episode_to_air.season_number;
                         const lastEp = media.last_episode_to_air.episode_number;
 
@@ -146,18 +143,13 @@ export const UpcomingCard = ({
             <div className="poster-wrapper">
                 <img src={imageUrl} alt={title} className="poster-img" loading="lazy" />
 
-                {/* Countdown Pill */}
-                {media.countdown && (
-                    <div className="absolute top-2 right-2 z-10 bg-black/80 backdrop-blur-md px-2 py-1 rounded-lg border border-teal-500/50 shadow-lg flex flex-col items-center min-w-[50px]">
-                        <span className="text-xl font-bold text-teal-400 leading-none">{media.countdown}</span>
-                        <span className="text-[10px] uppercase text-gray-400 font-bold tracking-wider">Days</span>
-                    </div>
-                )}
 
                 {/* Stats Pills for Upcoming (New) */}
                 {(stats && stats.remainingSeasons > 0) && (
                     <div className="absolute top-2 left-2 flex flex-col gap-1 items-start">
-                        <div className="media-pill pill-seasons"><span>{stats.remainingSeasons}S {stats.remainingEpisodes}E</span></div>
+                        <div className="media-pill pill-seasons">
+                            <span>{stats.remainingSeasons > 1 ? `${stats.remainingSeasons}S ` : ''}{stats.remainingEpisodes}E</span>
+                        </div>
                         {duration && (
                             <div className="media-pill pill-duration"><span>{duration}</span></div>
                         )}

@@ -42,9 +42,10 @@ export const Upcoming = () => {
             const meta = (item.metadata || {}) as any;
 
             // Strict Status check first
-            // If item is already in Library (unwatched/watched), skip it.
-            if (item.status === 'unwatched' || item.status === 'watched') return null;
-            if (item.status === 'dropped') return null;
+            // If item is already in Library, skip it.
+            // Exclude: watched, unwatched, show_finished, show_ongoing, show_watched, show_watching
+            // Exclude: watched, unwatched, show_finished, show_ongoing, show_watched
+            if (['watched', 'unwatched', 'dropped', 'show_finished', 'show_ongoing', 'show_watched'].includes(item.status)) return null;
 
             // ... (rest of metadata extraction for display) ...
 
@@ -104,6 +105,9 @@ export const Upcoming = () => {
                 if (nextEp && nextEp.air_date) {
                     targetDate = new Date(nextEp.air_date);
                     seasonInfo = 'New Episode';
+                } else if (item.status === 'show_new' && (meta.first_air_date || meta.release_date)) {
+                    targetDate = new Date(meta.first_air_date || meta.release_date);
+                    seasonInfo = 'Premiere';
                 }
             }
 
@@ -133,7 +137,7 @@ export const Upcoming = () => {
         // Strict Status-Based Filtering
         return items.filter(item => {
             if (viewMode === 'On OTT') {
-                return item.status === 'movie_on_ott' || item.tmdbMediaType === 'tv'; // Shows default to OTT
+                return item.status === 'movie_on_ott' || (item.tmdbMediaType === 'tv' && (item.status === 'show_new' || item.status === 'show_returning' || item.status === 'show_watching'));
             }
             if (viewMode === 'Coming Soon') {
                 return item.status === 'movie_coming_soon';
@@ -150,6 +154,9 @@ export const Upcoming = () => {
             // Only refresh movies in Upcoming statuses
             if (item.tmdbMediaType === 'movie') {
                 return item.status === 'movie_coming_soon' || item.status === 'movie_on_ott';
+            }
+            if (item.tmdbMediaType === 'tv') {
+                return item.status === 'show_returning' || item.status === 'show_coming_soon';
             }
             return false;
         });
@@ -275,7 +282,37 @@ export const Upcoming = () => {
                             <div className="absolute -bottom-6 left-0 w-full text-center opacity-0 group-hover/upcoming:opacity-100 transition-opacity duration-300 pointer-events-none">
                                 <span className="text-[10px] font-bold text-teal-400 bg-black/80 px-2 py-1 rounded-full border border-teal-500/20 backdrop-blur-sm">
                                     {formatDate(show.date)}
-                                    <span className="text-white"> &bull; {show.seasonInfo || (show.tmdbMediaType === 'movie' ? 'Movie' : 'Season')}</span>
+                                    <span className="text-white"> &bull; {
+                                        (() => {
+                                            if (show.tmdbMediaType === 'movie') return show.seasonInfo || 'Movie';
+
+                                            const nextEp = show.next_episode_to_air;
+                                            if (!nextEp) return show.seasonInfo || 'Upcoming';
+
+                                            const currentSeason = show.seasons?.find((s: any) => s.season_number === nextEp.season_number);
+                                            const totalEpsInSeason = currentSeason?.episode_count || 0;
+
+                                            const isSeasonPremiere = nextEp.episode_number === 1;
+                                            const isSeasonFinale = totalEpsInSeason > 0 && nextEp.episode_number === totalEpsInSeason;
+
+                                            // Heuristic for "Final Season"
+                                            // 1. Check if season name contains "Final"
+                                            // 2. Check if this is the last season in the array AND show status is 'Ended' or 'Returning Series' (sometimes final season airs as returning)
+                                            // Reliable: matching season name
+                                            const seasonName = currentSeason?.name || '';
+                                            const isFinalSeason = seasonName.toLowerCase().includes('final');
+
+                                            if (isFinalSeason) {
+                                                if (isSeasonPremiere) return 'Final Season';
+                                                if (isSeasonFinale) return 'Final Episode';
+                                                return 'New Episode'; // Or 'Final Season' generic? User said specific logic.
+                                            }
+
+                                            if (isSeasonPremiere) return 'New Season';
+                                            if (isSeasonFinale) return 'Last Episode';
+                                            return 'New Episode';
+                                        })()
+                                    }</span>
                                 </span>
                             </div>
                         </div>

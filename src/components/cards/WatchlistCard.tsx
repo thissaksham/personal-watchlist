@@ -19,7 +19,7 @@ export const WatchlistCard = ({
     onMarkUnwatched,
     onClick
 }: WatchlistCardProps) => {
-    const { watchedSeasons } = useWatchlist();
+    const { watchlist } = useWatchlist();
 
     const title = media.title || media.name || 'Unknown';
     const imageUrl = media.poster_path
@@ -54,13 +54,14 @@ export const WatchlistCard = ({
 
         if (!totalSeasons) return null;
 
-        let watchedCount = 0;
-        for (let i = 1; i <= totalSeasons; i++) {
-            if (watchedSeasons.has(`${media.id}-${i}`)) {
-                watchedCount++;
-            }
-        }
+        const watchlistItem = watchlist.find(i => i.tmdb_id === media.id && i.type === 'show');
+        const lastWatched = watchlistItem?.last_watched_season || 0;
 
+        // Linear Watched Count: logic is effectively lastWatched
+        // However, we must clamp it to max available seasons just in case?
+        // No, lastWatched is the source of truth for user progress.
+
+        const watchedCount = lastWatched;
         const remainingSeasons = Math.max(0, totalSeasons - watchedCount);
 
         // Estimate remaining episodes
@@ -68,17 +69,11 @@ export const WatchlistCard = ({
 
         // If we have seasons data in metadata, use it for exact count
         if (media.seasons && Array.isArray(media.seasons)) {
-            const watchedSeasonNums = new Set();
-            for (let i = 1; i <= totalSeasons; i++) {
-                if (watchedSeasons.has(`${media.id}-${i}`)) {
-                    watchedSeasonNums.add(i);
-                }
-            }
-
             // Calculate sum of episodes for UNWATCHED seasons
+            // Seasons > lastWatched
             const remainingEpsCount = media.seasons.reduce((acc: number, season: any) => {
-                // Skip specials (0) and watched seasons
-                if (season.season_number > 0 && !watchedSeasonNums.has(season.season_number)) {
+                // Skip specials (0) and watched seasons (season.season_number <= lastWatched)
+                if (season.season_number > 0 && season.season_number > lastWatched) {
                     // Cap episodes to what has actually aired
                     let count = season.episode_count || 0;
 
