@@ -24,7 +24,7 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
     const { watchlist, removeFromWatchlist, markAsWatched, markAsUnwatched, watchedSeasons } = useWatchlist();
     const [selectedMedia, setSelectedMedia] = useState<TMDBMedia | null>(null);
     const [filterProvider, setFilterProvider] = useState<number | null>(null);
-    const [statusFilter, setStatusFilter] = useState<'finished' | 'ongoing' | null>(null);
+    const [seriesStatusFilter, setSeriesStatusFilter] = useState<string>('Finished');
     const [viewMode, setViewMode] = useState<string>('Unwatched'); // Changed to string for flexibility
     const [sortOption, setSortOption] = useState<'date_added' | 'rating' | 'release_date' | 'runtime'>('date_added'); // New Sort State
     const [isSortOpen, setIsSortOpen] = useState(false);
@@ -118,9 +118,20 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
                 if (item.status === 'plan_to_watch' || !item.status) {
                     const meta = (item.metadata || {}) as any;
 
-                    // Critical: Hide if not moved to library yet
+                    // Step 1 Override: If streaming now -> SHOW IMMEDIATELY (Overrides moved_to_library)
+                    const providerInfo = meta['watch/providers'] || meta['watch_providers'] || meta['providers'];
+                    const regionData = providerInfo?.results?.[TMDB_REGION] || {};
+                    const isAvailableNow = (regionData.flatrate || []).length > 0 ||
+                        (regionData.ads || []).length > 0 ||
+                        (regionData.free || []).length > 0 ||
+                        (regionData.rent || []).length > 0 ||
+                        (regionData.buy || []).length > 0;
+                    if (isAvailableNow) return true;
+
+                    // Step 2 & 3: Hide if still in Upcoming and not streaming yet
                     if (meta.moved_to_library === false) return false;
 
+                    // Fallback Date Logic (for manually moved items or edge cases)
                     const digitalDateStr = meta.digital_release_date;
                     const theatricalDateStr = meta.theatrical_release_date;
                     const releaseDateStr = meta.release_date;
@@ -128,26 +139,10 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
 
-                    // 1. Digital Date (Standard for OTT)
-                    if (digitalDateStr) {
-                        // If digital date is past or today, show it.
-                        return new Date(digitalDateStr) <= today;
-                    }
+                    if (digitalDateStr) return new Date(digitalDateStr) <= today;
+                    if (theatricalDateStr) return new Date(theatricalDateStr) <= today;
+                    if (releaseDateStr) return new Date(releaseDateStr) <= today;
 
-                    // 2. Theatrical Date (No digital date)
-                    if (theatricalDateStr) {
-                        const tDate = new Date(theatricalDateStr);
-                        // If we are here, it means moved_to_library is true.
-                        // We only hide if it's released in the future (safety check)
-                        return tDate <= today;
-                    }
-
-                    // 3. Fallback (release_date)
-                    if (releaseDateStr) {
-                        return new Date(releaseDateStr) <= today;
-                    }
-
-                    // No dates? Default to show
                     return true;
                 }
                 return false;
@@ -220,13 +215,12 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
         // 2. Status Filter (TV Only)
         // 'Ended' or 'Canceled' -> Finished
         // 'Returning Series' -> Ongoing
-        if (tmdbType === 'tv' && statusFilter) {
+        if (tmdbType === 'tv' && viewMode === 'Unwatched') {
             const status = media.status || '';
             const isFinished = status === 'Ended' || status === 'Canceled';
 
-            if (statusFilter === 'finished' && !isFinished) return false;
-            if (statusFilter === 'ongoing' && isFinished) return false;
-            // Note: 'ongoing' will include 'Returning Series', 'Pilot', 'In Production' etc.
+            if (seriesStatusFilter === 'Finished' && !isFinished) return false;
+            if (seriesStatusFilter === 'Ongoing' && isFinished) return false;
         }
 
         // 3. Provider Filter
@@ -275,6 +269,16 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
                     className="flex items-center"
                     style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '24px' }} // Increased gap and restored flex
                 >
+                    {/* Series Status Toggle (Finished vs Ongoing) - Shows Only */}
+                    {tmdbType === 'tv' && (
+                        <SlidingToggle
+                            options={['Finished', 'Ongoing']}
+                            activeOption={seriesStatusFilter}
+                            onToggle={(opt) => setSeriesStatusFilter(opt)}
+                            disabled={viewMode !== 'Unwatched'}
+                        />
+                    )}
+
                     {/* View Mode Toggle (Custom Sliding) */}
                     <SlidingToggle
                         options={tmdbType === 'tv' ? ['Unwatched', 'Watching', 'Watched'] : ['Unwatched', 'Watched']}
@@ -388,18 +392,7 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
             {/* Filter Bar (Glassmorphism) */}
             <FilterBar>
 
-                {/* Status Filter (Shows only) - Hide if library is empty */}
-                {library.length > 0 && tmdbType === 'tv' && (
-                    <FilterExpandable
-                        label="Status"
-                        value={statusFilter}
-                        onChange={(val: any) => setStatusFilter(val)}
-                        options={[
-                            { id: 'finished', label: 'Finished' },
-                            { id: 'ongoing', label: 'Ongoing' }
-                        ]}
-                    />
-                )}
+                {/* Status Filter removed - moved to header toggle */}
 
                 {/* OTT Filter */}
                 {allProviders.length > 0 && (

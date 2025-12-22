@@ -5,9 +5,10 @@ interface SlidingToggleProps {
     options: string[];
     activeOption: string;
     onToggle: (option: string) => void;
+    disabled?: boolean;
 }
 
-export const SlidingToggle = ({ options, activeOption, onToggle }: SlidingToggleProps) => {
+export const SlidingToggle = ({ options, activeOption, onToggle, disabled = false }: SlidingToggleProps) => {
     const [highlightStyle, setHighlightStyle] = useState<React.CSSProperties>({});
     const optionRefs = useRef<(HTMLSpanElement | null)[]>([]);
 
@@ -37,21 +38,23 @@ export const SlidingToggle = ({ options, activeOption, onToggle }: SlidingToggle
     }, [activeOption, options]);
 
     return (
-        <span className="pill-button">
+        <span className={`pill-button ${disabled ? 'pill-button_disabled' : ''}`}>
             {options.map((option, index) => (
                 <span
                     key={option}
                     ref={el => { optionRefs.current[index] = el; }}
                     className={`pill-button-selection ${activeOption === option ? 'pill-button-selection_active' : ''}`}
-                    onClick={() => onToggle(option)}
+                    onClick={() => !disabled && onToggle(option)}
                 >
                     {option}
                 </span>
             ))}
-            <span
-                className="pill-button-highlight"
-                style={highlightStyle}
-            ></span>
+            {!disabled && (
+                <span
+                    className="pill-button-highlight"
+                    style={highlightStyle}
+                ></span>
+            )}
         </span>
     );
 };

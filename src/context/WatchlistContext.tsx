@@ -25,7 +25,6 @@ interface WatchlistContextType {
     loading: boolean;
     watchedSeasons: Set<string>;
     markSeasonWatched: (tmdbId: number, seasonNumber: number) => Promise<void>;
-
     markSeasonUnwatched: (tmdbId: number, seasonNumber: number) => Promise<void>;
     dismissFromUpcoming: (tmdbId: number, type: 'movie' | 'show') => Promise<void>;
     updateWatchlistItemMetadata: (tmdbId: number, type: 'movie' | 'show', newMetadata: any) => Promise<void>;
@@ -37,14 +36,17 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
     const { user } = useAuth();
     const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
     const [loading, setLoading] = useState(false);
+    const [watchedSeasons, setWatchedSeasons] = useState<Set<string>>(new Set());
 
     useEffect(() => {
         if (user) {
             fetchWatchlist();
+            fetchWatchedSeasons();
         } else {
-            console.log('[WatchlistContext] loading from local storage');
-            const local = JSON.parse(localStorage.getItem('watchlist') || '[]');
-            setWatchlist(local);
+            const localWl = JSON.parse(localStorage.getItem('watchlist') || '[]');
+            setWatchlist(localWl);
+            const localSeasons = JSON.parse(localStorage.getItem('watched_seasons') || '[]');
+            setWatchedSeasons(new Set(localSeasons));
         }
     }, [user]);
 
@@ -63,11 +65,18 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
     };
 
+    const fetchWatchedSeasons = async () => {
+        const { data } = await supabase.from('watched_seasons').select('*');
+        if (data) {
+            const loaded = new Set(data.map((row: any) => `${row.tmdb_id}-${row.season_number}`));
+            setWatchedSeasons(loaded);
+        }
+    };
+
     const addToWatchlist = async (media: TMDBMedia, type: 'movie' | 'show') => {
-        // Safe ID generation
         const tempId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `local-${Date.now()}-${Math.random()}`;
 
-        const newItem: any = {
+        const newItemBase: any = {
             id: tempId,
             user_id: user?.id || 'local-user',
             tmdb_id: media.id,
@@ -75,567 +84,262 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
             title: media.title || media.name || 'Unknown',
             poster_path: media.poster_path,
             vote_average: media.vote_average,
-            status: 'plan_to_watch',
-            metadata: media
+            status: 'plan_to_watch'
         };
 
-        if (!user) {
-            try {
-                const localWatchlist = JSON.parse(localStorage.getItem('watchlist') || '[]');
+        // 1. Enrichment (Details, Providers, Release Dates)
+        // We do this BEFORE insert to ensure the correct "moved_to_library" flag
+        let finalMetadata = { ...media };
+        let movedToLibrary = true;
 
-                // Prevent duplicates by removing existing entry for this item first (Upsert style)
-                // Use loose checking for ID to match potential string IDs in storage
-                const cleanedList = localWatchlist.filter((item: any) => !(item.tmdb_id == media.id && item.type === type));
+        try {
+            const tmdbType = type === 'show' ? 'tv' : 'movie';
+            const [details, releaseData] = await Promise.all([
+                tmdb.getDetails(media.id, tmdbType),
+                tmdbType === 'movie' ? tmdb.getReleaseDates(media.id) : Promise.resolve({ results: [] })
+            ]);
 
-                const updatedLocal = [newItem, ...cleanedList];
-                localStorage.setItem('watchlist', JSON.stringify(updatedLocal));
-                setWatchlist(updatedLocal);
-                console.log(`[Watchlist] Added ${newItem.title} to local storage. Total: ${updatedLocal.length}`);
-            } catch (err) {
-                console.error("Local storage add error", err);
-                alert("Failed to save to local storage: " + err);
+            let digitalDate = null;
+            let theatricalDate = null;
+            if (tmdbType === 'movie') {
+                const results = releaseData?.results || [];
+                const extractDates = (regionCode: string) => {
+                    const regionData = results.find((r: any) => r.iso_3166_1 === regionCode);
+                    if (!regionData?.release_dates) return null;
+                    const theatrical = regionData.release_dates.find((d: any) => d.type === 3);
+                    const digital = regionData.release_dates.find((d: any) => d.type === 4);
+                    return { theatrical: theatrical?.release_date, digital: digital?.release_date, hasData: !!(theatrical || digital) };
+                };
+                let dates = extractDates(TMDB_REGION);
+                if (!dates?.hasData && results.length > 0) {
+                    for (const res of results) {
+                        const d = extractDates(res.iso_3166_1);
+                        if (d?.hasData) { dates = d; break; }
+                    }
+                }
+                if (dates) {
+                    theatricalDate = dates.theatrical || null;
+                    digitalDate = dates.digital || null;
+                }
             }
+
+            let tvmazeRuntime = null;
+            if (tmdbType === 'tv' && details.external_ids?.imdb_id) {
+                try {
+                    const tvmRes = await fetch(`https://api.tvmaze.com/lookup/shows?imdb=${details.external_ids.imdb_id}`);
+                    if (tvmRes.ok) {
+                        const tvmData = await tvmRes.json();
+                        tvmazeRuntime = tvmData.averageRuntime || null;
+                    }
+                } catch (e) { console.warn("TVMaze failed", e); }
+            }
+
+            // Categorization Logic (The 3-Step Flow)
+            const providers = details['watch/providers']?.results?.[TMDB_REGION] || {};
+            const allStreamingOrRental = [
+                ...(providers.flatrate || []),
+                ...(providers.ads || []),
+                ...(providers.free || []),
+                ...(providers.rent || []),
+                ...(providers.buy || [])
+            ];
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            if (tmdbType === 'movie') {
+                // Step 1: If streaming or rental now -> MOVIES (Library)
+                movedToLibrary = allStreamingOrRental.length > 0;
+            } else {
+                movedToLibrary = true;
+                const nextEp = details.next_episode_to_air;
+                if (nextEp && nextEp.air_date) {
+                    if (new Date(nextEp.air_date) > today) movedToLibrary = false;
+                }
+            }
+
+            const { credits, production_companies, images, videos, reviews, ...leanDetails } = details as any;
+            finalMetadata = {
+                ...media,
+                ...leanDetails,
+                tvmaze_runtime: tvmazeRuntime,
+                digital_release_date: digitalDate,
+                theatrical_release_date: theatricalDate,
+                moved_to_library: movedToLibrary
+            };
+        } catch (err) {
+            console.error("Enrichment failed", err);
+        }
+
+        const finalItem = { ...newItemBase, metadata: finalMetadata };
+
+        if (!user) {
+            const local = JSON.parse(localStorage.getItem('watchlist') || '[]');
+            const cleaned = local.filter((item: any) => !(item.tmdb_id == media.id && item.type === type));
+            const updated = [finalItem, ...cleaned];
+            localStorage.setItem('watchlist', JSON.stringify(updated));
+            setWatchlist(updated);
             return;
         }
 
-        // 2. Insert immediately into Supabase (Fast)
-        const { data: insertedData, error } = await supabase.from('watchlist').insert(newItem).select().single();
-
+        const { data: insertedData, error } = await supabase.from('watchlist').insert(finalItem).select().single();
         if (error) {
             alert('Error adding to watchlist: ' + error.message);
-            return;
         } else if (insertedData) {
-            // Update local state immediately
             setWatchlist((prev) => [insertedData, ...prev]);
         }
-
-        // 3. Background Enrichment (Slow - fetching OTT & Runtime)
-        // We do not await this, so the UI is unblocked
-        (async () => {
-            try {
-                const tmdbType = type === 'show' ? 'tv' : 'movie';
-
-                // A. Fetch TMDB Details (Providers, External IDs)
-                const details = await tmdb.getDetails(media.id, tmdbType);
-
-                // B. Fetch TVMaze Data (Runtime)
-                let tvmazeRuntime = null;
-                if (tmdbType === 'tv' && details.external_ids?.imdb_id) {
-                    try {
-                        const tvmRes = await fetch(`https://api.tvmaze.com/lookup/shows?imdb=${details.external_ids.imdb_id}`);
-                        if (tvmRes.ok) {
-                            const tvmData = await tvmRes.json();
-                            if (tvmData.averageRuntime) {
-                                tvmazeRuntime = tvmData.averageRuntime;
-                            }
-                        }
-                    } catch (e) {
-                        console.warn("Failed to fetch TVMaze data", e);
-                    }
-                }
-
-                // C. Fetch Release Dates (Smart OTT Logic - Movies)
-                let digitalDate = null;
-                let theatricalDate = null;
-                if (tmdbType === 'movie') {
-                    try {
-                        const releaseData = await tmdb.getReleaseDates(media.id);
-                        const results = releaseData.results || [];
-
-                        // Helper to extract dates from a region
-                        const extractDates = (regionCode: string) => {
-                            const regionData = results.find((r: any) => r.iso_3166_1 === regionCode);
-                            if (!regionData?.release_dates) return null;
-
-                            const theatrical = regionData.release_dates.find((d: any) => d.type === 3);
-                            const digital = regionData.release_dates.find((d: any) => d.type === 4);
-
-                            return {
-                                theatrical: theatrical?.release_date,
-                                digital: digital?.release_date,
-                                hasData: !!(theatrical || digital)
-                            };
-                        };
-
-                        // 1. Try Configured Region (IN) - Primary Preference
-                        let dates = extractDates(TMDB_REGION);
-
-                        // 2. Fallback to Primary Country (if available in results but not configured region)
-                        if (!dates?.hasData && results.length > 0) {
-                            // Try to find ANY region with type 3 or 4
-                            for (const res of results) {
-                                const d = extractDates(res.iso_3166_1);
-                                if (d?.hasData) {
-                                    dates = d;
-                                    break;
-                                }
-                            }
-                        }
-
-                        if (dates) {
-                            theatricalDate = dates.theatrical || null;
-                            digitalDate = dates.digital || null;
-                        }
-                    } catch (e) {
-                        console.warn("Failed to fetch Release Dates", e);
-                    }
-                }
-
-                // D. PRUNE METADATA: Remove heavy fields like credits, production_companies, etc.
-                // We only need providers, runtime info, and external_ids.
-                const { credits, production_companies, images, videos, reviews, ...leanDetails } = details as any;
-
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-
-                let movedToLibrary = true; // Default for already released stuff
-                if (tmdbType === 'movie') {
-                    const dDate = digitalDate ? new Date(digitalDate) : null;
-                    const tDate = theatricalDate ? new Date(theatricalDate) : null;
-                    const rDate = details.release_date ? new Date(details.release_date) : null;
-
-                    // If any of these are in the future, it starts in Upcoming
-                    if ((dDate && dDate > today) || (tDate && tDate > today) || (rDate && rDate > today)) {
-                        movedToLibrary = false;
-                    }
-                    // Special case: If it's a recent theatrical release (< 4 months) and no digital date yet, 
-                    // start it in Upcoming (as "In Theaters")
-                    else if (tDate && !dDate) {
-                        const cutoff = new Date();
-                        cutoff.setMonth(today.getMonth() - 4);
-                        if (tDate > cutoff) {
-                            movedToLibrary = false;
-                        }
-                    }
-                } else if (tmdbType === 'tv') {
-                    // Check for future episodes
-                    const nextEp = details.next_episode_to_air;
-                    if (nextEp && nextEp.air_date) {
-                        const airDate = new Date(nextEp.air_date);
-                        if (airDate > today) {
-                            movedToLibrary = false;
-                        }
-                    }
-                }
-
-                const optimizedMetadata = {
-                    ...media,
-                    ...leanDetails,
-                    tvmaze_runtime: tvmazeRuntime,
-                    digital_release_date: digitalDate,
-                    theatrical_release_date: theatricalDate,
-                    moved_to_library: movedToLibrary
-                };
-
-                // 4. Update the record with optimized metadata
-                const { error: updateError } = await supabase
-                    .from('watchlist')
-                    .update({ metadata: optimizedMetadata })
-                    .match({ id: insertedData!.id });
-
-                if (updateError) {
-                    console.error("Failed to update metadata in background", updateError);
-                } else {
-                    // Update local state again with full data (silently)
-                    setWatchlist((prev) => prev.map(item =>
-                        item.id === insertedData!.id ? { ...item, metadata: optimizedMetadata } : item
-                    ));
-                }
-
-            } catch (err) {
-                console.error("Background data enrichment failed", err);
-            }
-        })();
     };
 
     const removeFromWatchlist = async (tmdbId: number, type: 'movie' | 'show') => {
-        console.log(`[Watchlist] Removing ${tmdbId} (${type})`);
         const dbType = type as 'movie' | 'show';
-
-        // 1. Optimistic Update: Remove from Watchlist Array
         setWatchlist((prev) => prev.filter((item) => !(item.tmdb_id == tmdbId && item.type === dbType)));
 
-        // 2. Optimistic Update: Clear Watched Seasons (if it's a show)
         if (type === 'show') {
             setWatchedSeasons(prev => {
                 const next = new Set(prev);
-                // Remove all keys starting with "ID-"
-                Array.from(next).forEach(key => {
-                    if (key.startsWith(`${tmdbId}-`)) {
-                        next.delete(key);
-                    }
-                });
+                Array.from(next).forEach(key => { if (key.startsWith(`${tmdbId}-`)) next.delete(key); });
                 if (!user) localStorage.setItem('watched_seasons', JSON.stringify(Array.from(next)));
                 return next;
             });
         }
 
         if (!user) {
-            // ... (Local Storage logic - update to remove watched_seasons too if needed)
-            try {
-                const localWatchlist = JSON.parse(localStorage.getItem('watchlist') || '[]');
-                const updatedLocal = localWatchlist.filter((item: any) => !(item.tmdb_id == tmdbId && item.type === dbType));
-                localStorage.setItem('watchlist', JSON.stringify(updatedLocal));
-                setWatchlist(updatedLocal);
-
-                // Also clear watched seasons from local storage if show
-                if (type === 'show') {
-                    const localSeasons = JSON.parse(localStorage.getItem('watched_seasons') || '[]');
-                    const userPrefix = `${tmdbId}-`;
-                    const updatedSeasons = localSeasons.filter((s: string) => !s.startsWith(userPrefix));
-                    localStorage.setItem('watched_seasons', JSON.stringify(updatedSeasons));
-                }
-            } catch (e) {
-                console.error("Local storage remove error", e);
+            const local = JSON.parse(localStorage.getItem('watchlist') || '[]');
+            localStorage.setItem('watchlist', JSON.stringify(local.filter((item: any) => !(item.tmdb_id == tmdbId && item.type === dbType))));
+            if (type === 'show') {
+                const seasons = JSON.parse(localStorage.getItem('watched_seasons') || '[]');
+                localStorage.setItem('watched_seasons', JSON.stringify(seasons.filter((s: string) => !s.startsWith(`${tmdbId}-`))));
             }
             return;
         }
 
-        // 3. Database: Delete from 'watchlist'
-        // Use explicit .eq() for better control and type safety
-        const { error: wlError, count } = await supabase
-            .from('watchlist')
-            .delete({ count: 'exact' })
-            .eq('user_id', user.id)
-            .eq('tmdb_id', Number(tmdbId))
-            .eq('type', dbType);
+        // Database cleanup
+        await supabase.from('watchlist').delete().eq('user_id', user.id).eq('tmdb_id', tmdbId).eq('type', dbType);
 
-        if (wlError) {
-            console.error('Error removing from watchlist:', wlError);
-            fetchWatchlist(); // Revert on error
-        } else {
-            // Verify deletion
-            if (count === 0) {
-                console.warn(`[Watchlist] DB Delete returned 0 rows for Movie/Show! ID: ${tmdbId}, Type: ${dbType}`);
-                // Fallback: Try with string ID if number failed (rare edge case but happens if legacy data)
-                if (typeof tmdbId !== 'number') {
-                    await supabase.from('watchlist').delete().match({ user_id: user.id, tmdb_id: String(tmdbId), type: dbType });
-                }
-            }
-        }
-
-        // 4. Database: Delete from 'watched_seasons' (if show)
         if (type === 'show') {
-            const { error: wsError } = await supabase
-                .from('watched_seasons')
-                .delete()
-                .match({ user_id: user.id, tmdb_id: tmdbId });
-
-            if (wsError) console.error('Error removing watched seasons:', wsError);
+            await supabase.from('watched_seasons').delete().eq('user_id', user.id).eq('tmdb_id', tmdbId);
         }
     };
-
-
 
     const markAsWatched = async (tmdbId: number, type: 'movie' | 'show') => {
         const dbType = type as 'movie' | 'show';
 
         if (type === 'show') {
-            // Smart Mark for Shows: Mark all RELEASED seasons
             const item = watchlist.find(i => i.tmdb_id === tmdbId && i.type === 'show');
-            let seasons: any[] = [];
-
-            if (item?.metadata?.seasons) {
-                seasons = item.metadata.seasons;
-            } else {
+            let seasons = item?.metadata?.seasons;
+            if (!seasons) {
                 try {
                     const details = await tmdb.getDetails(tmdbId, 'tv');
                     seasons = details.seasons || [];
-                } catch (e) {
-                    console.error("Failed to fetch details for smart mark", e);
-                }
+                } catch (e) { seasons = []; }
             }
-
             const today = new Date();
             today.setHours(0, 0, 0, 0);
+            const released = (seasons || []).filter((s: any) => s.season_number > 0 && s.air_date && new Date(s.air_date) <= today);
+            const nums = released.map((s: any) => s.season_number);
 
-            const releasedSeasons = seasons.filter((s: any) => {
-                if (s.season_number === 0) return false; // Skip specials usually
-                if (!s.air_date) return false; // No date = assume unreleased or unknown
-                return new Date(s.air_date) <= today;
-            });
-
-            const seasonNumbers = releasedSeasons.map((s: any) => s.season_number);
-
-            // Optimistic Updates for Seasons
             setWatchedSeasons(prev => {
                 const next = new Set(prev);
-                seasonNumbers.forEach((num: number) => next.add(`${tmdbId}-${num}`));
+                nums.forEach((n: number) => next.add(`${tmdbId}-${n}`));
                 if (!user) localStorage.setItem('watched_seasons', JSON.stringify(Array.from(next)));
                 return next;
             });
 
             if (user) {
-                // Batch insert/upsert for seasons
-                const updates = seasonNumbers.map((num: number) => ({
-                    user_id: user.id,
-                    tmdb_id: tmdbId,
-                    season_number: num
-                }));
-
-                if (updates.length > 0) {
-                    const { error: upsertError } = await supabase
-                        .from('watched_seasons')
-                        .upsert(updates, { onConflict: 'user_id, tmdb_id, season_number' });
-
-                    if (upsertError) {
-                        console.error('Error saving watched seasons:', upsertError);
-                    }
-                }
+                const updates = nums.map((n: number) => ({ user_id: user.id, tmdb_id: tmdbId, season_number: n }));
+                if (updates.length > 0) await supabase.from('watched_seasons').upsert(updates, { onConflict: 'user_id, tmdb_id, season_number' });
             }
         }
 
+        setWatchlist((prev) => prev.map(item => (item.tmdb_id === tmdbId && item.type === dbType) ? { ...item, status: 'watched' } : item));
         if (!user) {
-            const localWatchlist = JSON.parse(localStorage.getItem('watchlist') || '[]');
-            const updatedLocal = localWatchlist.map((item: any) =>
-                (item.tmdb_id === tmdbId && item.type === dbType)
-                    ? { ...item, status: 'watched' }
-                    : item
-            );
-            localStorage.setItem('watchlist', JSON.stringify(updatedLocal));
-            setWatchlist(updatedLocal);
+            const local = JSON.parse(localStorage.getItem('watchlist') || '[]');
+            localStorage.setItem('watchlist', JSON.stringify(local.map((i: any) => (i.tmdb_id === tmdbId && i.type === dbType) ? { ...i, status: 'watched' } : i)));
             return;
         }
 
-        // Optimistic Update
-        setWatchlist((prev) => prev.map(item =>
-            (item.tmdb_id === tmdbId && item.type === dbType)
-                ? { ...item, status: 'watched' }
-                : item
-        ));
-
-        const { error, count } = await supabase
-            .from('watchlist')
-            .update({ status: 'watched' }, { count: 'exact' })
-            .eq('user_id', user.id)
-            .eq('tmdb_id', Number(tmdbId))
-            .eq('type', dbType);
-
-        if (error) {
-            console.error('Error marking as watched:', error);
-            // Revert on error (simple fetch to reset)
-            fetchWatchlist();
-        } else if (count === 0) {
-            console.warn(`[Watchlist] Mark Watched updated 0 rows. ID: ${tmdbId}`);
-        }
+        await supabase.from('watchlist').update({ status: 'watched' }).eq('user_id', user.id).eq('tmdb_id', tmdbId).eq('type', dbType);
     };
 
     const markAsWatching = async (tmdbId: number, type: 'movie' | 'show') => {
         const dbType = type as 'movie' | 'show';
-
+        setWatchlist((prev) => prev.map(item => (item.tmdb_id === tmdbId && item.type === dbType) ? { ...item, status: 'watching' } : item));
         if (!user) {
-            const localWatchlist = JSON.parse(localStorage.getItem('watchlist') || '[]');
-            const updatedLocal = localWatchlist.map((item: any) =>
-                (item.tmdb_id === tmdbId && item.type === dbType)
-                    ? { ...item, status: 'watching' }
-                    : item
-            );
-            localStorage.setItem('watchlist', JSON.stringify(updatedLocal));
-            setWatchlist(updatedLocal);
+            const local = JSON.parse(localStorage.getItem('watchlist') || '[]');
+            localStorage.setItem('watchlist', JSON.stringify(local.map((i: any) => (i.tmdb_id === tmdbId && i.type === dbType) ? { ...i, status: 'watching' } : i)));
             return;
         }
-
-        // Optimistic Update
-        setWatchlist((prev) => prev.map(item =>
-            (item.tmdb_id === tmdbId && item.type === dbType)
-                ? { ...item, status: 'watching' }
-                : item
-        ));
-
-        const { error, count } = await supabase
-            .from('watchlist')
-            .update({ status: 'watching' }, { count: 'exact' })
-            .eq('user_id', user.id)
-            .eq('tmdb_id', Number(tmdbId))
-            .eq('type', dbType);
-
-        if (error) {
-            console.error('Error marking as watching:', error);
-            fetchWatchlist();
-        } else if (count === 0) {
-            console.warn(`[Watchlist] Mark Watching updated 0 rows. ID: ${tmdbId}`);
-        }
+        await supabase.from('watchlist').update({ status: 'watching' }).eq('user_id', user.id).eq('tmdb_id', tmdbId).eq('type', dbType);
     };
 
     const markAsUnwatched = async (tmdbId: number, type: 'movie' | 'show') => {
         const dbType = type as 'movie' | 'show';
-
         if (type === 'show') {
-            // Deep Unwatch for Shows: Remove ALL seasons
             setWatchedSeasons(prev => {
                 const next = new Set(prev);
-                // Remove all keys starting with tmdbId-
-                for (const key of next) {
-                    if (key.startsWith(`${tmdbId}-`)) {
-                        next.delete(key);
-                    }
-                }
+                Array.from(next).forEach(k => { if (k.startsWith(`${tmdbId}-`)) next.delete(k); });
                 if (!user) localStorage.setItem('watched_seasons', JSON.stringify(Array.from(next)));
                 return next;
             });
-
-            if (user) {
-                // Delete all season records for this show
-                await supabase.from('watched_seasons').delete().match({
-                    user_id: user.id,
-                    tmdb_id: tmdbId
-                });
-            }
+            if (user) await supabase.from('watched_seasons').delete().match({ user_id: user.id, tmdb_id: tmdbId });
         }
 
+        setWatchlist((prev) => prev.map(item => (item.tmdb_id === tmdbId && item.type === dbType) ? { ...item, status: 'plan_to_watch' } : item));
         if (!user) {
-            const localWatchlist = JSON.parse(localStorage.getItem('watchlist') || '[]');
-            const updatedLocal = localWatchlist.map((item: any) =>
-                (item.tmdb_id === tmdbId && item.type === dbType)
-                    ? { ...item, status: 'plan_to_watch' }
-                    : item
-            );
-            localStorage.setItem('watchlist', JSON.stringify(updatedLocal));
-            setWatchlist(updatedLocal);
+            const local = JSON.parse(localStorage.getItem('watchlist') || '[]');
+            localStorage.setItem('watchlist', JSON.stringify(local.map((i: any) => (i.tmdb_id === tmdbId && i.type === dbType) ? { ...i, status: 'plan_to_watch' } : i)));
             return;
         }
-
-        // Optimistic Update
-        setWatchlist((prev) => prev.map(item =>
-            (item.tmdb_id === tmdbId && item.type === dbType)
-                ? { ...item, status: 'plan_to_watch' }
-                : item
-        ));
-
-        const { error, count } = await supabase
-            .from('watchlist')
-            .update({ status: 'plan_to_watch' }, { count: 'exact' })
-            .eq('user_id', user.id)
-            .eq('tmdb_id', Number(tmdbId))
-            .eq('type', dbType);
-
-        if (error) {
-            console.error('Error marking as unwatched:', error);
-            fetchWatchlist();
-        } else if (count === 0) {
-            console.warn(`[Watchlist] Mark Unwatched updated 0 rows. ID: ${tmdbId}`);
-        }
+        await supabase.from('watchlist').update({ status: 'plan_to_watch' }).eq('user_id', user.id).eq('tmdb_id', tmdbId).eq('type', dbType);
     };
 
     const isInWatchlist = (tmdbId: number, type: 'movie' | 'show') => {
-        // Use loose equality to match potential string IDs from local storage or params
-        const match = watchlist.find((item) => item.tmdb_id == tmdbId && item.type === type);
-        if (match) {
-            console.log(`[Watchlist] Found match for ${tmdbId} (${type}):`, match); // Verbose log ENABLED
-            return true;
-        }
-        return false;
+        return watchlist.some((item) => item.tmdb_id == tmdbId && item.type === type);
     };
-
-    // --- Season Tracking Logic ---
-
-    // State to store watched seasons: Map of "tmdbId-seasonNumber" -> boolean
-    const [watchedSeasons, setWatchedSeasons] = useState<Set<string>>(new Set());
-
-    // Load watched seasons on init
-    useEffect(() => {
-        if (!user) {
-            const local = JSON.parse(localStorage.getItem('watched_seasons') || '[]');
-            setWatchedSeasons(new Set(local));
-        } else {
-            // Fetch from Supabase
-            (async () => {
-                const { data } = await supabase.from('watched_seasons').select('*');
-                if (data) {
-                    const loaded = new Set(data.map((row: any) => `${row.tmdb_id}-${row.season_number}`));
-                    setWatchedSeasons(loaded);
-                }
-            })();
-        }
-    }, [user]);
 
     const markSeasonWatched = async (tmdbId: number, seasonNumber: number) => {
         const key = `${tmdbId}-${seasonNumber}`;
-
-        // Optimistic Update
         setWatchedSeasons(prev => {
             const next = new Set(prev);
             next.add(key);
-            if (!user) {
-                localStorage.setItem('watched_seasons', JSON.stringify(Array.from(next)));
-            }
+            if (!user) localStorage.setItem('watched_seasons', JSON.stringify(Array.from(next)));
             return next;
         });
-
-        if (user) {
-            await supabase.from('watched_seasons').upsert({
-                user_id: user.id,
-                tmdb_id: tmdbId,
-                season_number: seasonNumber
-            });
-        }
+        if (user) await supabase.from('watched_seasons').upsert({ user_id: user.id, tmdb_id: tmdbId, season_number: seasonNumber });
     };
 
     const markSeasonUnwatched = async (tmdbId: number, seasonNumber: number) => {
         const key = `${tmdbId}-${seasonNumber}`;
-
-        // Optimistic Update
         setWatchedSeasons(prev => {
             const next = new Set(prev);
             next.delete(key);
-            if (!user) {
-                localStorage.setItem('watched_seasons', JSON.stringify(Array.from(next)));
-            }
+            if (!user) localStorage.setItem('watched_seasons', JSON.stringify(Array.from(next)));
             return next;
         });
-
-        if (user) {
-            await supabase.from('watched_seasons').delete().match({
-                user_id: user.id,
-                tmdb_id: tmdbId,
-                season_number: seasonNumber
-            });
-        }
+        if (user) await supabase.from('watched_seasons').delete().match({ user_id: user.id, tmdb_id: tmdbId, season_number: seasonNumber });
     };
 
-    // --- Dismiss Logic ---
     const dismissFromUpcoming = async (tmdbId: number, type: 'movie' | 'show') => {
         const item = watchlist.find(i => i.tmdb_id === tmdbId && i.type === type);
         if (!item) return;
-
         const newMeta: any = { ...(item.metadata || {}), dismissed_from_upcoming: true };
-
-        // Optimistic Update
-        setWatchlist(prev => prev.map(i =>
-            (i.tmdb_id === tmdbId && i.type === type)
-                ? { ...i, metadata: newMeta }
-                : i
-        ));
-        console.log(`[Watchlist] Dismissing ${tmdbId} from upcoming`);
-
+        setWatchlist(prev => prev.map(i => (i.tmdb_id === tmdbId && i.type === type) ? { ...i, metadata: newMeta } : i));
         if (!user) {
-            const localWatchlist = JSON.parse(localStorage.getItem('watchlist') || '[]');
-            const updatedLocal = localWatchlist.map((i: any) =>
-                (i.tmdb_id === tmdbId && i.type === type)
-                    ? { ...i, metadata: newMeta }
-                    : i
-            );
-            localStorage.setItem('watchlist', JSON.stringify(updatedLocal));
+            const local = JSON.parse(localStorage.getItem('watchlist') || '[]');
+            localStorage.setItem('watchlist', JSON.stringify(local.map((i: any) => (i.tmdb_id === tmdbId && i.type === type) ? { ...i, metadata: newMeta } : i)));
             return;
         }
+        await supabase.from('watchlist').update({ metadata: newMeta }).eq('user_id', user.id).eq('tmdb_id', tmdbId).eq('type', type);
+    };
 
-        const { error, count } = await supabase
-            .from('watchlist')
-            .update({ metadata: newMeta }, { count: 'exact' })
-            .eq('user_id', user.id)
-            .eq('tmdb_id', Number(tmdbId))
-            .eq('type', type);
-
-        if (error) {
-            console.error('Error dismissing from upcoming:', error);
-            fetchWatchlist(); // Revert
-        } else if (count === 0) {
-            console.warn(`[Watchlist] Dismiss (Upcoming) updated 0 rows. ID: ${tmdbId}`);
-            // Fallback
-            if (typeof tmdbId !== 'number') {
-                await supabase.from('watchlist').update({ metadata: newMeta }).match({ user_id: user.id, tmdb_id: String(tmdbId), type: type });
-            }
+    const updateWatchlistItemMetadata = async (tmdbId: number, type: 'movie' | 'show', newMetadata: any) => {
+        setWatchlist(prev => prev.map(i => (i.tmdb_id === tmdbId && i.type === type) ? { ...i, metadata: newMetadata } : i));
+        if (!user) {
+            const local = JSON.parse(localStorage.getItem('watchlist') || '[]');
+            localStorage.setItem('watchlist', JSON.stringify(local.map((i: any) => (i.tmdb_id === tmdbId && i.type === type) ? { ...i, metadata: newMetadata } : i)));
+            return;
         }
+        await supabase.from('watchlist').update({ metadata: newMetadata }).eq('user_id', user.id).eq('tmdb_id', tmdbId).eq('type', type);
     };
 
     return (
@@ -648,41 +352,11 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
             markAsUnwatched,
             isInWatchlist,
             loading,
-            // New Exports
             watchedSeasons,
             markSeasonWatched,
-
             markSeasonUnwatched,
             dismissFromUpcoming,
-            updateWatchlistItemMetadata: async (tmdbId: number, type: 'movie' | 'show', newMetadata: any) => {
-                const item = watchlist.find(i => i.tmdb_id === tmdbId && i.type === type);
-                if (!item) return;
-
-                // Optimistic Update
-                setWatchlist(prev => prev.map(i =>
-                    (i.tmdb_id === tmdbId && i.type === type)
-                        ? { ...i, metadata: newMetadata }
-                        : i
-                ));
-
-                if (!user) {
-                    const localWatchlist = JSON.parse(localStorage.getItem('watchlist') || '[]');
-                    const updatedLocal = localWatchlist.map((i: any) =>
-                        (i.tmdb_id === tmdbId && i.type === type)
-                            ? { ...i, metadata: newMetadata }
-                            : i
-                    );
-                    localStorage.setItem('watchlist', JSON.stringify(updatedLocal));
-                    return;
-                }
-
-                await supabase
-                    .from('watchlist')
-                    .update({ metadata: newMetadata })
-                    .eq('user_id', user.id)
-                    .eq('tmdb_id', tmdbId)
-                    .eq('type', type);
-            }
+            updateWatchlistItemMetadata
         }}>
             {children}
         </WatchlistContext.Provider>
@@ -691,8 +365,6 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
 
 export const useWatchlist = () => {
     const context = useContext(WatchlistContext);
-    if (context === undefined) {
-        throw new Error('useWatchlist must be used within a WatchlistProvider');
-    }
+    if (context === undefined) throw new Error('useWatchlist must be used within a WatchlistProvider');
     return context;
 };

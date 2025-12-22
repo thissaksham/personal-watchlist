@@ -167,16 +167,18 @@ export const UpcomingCard = ({
 
                 {/* Actions Stack */}
                 <div className="card-actions-stack">
-                    {/* Manual Date Override (Only for Movies in Coming Soon) */}
-                    {showDateOverride && (media.media_type === 'movie' || (media as any).tmdbMediaType === 'movie') && (
-                        <button
-                            className="add-btn bg-white/10 hover:bg-white/20 text-white"
-                            onClick={(e) => { e.stopPropagation(); onSetDate(media); }}
-                            title="Set Release Date"
-                        >
-                            <Calendar size={16} />
-                        </button>
-                    )}
+                    {/* Manual Date Override (Only for Released Movies in Coming Soon) */}
+                    {showDateOverride &&
+                        (media.media_type === 'movie' || (media as any).tmdbMediaType === 'movie') &&
+                        (media as any).seasonInfo === 'Released' && (
+                            <button
+                                className="add-btn bg-white/10 hover:bg-white/20 text-white"
+                                onClick={(e) => { e.stopPropagation(); onSetDate(media); }}
+                                title="Set Release Date"
+                            >
+                                <Calendar size={16} />
+                            </button>
+                        )}
                     {/* Move to Library Button (Only when released) */}
                     {media.countdown !== undefined && media.countdown <= 0 && (
                         <button

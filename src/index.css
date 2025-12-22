@@ -665,12 +665,13 @@ body {
 
 /* Filter Bar (New Design) */
 .filter-container {
+    max-width: 100%;
     overflow-x: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;
-    padding-bottom: 10px;
-    overflow: visible;
-    margin-bottom: 1.5rem;
+    padding-bottom: 5px;
+    /* Minimal padding for the container itself */
+    margin-bottom: 0.5rem;
 }
 
 .filter-container::-webkit-scrollbar {
@@ -678,12 +679,14 @@ body {
 }
 
 .filter-bar {
-    display: inline-flex;
+    display: flex;
     align-items: center;
+    height: 70px;
+    /* Explicit locked height to prevent ANY layout shift during expansion */
     gap: 16px;
-    width: fit-content;
+    width: 100%;
     white-space: nowrap;
-    overflow: visible;
+    position: relative;
 }
 
 .filter-group {
@@ -756,41 +759,6 @@ body {
     gap: 8px;
     opacity: 0;
     max-width: 0;
-    min-width: 0;
-    width: 0;
-    overflow: hidden;
-    transition: opacity 0.4s ease, max-width 0.4s ease, width 0.4s ease;
-    overflow: visible;
-    /* Inherited from example but check if it breaks transition */
-}
-
-/* Override overflow for transition to work, actually the user example had overflow: hidden; then overflow: visible? 
-   Wait, the user CSS had:
-   .options-inline { ... overflow: hidden; ... overflow: visible; }
-   The last one wins. If it is visible, max-width transition might look valid but content spills.
-   Actually, looking closely at the provided CSS:
-   .options-inline { ... overflow: hidden; ... overflow: visible; } -> effectively visible.
-   BUT for the transition (max-width: 0 -> 2000px) to work like a slide/reveal, hidden is usually required.
-   However, the user wants "Tight-Fitting Glass Pills".
-   I will stick to the user's CSS as much as possible but correct the double declaration if it looks like a typo, 
-   or maybe the user intended visible to allow shadows. Use 'hidden' for the closed state via max-width logic usually.
-   Let's check the user request closely:
-   `overflow: hidden;` then lines later `overflow: visible;` in the same block. Visible wins.
-   And `.options-inline.active` has `width: fit-content`.
-   If I use `overflow: visible`, then `max-width: 0` won't hide the content. It will just be 0 width but content spills.
-   I will trust that `overflow: hidden` is what makes the expansion effect work, and only `.active` should perhaps be visible if needed?
-   No, the user code literally has `overflow: visible` as the last property in `.options-inline`.
-   Let's assume the user made a copy-paste error or I should test. 
-   Actually, `pill` has a shadow. If I clip it, shadow is cut. 
-   But `opacity: 0` handles visibility. `max-width` handles layout space.
-   I will use `overflow: hidden` for the transition state, and `overflow: visible` when active if needed, but standard expansion needs hidden.
-   I'll stick to `overflow: hidden` for the base class to accept `max-width` animation.
-*/
-.options-inline {
-    display: flex;
-    gap: 8px;
-    opacity: 0;
-    max-width: 0;
     width: 0;
     overflow: hidden;
     /* Necessary for width transition */
@@ -799,12 +767,23 @@ body {
 
 .options-inline.active {
     opacity: 1;
-    max-width: 2000px;
+    max-width: 100%;
     width: fit-content;
-    overflow: visible;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
     /* Show shadows when open */
     margin-left: 8px;
-    /* Add some spacing if needed */
+    padding: 10px;
+    /* Symmetrical padding for glows */
+    display: flex;
+    align-items: center;
+    pointer-events: auto;
+}
+
+.options-inline.active::-webkit-scrollbar {
+    display: none;
 }
 
 /* Option buttons with logo */

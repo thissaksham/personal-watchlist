@@ -46,77 +46,73 @@ export const Upcoming = () => {
             // Check if dismissed
             if (meta.dismissed_from_upcoming) return null;
 
-            // Extract Provider (IN region)
-            const providers = meta['watch/providers']?.results?.[TMDB_REGION]?.flatrate;
-            if (providers && providers.length > 0) {
-                // Prioritize specific popular ones or just take the first
-                providerLogo = providers[0].logo_path;
+            // Extract Provider (IN region) - Robust check for multiple possible keys
+            const providerInfo = meta['watch/providers'] || meta['watch_providers'] || meta['providers'];
+            const regionData = providerInfo?.results?.[TMDB_REGION] || {};
+            const flatrate = regionData.flatrate || [];
+            const ads = regionData.ads || [];
+            const free = regionData.free || [];
+            const rent = regionData.rent || [];
+            const buy = regionData.buy || [];
+            const allStreamingOrRental = [...flatrate, ...ads, ...free, ...rent, ...buy];
+
+            // Step 1: If currently streaming or rentable/buyable, skip from upcoming (movie-specific)
+            if (item.type === 'movie' && allStreamingOrRental.length > 0) {
+                return null;
             }
 
-            // Logic for Movies
+            // If there are streaming providers, capture the logo for display if needed later
+            if (allStreamingOrRental.length > 0) {
+                providerLogo = allStreamingOrRental[0].logo_path;
+            }
+
+            let category: 'ott' | 'theatrical' | 'other' = 'other';
+
             if (item.type === 'movie') {
                 const digitalDateStr = meta.digital_release_date;
                 const theatricalDateStr = meta.theatrical_release_date;
                 const releaseDateStr = meta.release_date;
 
-                // 1. Digital Release (Priority for OTT watchers)
-                if (digitalDateStr) {
-                    const dDate = new Date(digitalDateStr);
+                const dDate = digitalDateStr ? new Date(digitalDateStr) : null;
+                const tDate = theatricalDateStr ? new Date(theatricalDateStr) : null;
+                const rDate = releaseDateStr ? new Date(releaseDateStr) : null;
+
+                // Step 2: Upcoming OTT Release Date Mentioned
+                if (dDate && dDate > today) {
+                    category = 'ott';
                     targetDate = dDate;
-                    if (dDate >= today) {
-                        // Dynamic label based on manual OTT name
-                        if (meta.manual_ott_name) {
-                            seasonInfo = `Coming on ${meta.manual_ott_name}`;
-                        } else {
-                            seasonInfo = 'Coming to OTT';
-                        }
-                    } else {
-                        // Released!
-                        if (meta.manual_ott_name) {
-                            seasonInfo = `On ${meta.manual_ott_name}`;
-                        } else {
-                            seasonInfo = 'Available on OTT';
-                        }
-                    }
+                    seasonInfo = meta.manual_ott_name ? `Coming on ${meta.manual_ott_name}` : 'Coming to OTT';
                 }
-                // 2. Theatrical Release (If no digital date known)
-                else if (theatricalDateStr) {
-                    const tDate = new Date(theatricalDateStr);
-                    targetDate = tDate;
-                    if (tDate > today) {
-                        seasonInfo = 'In Theaters';
+                // Step 3: Else (Theatrical or Fallback)
+                else {
+                    category = 'theatrical';
+                    // Determine best target date and label for Step 3
+                    if (tDate) {
+                        targetDate = tDate;
+                        seasonInfo = tDate > today ? 'In Theaters' : 'Released';
+                    } else if (dDate) {
+                        // Past digital date but no active providers (else Step 1 would have caught it)
+                        targetDate = dDate;
+                        seasonInfo = 'Released';
+                    } else if (rDate) {
+                        targetDate = rDate;
+                        seasonInfo = rDate > today ? 'Coming Soon' : 'Released';
                     } else {
-                        // It's already in theaters...
-                        // If it's recent (< 3 months), show it as "In Theaters" (Waiting for OTT)
-                        const cutoff = new Date();
-                        cutoff.setMonth(today.getMonth() - 3);
-                        if (tDate > cutoff) {
-                            seasonInfo = 'In Theaters Only';
-                        } else {
-                            seasonInfo = 'Released';
-                        }
+                        // Catch-all today
+                        targetDate = today;
+                        seasonInfo = 'Released';
                     }
-                }
-                // 3. Fallback Standard
-                else if (releaseDateStr) {
-                    const release = new Date(releaseDateStr);
-                    targetDate = release;
                 }
             }
-            // Logic for TV Shows
+            // Logic for TV Shows (Always OTT)
             else if (item.type === 'show') {
-                // Check for next episode
+                category = 'ott';
                 const nextEp = meta.next_episode_to_air;
                 if (nextEp && nextEp.air_date) {
                     const airDate = new Date(nextEp.air_date);
                     targetDate = airDate;
                     if (airDate >= today) {
-                        // Determine label based on episode number
-                        if (nextEp.episode_number === 1) {
-                            seasonInfo = 'New Season';
-                        } else {
-                            seasonInfo = 'New Episode';
-                        }
+                        seasonInfo = nextEp.episode_number === 1 ? 'New Season' : 'New Episode';
                     } else {
                         seasonInfo = 'Now Airing';
                     }
@@ -137,7 +133,8 @@ export const Upcoming = () => {
                 tmdbMediaType: item.type === 'movie' ? 'movie' : 'tv', // For Modal
                 totalHours: runtime,
                 seasonInfo,
-                providerLogo
+                providerLogo,
+                tabCategory: category
             };
         }).filter((item): item is NonNullable<typeof item> => item !== null)
             .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -150,25 +147,10 @@ export const Upcoming = () => {
             const isAcknowledged = meta.moved_to_library === true;
 
             if (viewMode === 'On OTT') {
-                // Shows -> Always OTT (assumed)
-                if (item.tmdbMediaType === 'tv') {
-                    return !isAcknowledged;
-                }
-                // Movies -> Only if "Coming to OTT" or "Available on OTT"
-                const isOtt = item.seasonInfo.includes('OTT') || item.seasonInfo.startsWith('Coming on') || item.seasonInfo.startsWith('On ');
-                if (item.tmdbMediaType === 'movie' && isOtt) {
-                    return !isAcknowledged;
-                }
-                return false;
+                return item.tabCategory === 'ott' && !isAcknowledged;
             }
             if (viewMode === 'Coming Soon') {
-                if (item.tmdbMediaType === 'tv') return false;
-                // Movies -> In Theaters or Released (fallback)
-                const isTheatrical = item.seasonInfo.includes('Theaters') || item.seasonInfo === 'Released';
-                if (item.tmdbMediaType === 'movie' && isTheatrical) {
-                    return !isAcknowledged;
-                }
-                return false;
+                return item.tabCategory === 'theatrical' && !isAcknowledged;
             }
             return !isAcknowledged;
         });
