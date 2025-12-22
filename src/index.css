@@ -891,6 +891,34 @@ body {
     /* CRITICAL: Prevent shrinking in collapsed stack */
 }
 
+.edit-date-btn {
+    position: absolute !important;
+    bottom: 0.6rem !important;
+    right: 0.6rem !important;
+    width: 1.8rem;
+    height: 1.8rem;
+    border-radius: 6px;
+    background-color: rgba(0, 0, 0, 0.4) !important;
+    backdrop-filter: blur(4px);
+    color: #9ca3af !important;
+    /* gray-400 */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 40 !important;
+    transition: all 0.2s;
+}
+
+.edit-date-btn:hover {
+    transform: scale(1.1);
+    background-color: var(--primary) !important;
+    color: black !important;
+    border-color: var(--primary);
+    box-shadow: 0 0 10px rgba(20, 184, 166, 0.4);
+}
+
 .delete-btn {
     position: absolute;
     top: 0.5rem;

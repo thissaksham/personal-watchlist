@@ -7,9 +7,10 @@ interface ManualDateModalProps {
     media: TMDBMedia;
     onClose: () => void;
     onSave: (date: string, ottName: string) => Promise<void>;
+    onReset: () => Promise<void>;
 }
 
-export const ManualDateModal = ({ media, onClose, onSave }: ManualDateModalProps) => {
+export const ManualDateModal = ({ media, onClose, onSave, onReset }: ManualDateModalProps) => {
     const meta = (media as any);
     const [date, setDate] = useState(meta.digital_release_date || new Date().toISOString().split('T')[0]);
     const [ottName, setOttName] = useState(meta.manual_ott_name || '');
@@ -23,6 +24,18 @@ export const ManualDateModal = ({ media, onClose, onSave }: ManualDateModalProps
             onClose();
         } catch (err) {
             console.error("Failed to save manual date", err);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleReset = async () => {
+        setIsSaving(true);
+        try {
+            await onReset();
+            // onClose is usually called by the parent after onReset finishes or explicitly
+        } catch (err) {
+            console.error("Failed to reset manual date", err);
         } finally {
             setIsSaving(false);
         }
@@ -138,22 +151,31 @@ export const ManualDateModal = ({ media, onClose, onSave }: ManualDateModalProps
 
                         <div style={{ display: 'flex', gap: '16px', paddingTop: '16px' }}>
                             <button
-                                onClick={onClose}
+                                onClick={meta.manual_date_override ? handleReset : onClose}
+                                disabled={isSaving}
                                 style={{
                                     flex: '1',
                                     padding: '16px',
                                     borderRadius: '16px',
-                                    backgroundColor: 'rgba(255,255,255,0.05)',
-                                    color: 'white',
+                                    backgroundColor: meta.manual_date_override ? 'rgba(239, 68, 68, 0.1)' : 'rgba(255,255,255,0.05)',
+                                    color: meta.manual_date_override ? '#ef4444' : 'white',
                                     fontWeight: '700',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s'
+                                    border: meta.manual_date_override ? '1px solid rgba(239, 68, 68, 0.2)' : 'none',
+                                    cursor: isSaving ? 'not-allowed' : 'pointer',
+                                    transition: 'all 0.2s',
+                                    opacity: isSaving && meta.manual_date_override ? 0.6 : 1,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
                                 }}
-                                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)')}
-                                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)')}
+                                onMouseEnter={(e) => { if (!isSaving) e.currentTarget.style.backgroundColor = meta.manual_date_override ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255,255,255,0.1)'; }}
+                                onMouseLeave={(e) => { if (!isSaving) e.currentTarget.style.backgroundColor = meta.manual_date_override ? 'rgba(239, 68, 68, 0.1)' : 'rgba(255,255,255,0.05)'; }}
                             >
-                                Cancel
+                                {isSaving && meta.manual_date_override ? (
+                                    <div style={{ width: '18px', height: '18px', border: '2px solid rgba(239,68,68,0.3)', borderTopColor: '#ef4444', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                                ) : (
+                                    meta.manual_date_override ? 'Reset' : 'Cancel'
+                                )}
                             </button>
                             <button
                                 onClick={handleSave}

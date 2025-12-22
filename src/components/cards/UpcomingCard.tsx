@@ -1,4 +1,4 @@
-import { X, Check, Calendar, ArrowUp } from 'lucide-react';
+import { X, Check, Calendar, ArrowUp, Pencil } from 'lucide-react';
 import { type TMDBMedia } from '../../lib/tmdb';
 import { useWatchlist } from '../../context/WatchlistContext';
 
@@ -205,6 +205,17 @@ export const UpcomingCard = ({
                         <X size={16} />
                     </button>
                 </div>
+
+                {/* Edit Date Pencil (Bottom Right) */}
+                {((media as any).status === 'movie_on_ott' || (media as any).tabCategory === 'ott') && (media as any).manual_date_override && (
+                    <button
+                        className="edit-date-btn"
+                        onClick={(e) => { e.stopPropagation(); onSetDate(media); }}
+                        title="Edit Release Date"
+                    >
+                        <Pencil size={14} strokeWidth={3} />
+                    </button>
+                )}
             </div>
 
             <div className="card-info">

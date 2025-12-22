@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useWatchlist } from '../context/WatchlistContext';
 import { UpcomingCard } from '../components/cards/UpcomingCard';
 import { calculateMediaRuntime, TMDB_REGION, type TMDBMedia } from '../lib/tmdb';
@@ -27,10 +27,11 @@ import { UpcomingModal } from '../components/modals/UpcomingModal';
 import { ManualDateModal } from '../components/modals/ManualDateModal';
 
 export const Upcoming = () => {
-    const { watchlist, markAsWatched, dismissFromUpcoming, removeFromWatchlist, updateWatchlistItemMetadata, updateStatus, moveToLibrary } = useWatchlist();
+    const { watchlist, markAsWatched, dismissFromUpcoming, removeFromWatchlist, updateWatchlistItemMetadata, updateStatus, moveToLibrary, refreshMetadata } = useWatchlist();
     const [selectedMedia, setSelectedMedia] = useState<any | null>(null);
     const [viewMode, setViewMode] = useState<string>('On OTT');
     const [showDatePicker, setShowDatePicker] = useState<any | null>(null);
+    const [refreshedIds] = useState(new Set<number>());
 
     // Derived State: Process watchlist into "Upcoming" items
     const upcomingItems = useMemo(() => {
@@ -141,6 +142,28 @@ export const Upcoming = () => {
         });
     }, [watchlist, viewMode]);
 
+    // Auto-refresh metadata for items in Upcoming to catch official OTT dates/platforms
+    useEffect(() => {
+        const itemsToProcess = upcomingItems; // Use the value from useMemo
+        const toRefresh = itemsToProcess.filter(item => {
+            if (refreshedIds.has(item.id)) return false;
+            // Only refresh movies in Upcoming statuses
+            if (item.tmdbMediaType === 'movie') {
+                return item.status === 'movie_coming_soon' || item.status === 'movie_on_ott';
+            }
+            return false;
+        });
+
+        if (toRefresh.length > 0) {
+            // Limit to 2 refreshes per effect run to be gentle on API
+            const batch = toRefresh.slice(0, 2);
+            batch.forEach(item => {
+                refreshedIds.add(item.id);
+                refreshMetadata(item.id, 'movie');
+            });
+        }
+    }, [upcomingItems, refreshMetadata, refreshedIds]);
+
     const handleMoveToLibrary = async (media: any) => {
         await moveToLibrary(Number(media.id), media.tmdbMediaType === 'movie' ? 'movie' : 'show');
     };
@@ -169,6 +192,23 @@ export const Upcoming = () => {
         await updateStatus(item.tmdb_id, item.type, 'movie_on_ott');
 
         // Optimistic UI update/Selection clear
+        setShowDatePicker(null);
+    };
+
+    const handleReset = async () => {
+        if (!showDatePicker) return;
+        const item = watchlist.find(i => i.id === (showDatePicker as any).supabaseId);
+        if (!item) return;
+
+        const newMeta = {
+            ...(item.metadata || {}),
+            digital_release_date: null,
+            manual_ott_name: null,
+            manual_date_override: false
+        };
+
+        // We pass newMeta directly to refreshMetadata to bypass stale state issues
+        await refreshMetadata(item.tmdb_id, item.type, newMeta);
         setShowDatePicker(null);
     };
 
@@ -258,6 +298,7 @@ export const Upcoming = () => {
                     media={showDatePicker}
                     onClose={() => setShowDatePicker(null)}
                     onSave={handleSaveManualDate}
+                    onReset={handleReset}
                 />
             )}
         </div>
