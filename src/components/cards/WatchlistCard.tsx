@@ -10,6 +10,8 @@ interface WatchlistCardProps {
     onMarkUnwatched?: (media: TMDBMedia) => void;
     onRestoreToUpcoming?: (media: TMDBMedia) => void;
     onClick: (media: TMDBMedia) => void;
+    removeIcon?: React.ReactNode;
+    removeLabel?: string;
 }
 
 export const WatchlistCard = ({
@@ -19,7 +21,9 @@ export const WatchlistCard = ({
     onMarkWatched,
     onMarkUnwatched,
     onRestoreToUpcoming,
-    onClick
+    onClick,
+    removeIcon,
+    removeLabel
 }: WatchlistCardProps) => {
     const { watchlist } = useWatchlist();
 
@@ -59,28 +63,15 @@ export const WatchlistCard = ({
         const watchlistItem = watchlist.find(i => i.tmdb_id === media.id && i.type === 'show');
         const lastWatched = watchlistItem?.last_watched_season || 0;
 
-        // Linear Watched Count: logic is effectively lastWatched
-        // However, we must clamp it to max available seasons just in case?
-        // No, lastWatched is the source of truth for user progress.
-
         const watchedCount = lastWatched;
         const remainingSeasons = Math.max(0, totalSeasons - watchedCount);
 
-        // Estimate remaining episodes
         let remainingEpisodes = totalEpisodes;
 
-        // If we have seasons data in metadata, use it for exact count
         if (media.seasons && Array.isArray(media.seasons)) {
-            // Calculate sum of episodes for UNWATCHED seasons
-            // Seasons > lastWatched
             const remainingEpsCount = media.seasons.reduce((acc: number, season: any) => {
-                // Skip specials (0) and watched seasons (season.season_number <= lastWatched)
                 if (season.season_number > 0 && season.season_number > lastWatched) {
-                    // Cap episodes to what has actually aired
                     let count = season.episode_count || 0;
-
-                    // Logic to check if season is future is partly handled by totalSeasons filter above, 
-                    // but we ensure simple safety check.
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
                     if (season.air_date && new Date(season.air_date) > today) {
@@ -92,12 +83,11 @@ export const WatchlistCard = ({
                         const lastEp = media.last_episode_to_air.episode_number;
 
                         if (season.season_number > lastSeason) {
-                            count = 0; // Future season entirely
+                            count = 0;
                         } else if (season.season_number === lastSeason) {
-                            count = lastEp; // Cap to aired episodes
+                            count = lastEp;
                         }
                     }
-
                     return acc + count;
                 }
                 return acc;
@@ -105,7 +95,6 @@ export const WatchlistCard = ({
 
             remainingEpisodes = remainingEpsCount;
         } else {
-            // Fallback estimation
             if (totalSeasons > 0) {
                 const avgEps = totalEpisodes / totalSeasons;
                 remainingEpisodes = Math.round(remainingEpisodes - (watchedCount * avgEps));
@@ -119,7 +108,6 @@ export const WatchlistCard = ({
 
     const stats = getStats();
 
-    // Format Duration
     const getDuration = () => {
         let avgRuntime = 0;
         if (media.tvmaze_runtime) avgRuntime = media.tvmaze_runtime;
@@ -129,7 +117,6 @@ export const WatchlistCard = ({
 
         if (!avgRuntime) return null;
 
-        // For Movies: Just return formatted avgRuntime
         if (type === 'movie' || !type) {
             const h = Math.floor(avgRuntime / 60);
             const m = avgRuntime % 60;
@@ -137,25 +124,19 @@ export const WatchlistCard = ({
             return `${m}m`;
         }
 
-        // For Shows: Calculate REMAINING duration
         if (stats) {
             const totalMinutes = stats.remainingEpisodes * avgRuntime;
-
             if (totalMinutes >= 24 * 60) {
                 const days = Math.floor(totalMinutes / (24 * 60));
                 const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
                 return `${days}d ${hours}h`;
             }
-
             if (totalMinutes === 0) return null;
-
             const h = Math.floor(totalMinutes / 60);
             const m = totalMinutes % 60;
             if (h > 0) return `${h}h ${m}m`;
             return `${m}m`;
         }
-
-        // Fallback for shows without stats (shouldn't happen if TV)
         return null;
     };
     const duration = getDuration();
@@ -165,7 +146,6 @@ export const WatchlistCard = ({
             <div className="poster-wrapper">
                 <img src={imageUrl} alt={title} className="poster-img" loading="lazy" />
 
-                {/* Overlays */}
                 {media.vote_average > 0 && (
                     <div className="media-pill pill-rating">
                         <Star size={10} fill="#fbbf24" strokeWidth={0} />
@@ -176,7 +156,6 @@ export const WatchlistCard = ({
                     <div className="media-pill pill-year"><span>{year}</span></div>
                 )}
 
-                {/* Modified Season/Episode Pill */}
                 {(type === 'tv' && stats && stats.remainingEpisodes > 0) && (
                     <div className="media-pill pill-seasons"><span>{stats.remainingSeasons}S {stats.remainingEpisodes}E</span></div>
                 )}
@@ -185,9 +164,7 @@ export const WatchlistCard = ({
                     <div className="media-pill pill-duration"><span>{duration}</span></div>
                 )}
 
-                {/* Actions Stack */}
                 <div className="card-actions-stack">
-                    {/* Restore to Upcoming Button */}
                     {(type === 'tv' && (media as any).dismissed_from_upcoming && onRestoreToUpcoming) && (
                         <button
                             className="add-btn bg-white/10 hover:bg-blue-500/80 text-white"
@@ -217,10 +194,10 @@ export const WatchlistCard = ({
                     <button
                         className="add-btn text-white hover:scale-110"
                         onClick={(e) => { e.stopPropagation(); onRemove(media); }}
-                        title="Remove from Library"
+                        title={removeLabel || "Remove from Library"}
                         style={{ backgroundColor: '#dc2626', borderColor: '#dc2626' }}
                     >
-                        <X size={16} />
+                        {removeIcon || <X size={16} />}
                     </button>
                 </div>
             </div>

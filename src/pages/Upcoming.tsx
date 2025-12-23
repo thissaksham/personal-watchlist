@@ -45,7 +45,7 @@ export const Upcoming = () => {
             // If item is already in Library, skip it.
             // Exclude: watched, unwatched, show_finished, show_ongoing, show_watched, show_watching
             // Exclude: watched, unwatched, show_finished, show_ongoing, show_watched
-            if (['watched', 'unwatched', 'dropped', 'show_finished', 'show_ongoing', 'show_watched'].includes(item.status)) return null;
+            if (['watched', 'unwatched', 'dropped', 'movie_watched', 'movie_unwatched', 'movie_dropped', 'show_finished', 'show_ongoing', 'show_watched', 'show_dropped'].includes(item.status)) return null;
 
             // ... (rest of metadata extraction for display) ...
 

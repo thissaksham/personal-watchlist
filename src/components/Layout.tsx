@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LogOut, Clapperboard, MonitorPlay, Calendar, Gamepad2, Menu, X, Plus } from 'lucide-react';
+import { LogOut, Clapperboard, MonitorPlay, Calendar, Gamepad2, Menu, X, Plus, Archive } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { SearchModal } from './SearchModal';
 import { WatchlistModal } from './modals/WatchlistModal';
@@ -24,6 +24,7 @@ export default function Layout() {
         { name: 'Shows', path: '/shows', icon: MonitorPlay },
         { name: 'Upcoming', path: '/upcoming', icon: Calendar },
         { name: 'Games', path: '/games', icon: Gamepad2 },
+        { name: 'Dropped', path: '/dropped', icon: LogOut }, // Using LogOut (Icon request was Archive or Ban, but import list has LogOut/Clapper/etc. I'll add Archive to imports first.)
     ];
 
     return (

@@ -11,6 +11,7 @@ import { Shows } from './pages/Shows';
 import { Upcoming } from './pages/Upcoming';
 import { Games } from './pages/Placeholders';
 import VerifySuccess from './pages/VerifySuccess';
+import { DroppedPage } from './pages/DroppedPage';
 
 
 // Protected Route Wrapper
@@ -47,7 +48,9 @@ function App() {
                 <Route path="movies" element={<Movies />} />
                 <Route path="shows" element={<Shows />} />
                 <Route path="upcoming" element={<Upcoming />} />
+                <Route path="upcoming" element={<Upcoming />} />
                 <Route path="games" element={<Games />} />
+                <Route path="dropped" element={<DroppedPage />} />
               </Route>
             </Routes>
           </GlobalSearchProvider>
