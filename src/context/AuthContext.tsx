@@ -7,6 +7,7 @@ interface AuthContextType {
     session: Session | null;
     loading: boolean;
     signOut: () => Promise<void>;
+    deleteAccount: () => Promise<void>;
     changePassword: (password: string) => Promise<{ error: any }>;
 }
 
@@ -24,13 +25,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             try {
                 if (!supabase) throw new Error("Supabase client is not initialized");
 
-                // Check active sessions and sets the user
-                const { data, error } = await supabase.auth.getSession();
-                if (error) throw error;
+                // Strict check: getUser() verifies with Supabase server that user still exists
+                // whereas getSession() only reads the local token.
+                const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
 
-                setSession(data.session);
-                const currentUser = data.session?.user ?? null;
-                setUser(currentUser);
+                if (userError || !currentUser) {
+                    // If server says user is gone, clear local session
+                    setSession(null);
+                    setUser(null);
+                    localStorage.removeItem('supabase.auth.token'); // Clean up potentially stale data
+                } else {
+                    const { data: { session: activeSession } } = await supabase.auth.getSession();
+                    setSession(activeSession);
+                    setUser(currentUser);
+                }
 
                 // Sync region from metadata to localStorage
                 if (currentUser?.user_metadata?.region) {
@@ -83,6 +91,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await supabase.auth.signOut();
     };
 
+    const deleteAccount = async () => {
+        if (!user) return;
+
+        // Call the SQL function we created to delete the AUTH record
+        // The 'ON DELETE CASCADE' we set up in SQL handles wiping the watchlist automatically
+        const { error: deleteError } = await supabase.rpc('delete_user');
+
+        if (deleteError) {
+            console.error('Error in self-deletion:', deleteError);
+            throw new Error('Failed to delete account. Ensure the SQL function exists.');
+        }
+
+        // 2. Clear local storage
+        localStorage.removeItem('tmdb_region');
+        localStorage.removeItem('watchlist');
+
+        // 3. Clear Supabase local storage tokens manually 
+        // We don't call signOut() because the user record is already gone from the server (causes 403)
+        const keysToRemove = Object.keys(localStorage).filter(key => key.startsWith('sb-'));
+        keysToRemove.forEach(key => localStorage.removeItem(key));
+
+        // 4. Reset local state
+        setSession(null);
+        setUser(null);
+    };
+
     const changePassword = async (password: string) => {
         return await supabase.auth.updateUser({ password });
     };
@@ -92,6 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         session,
         loading,
         signOut,
+        deleteAccount,
         changePassword,
     };
 

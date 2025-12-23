@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LogOut, Clapperboard, MonitorPlay, Calendar, Gamepad2, Menu, X, Plus, Lock } from 'lucide-react';
+import { LogOut, Clapperboard, MonitorPlay, Calendar, Gamepad2, Menu, X, Plus, Lock, Trash2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { SearchModal } from './SearchModal';
 import { WatchlistModal } from './modals/WatchlistModal';
@@ -9,7 +9,7 @@ import { ChangePasswordModal } from './modals/ChangePasswordModal';
 import type { TMDBMedia } from '../lib/tmdb';
 
 export default function Layout() {
-    const { signOut, user } = useAuth();
+    const { signOut, deleteAccount, user } = useAuth();
     const navigate = useNavigate();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [isAddOpen, setIsAddOpen] = useState(false);
@@ -34,6 +34,21 @@ export default function Layout() {
     const handleSignOut = async () => {
         await signOut();
         navigate('/auth');
+    };
+
+    const handleDeleteAccount = async () => {
+        const confirmed = window.confirm(
+            'Are you sure you want to delete your account? \n\nThis will permanently delete your entire watchlist. This action cannot be undone.'
+        );
+
+        if (confirmed) {
+            try {
+                await deleteAccount();
+                navigate('/auth');
+            } catch (err) {
+                alert('Failed to delete account data. Please try again.');
+            }
+        }
     };
 
     const navItems = [
@@ -126,9 +141,19 @@ export default function Layout() {
 
                                 <button
                                     onClick={handleSignOut}
-                                    className="dropdown-btn danger"
+                                    className="dropdown-btn"
+                                    style={{ color: '#9ca3af' }}
                                 >
                                     <LogOut size={16} /> Sign Out
+                                </button>
+
+                                <div className="dropdown-divider"></div>
+
+                                <button
+                                    onClick={handleDeleteAccount}
+                                    className="dropdown-btn danger"
+                                >
+                                    <Trash2 size={16} /> Delete Account
                                 </button>
                             </div>
                         )}
