@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LogOut, Clapperboard, MonitorPlay, Calendar, Gamepad2, Menu, X, Plus, Globe, Lock, Settings } from 'lucide-react';
+import { LogOut, Clapperboard, MonitorPlay, Calendar, Gamepad2, Menu, X, Plus, Lock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { SearchModal } from './SearchModal';
 import { WatchlistModal } from './modals/WatchlistModal';
 import { ChangePasswordModal } from './modals/ChangePasswordModal';
-import { TMDB_REGION } from '../lib/tmdb';
+// No regional logic needed in header
 import type { TMDBMedia } from '../lib/tmdb';
 
 export default function Layout() {
@@ -20,37 +20,11 @@ export default function Layout() {
     const [showPasswordModal, setShowPasswordModal] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
-    // Region State
-    const [showRegionMenu, setShowRegionMenu] = useState(false);
-    const regionRef = useRef<HTMLDivElement>(null);
-
-    const REGIONS = [
-        { code: 'IN', name: 'India', flag: '🇮🇳' },
-        { code: 'US', name: 'United States', flag: '🇺🇸' },
-        { code: 'GB', name: 'United Kingdom', flag: '🇬🇧' },
-        { code: 'CA', name: 'Canada', flag: '🇨🇦' },
-        { code: 'AU', name: 'Australia', flag: '🇦🇺' },
-        { code: 'JP', name: 'Japan', flag: '🇯🇵' },
-        { code: 'KR', name: 'South Korea', flag: '🇰🇷' },
-        { code: 'DE', name: 'Germany', flag: '🇩🇪' },
-        { code: 'FR', name: 'France', flag: '🇫🇷' },
-        { code: 'BR', name: 'Brazil', flag: '🇧🇷' },
-    ];
-
-    const handleRegionSelect = (code: string) => {
-        if (code === TMDB_REGION) return;
-        localStorage.setItem('tmdb_region', code);
-        window.location.reload();
-    };
-
     // Close menu when clicking outside
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
                 setIsUserMenuOpen(false);
-            }
-            if (regionRef.current && !regionRef.current.contains(event.target as Node)) {
-                setShowRegionMenu(false);
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
@@ -156,52 +130,6 @@ export default function Layout() {
                                 >
                                     <LogOut size={16} /> Sign Out
                                 </button>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Region Selector */}
-                    <div className="relative" ref={regionRef}>
-                        <button
-                            className="profile-pill hover:bg-white/10 transition-colors"
-                            onClick={() => setShowRegionMenu(!showRegionMenu)}
-                            style={{ cursor: 'pointer', padding: '0.35rem' }}
-                            title="Change Region"
-                        >
-                            <img
-                                src={`https://flagcdn.com/24x18/${TMDB_REGION.toLowerCase()}.png`}
-                                alt={TMDB_REGION}
-                                style={{ width: 24, height: 18, objectFit: 'cover', borderRadius: 2 }}
-                            />
-                            <Settings
-                                size={18}
-                                className={`text-gray-300 transition-transform duration-500 ${showRegionMenu ? 'rotate-180' : ''}`}
-                            />
-                        </button>
-
-                        {showRegionMenu && (
-                            <div className="user-dropdown-menu" style={{ width: '220px' }}>
-                                <div className="dropdown-section">
-                                    <p className="dropdown-label">Select Region</p>
-                                </div>
-                                <div className="max-h-[300px] overflow-y-auto no-scrollbar">
-                                    {REGIONS.map(region => (
-                                        <button
-                                            key={region.code}
-                                            className={`dropdown-btn ${region.code === TMDB_REGION ? 'active' : ''}`}
-                                            onClick={() => handleRegionSelect(region.code)}
-                                            style={{ backgroundColor: region.code === TMDB_REGION ? 'rgba(20, 184, 166, 0.1)' : 'transparent' }}
-                                        >
-                                            <img
-                                                src={`https://flagcdn.com/20x15/${region.code.toLowerCase()}.png`}
-                                                alt={region.code}
-                                                style={{ width: 20, height: 15, objectFit: 'cover', borderRadius: 2 }}
-                                            />
-                                            <span style={{ flex: 1 }}>{region.name}</span>
-                                            {region.code === TMDB_REGION && <span style={{ color: 'var(--primary)', fontSize: '0.8em' }}>●</span>}
-                                        </button>
-                                    ))}
-                                </div>
                             </div>
                         )}
                     </div>

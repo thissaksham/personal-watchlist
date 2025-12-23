@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
-import { Clapperboard, Mail, Lock, ArrowRight, Loader, User } from 'lucide-react';
+import { Clapperboard, Mail, Lock, ArrowRight, Loader, User, Globe } from 'lucide-react';
+import { REGIONS } from '../lib/tmdb';
 
 export default function Login() {
     const [isSignUp, setIsSignUp] = useState(false);
@@ -11,7 +12,21 @@ export default function Login() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [focusedInput, setFocusedInput] = useState<string | null>(null);
+    const [selectedRegion, setSelectedRegion] = useState('IN');
+    const [showRegionDropdown, setShowRegionDropdown] = useState(false);
+    const regionDropdownRef = useRef<HTMLDivElement>(null);
     const navigate = useNavigate();
+
+    // Close region dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (regionDropdownRef.current && !regionDropdownRef.current.contains(event.target as Node)) {
+                setShowRegionDropdown(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -26,7 +41,8 @@ export default function Login() {
                     password,
                     options: {
                         data: {
-                            full_name: fullName
+                            full_name: fullName,
+                            region: selectedRegion
                         }
                     }
                 });
@@ -235,6 +251,105 @@ export default function Login() {
                                         value={fullName}
                                         onChange={(e) => setFullName(e.target.value)}
                                     />
+                                </div>
+                            )}
+
+                            {/* Region Selection (Sign Up Only) */}
+                            {isSignUp && (
+                                <div style={{ position: 'relative', animation: 'fade-in-up 0.4s' }} ref={regionDropdownRef}>
+                                    <Globe
+                                        size={20}
+                                        color={(focusedInput === 'region' || showRegionDropdown) ? theme.primary : '#6b7280'}
+                                        style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', transition: 'color 0.2s', zIndex: 10 }}
+                                    />
+
+                                    <div
+                                        onClick={() => setShowRegionDropdown(!showRegionDropdown)}
+                                        style={{
+                                            width: '100%',
+                                            padding: '1rem 1rem 1rem 3rem',
+                                            backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                                            border: (focusedInput === 'region' || showRegionDropdown) ? `1px solid ${theme.primary}` : '1px solid rgba(255, 255, 255, 0.1)',
+                                            borderRadius: '12px',
+                                            color: 'white',
+                                            fontSize: '1rem',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s ease',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between',
+                                            userSelect: 'none'
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                            <img
+                                                src={`https://flagcdn.com/28x21/${selectedRegion.toLowerCase()}.png`}
+                                                alt={selectedRegion}
+                                                style={{ width: 24, height: 18, objectFit: 'cover', borderRadius: 2 }}
+                                            />
+                                            <span>{REGIONS.find(r => r.code === selectedRegion)?.name}</span>
+                                        </div>
+                                        <ArrowRight size={16} style={{ transform: showRegionDropdown ? 'rotate(-90deg)' : 'rotate(90deg)', transition: 'transform 0.3s', color: '#6b7280' }} />
+                                    </div>
+
+                                    {/* Custom Dropdown Content */}
+                                    {showRegionDropdown && (
+                                        <div className="dropdown-scroll-box" style={{
+                                            position: 'absolute',
+                                            bottom: 'calc(100% + 10px)', // Show above input to avoid being cut off
+                                            left: 0,
+                                            width: '100%',
+                                            maxHeight: '200px',
+                                            backgroundColor: '#121212',
+                                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                                            borderRadius: '12px',
+                                            zIndex: 100,
+                                            overflowY: 'auto',
+                                            boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+                                            padding: '0.5rem'
+                                        }}>
+                                            {REGIONS.map(r => (
+                                                <div
+                                                    key={r.code}
+                                                    onClick={() => {
+                                                        setSelectedRegion(r.code);
+                                                        setShowRegionDropdown(false);
+                                                    }}
+                                                    style={{
+                                                        padding: '0.75rem 1rem',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '1rem',
+                                                        cursor: 'pointer',
+                                                        borderRadius: '8px',
+                                                        transition: 'background 0.2s',
+                                                        backgroundColor: selectedRegion === r.code ? 'rgba(20, 184, 166, 0.1)' : 'transparent',
+                                                        color: selectedRegion === r.code ? theme.primary : '#d1d5db'
+                                                    }}
+                                                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)'}
+                                                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = selectedRegion === r.code ? 'rgba(20, 184, 166, 0.1)' : 'transparent'}
+                                                >
+                                                    <img
+                                                        src={`https://flagcdn.com/28x21/${r.code.toLowerCase()}.png`}
+                                                        alt={r.code}
+                                                        style={{ width: 18, height: 14, objectFit: 'cover', borderRadius: 1 }}
+                                                    />
+                                                    <span style={{ fontSize: '0.9rem', fontWeight: selectedRegion === r.code ? 600 : 400 }}>{r.name}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    <div style={{
+                                        marginTop: '0.4rem',
+                                        fontSize: '0.75rem',
+                                        color: '#fbbf24',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.25rem'
+                                    }}>
+                                        <span style={{ fontWeight: 'bold' }}>⚠️ Permanent:</span> Region cannot be changed after signup.
+                                    </div>
                                 </div>
                             )}
 

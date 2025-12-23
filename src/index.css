@@ -198,6 +198,36 @@ body {
     z-index: 50;
     animation: fadeIn 0.2s ease-out;
     transform-origin: top right;
+    overflow: hidden;
+    /* Ensure fade stays within border */
+}
+
+/* Bottom fade indicator for scrollable dropdowns */
+.user-dropdown-menu.has-fade::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: linear-gradient(to top, #1a1a1a 10%, transparent 100%);
+    pointer-events: none;
+    z-index: 60;
+    opacity: 0.9;
+}
+
+.dropdown-scroll-box {
+    max-height: 350px;
+    overflow-y: auto;
+    scrollbar-width: none;
+    /* Firefox */
+    -ms-overflow-style: none;
+    /* IE/Edge */
+}
+
+.dropdown-scroll-box::-webkit-scrollbar {
+    display: none;
+    /* Chrome/Safari */
 }
 
 .dropdown-section {

@@ -29,7 +29,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 if (error) throw error;
 
                 setSession(data.session);
-                setUser(data.session?.user ?? null);
+                const currentUser = data.session?.user ?? null;
+                setUser(currentUser);
+
+                // Sync region from metadata to localStorage
+                if (currentUser?.user_metadata?.region) {
+                    const savedRegion = localStorage.getItem('tmdb_region');
+                    if (savedRegion !== currentUser.user_metadata.region) {
+                        localStorage.setItem('tmdb_region', currentUser.user_metadata.region);
+                        // Only reload if we actually changed it to avoid loops
+                        window.location.reload();
+                    }
+                }
             } catch (err: any) {
                 console.error("Auth Init Error:", err);
                 setError(err.message || "Unknown Auth Error");
@@ -43,7 +54,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Listen for changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             setSession(session);
-            setUser(session?.user ?? null);
+            const currentUser = session?.user ?? null;
+            setUser(currentUser);
+
+            // Sync region on state change (login/signup)
+            if (currentUser?.user_metadata?.region) {
+                const savedRegion = localStorage.getItem('tmdb_region');
+                if (savedRegion !== currentUser.user_metadata.region) {
+                    localStorage.setItem('tmdb_region', currentUser.user_metadata.region);
+                    window.location.reload();
+                }
+            }
+
             setLoading(false);
         });
 

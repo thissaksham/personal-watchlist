@@ -11,9 +11,46 @@ if (!TMDB_API_KEY) {
 const isBearerToken = TMDB_API_KEY && TMDB_API_KEY.length > 60;
 
 // Initialize Region from LocalStorage (User Preference)
+// This will be synced with user_metadata on login
 export const TMDB_REGION = localStorage.getItem('tmdb_region') || 'IN';
 
-console.log(`[TMDB] Initializing. Key Present: ${!!TMDB_API_KEY}, Length: ${TMDB_API_KEY?.length}, Mode: ${isBearerToken ? 'Bearer' : 'API Key'}, Region: ${TMDB_REGION}`);
+export const REGIONS = [
+    { code: 'IN', name: 'India', flag: '🇮🇳' },
+    { code: 'US', name: 'United States', flag: '🇺🇸' },
+    { code: 'GB', name: 'United Kingdom', flag: '🇬🇧' },
+    { code: 'AE', name: 'UAE', flag: '🇦🇪' },
+    { code: 'AU', name: 'Australia', flag: '🇦🇺' },
+    { code: 'CA', name: 'Canada', flag: '🇨🇦' },
+    { code: 'JP', name: 'Japan', flag: '🇯🇵' },
+    { code: 'KR', name: 'South Korea', flag: '🇰🇷' },
+    { code: 'IE', name: 'Ireland', flag: '🇮🇪' },
+    { code: 'IT', name: 'Italy', flag: '🇮🇹' },
+    { code: 'DE', name: 'Germany', flag: '🇩🇪' },
+    { code: 'FR', name: 'France', flag: '🇫🇷' },
+    { code: 'BR', name: 'Brazil', flag: '🇧🇷' },
+    { code: 'SG', name: 'Singapore', flag: '🇸🇬' },
+    { code: 'MY', name: 'Malaysia', flag: '🇲🇾' },
+    { code: 'ID', name: 'Indonesia', flag: '🇮🇩' },
+    { code: 'PH', name: 'Philippines', flag: '🇵🇭' },
+    { code: 'TH', name: 'Thailand', flag: '🇹🇭' },
+    { code: 'NZ', name: 'New Zealand', flag: '🇳🇿' },
+    { code: 'ZA', name: 'South Africa', flag: '🇿🇦' },
+    { code: 'SA', name: 'Saudi Arabia', flag: '🇸🇦' },
+    { code: 'AE', name: 'United Arab Emirates', flag: '🇦🇪' },
+    { code: 'BG', name: 'Bulgaria', flag: '🇧🇬' },
+    { code: 'DK', name: 'Denmark', flag: '🇩🇰' },
+    { code: 'EG', name: 'Egypt', flag: '🇪🇬' },
+    { code: 'FI', name: 'Finland', flag: '🇫🇮' },
+    { code: 'GR', name: 'Greece', flag: '🇬🇷' },
+    { code: 'HU', name: 'Hungary', flag: '🇭🇺' },
+    { code: 'NL', name: 'Netherlands', flag: '🇳🇱' },
+    { code: 'NO', name: 'Norway', flag: '🇳🇴' },
+    { code: 'PL', name: 'Poland', flag: '🇵🇱' },
+    { code: 'PT', name: 'Portugal', flag: '🇵🇹' },
+    { code: 'RU', name: 'Russia', flag: '🇷🇺' },
+    { code: 'SE', name: 'Sweden', flag: '🇸🇪' },
+    { code: 'TW', name: 'Taiwan', flag: '🇹🇼' },
+].filter((v, i, a) => a.findIndex(t => (t.code === v.code)) === i);
 
 const getHeaders = () => {
     const headers: Record<string, string> = {
@@ -108,6 +145,107 @@ export interface TMDBMedia {
     theatrical_release_date?: string;
 }
 
+const RAPIDAPI_KEY = import.meta.env.VITE_RAPIDAPI_KEY;
+const RAPIDAPI_HOST = 'where-can-i-watch1.p.rapidapi.com';
+
+// Map TMDB regions to RapidAPI regions
+const REGION_MAP: Record<string, string> = {
+    'IN': 'india',
+    'GB': 'uk',
+    'US': 'usa',
+    'AE': 'ae',
+    'AU': 'au',
+    'BG': 'bg',
+    'CA': 'ca',
+    'DK': 'dk',
+    'EG': 'eg',
+    'FI': 'fi',
+    'GR': 'gr',
+    'HU': 'hu',
+    'ID': 'id',
+    'IE': 'ie',
+    'IT': 'it',
+    'JP': 'jp',
+    'KR': 'kr',
+    'MY': 'my',
+    'NL': 'nl',
+    'NO': 'no',
+    'NZ': 'nz',
+    'PH': 'ph',
+    'PL': 'pl',
+    'PT': 'pt',
+    'RU': 'ru',
+    'SA': 'sa',
+    'SE': 'se',
+    'SG': 'sg',
+    'TH': 'th',
+    'TW': 'tw',
+    'ZA': 'za'
+};
+
+const slugify = (text: string) => {
+    return text
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '') // API seems to want alphabets/numbers only based on "backtothefuture"
+        .trim();
+};
+
+async function fetchRapidOTT(title: string, regionCode: string, targetYear?: string) {
+    const region = REGION_MAP[regionCode] || regionCode.toLowerCase();
+    const slug = slugify(title);
+    const url = `https://${RAPIDAPI_HOST}/search/${region}/${slug}`;
+
+    console.log(`[RapidAPI] Fetching fallback OTT: ${url} (Target Year: ${targetYear})`);
+
+    try {
+        const res = await fetch(url, {
+            headers: {
+                'x-rapidapi-key': RAPIDAPI_KEY,
+                'x-rapidapi-host': RAPIDAPI_HOST
+            }
+        });
+
+        if (!res.ok) throw new Error(`RapidAPI Error: ${res.status}`);
+        const data = await res.json();
+
+        let providers: any[] = [];
+        const results = Array.isArray(data) ? data : (data ? [data] : []);
+
+        if (results.length > 0) {
+            // Find precise match by year if data contains year info
+            const match = results.find(item => {
+                const itemYear = String(item.year || item.release_year || '');
+                return itemYear === targetYear;
+            });
+
+            if (match) {
+                console.log(`[RapidAPI] Exact year match found for ${title} (${targetYear})`);
+                providers = match.providers || match.platforms || (Array.isArray(match) ? match : []);
+            } else if (!results[0].year && !results[0].release_year) {
+                // If the response doesn't have year metadata, assume the slug was specific enough
+                // and the response is just an array of providers for that slug.
+                providers = results[0].providers || results[0].platforms || (Array.isArray(results[0]) ? results[0] : results);
+            } else {
+                console.warn(`[RapidAPI] No year match found for ${title}. Target: ${targetYear}, Available: ${results.map(r => r.year).join(', ')}`);
+            }
+        }
+
+        if (providers.length > 0) {
+            return {
+                flatrate: providers.map(p => ({
+                    provider_name: p.name || p.provider_name,
+                    logo_path: null,
+                    provider_id: 0
+                }))
+            };
+        }
+        return null;
+    } catch (err) {
+        console.error('[RapidAPI] Fallback failed:', err);
+        return null;
+    }
+}
+
 export const tmdb = {
     getTrending: async (type: 'movie' | 'tv' | 'all' = 'movie', timeWindow: 'day' | 'week' = 'week') => {
         return fetchTMDB(`/trending/${type}/${timeWindow}`);
@@ -138,9 +276,32 @@ export const tmdb = {
     },
 
     getDetails: async (id: number, type: 'movie' | 'tv') => {
-        return fetchTMDB(`/${type}/${id}`, {
+        const data = await fetchTMDB(`/${type}/${id}`, {
             append_to_response: 'watch/providers,credits,external_ids,videos'
         });
+
+        // Check if TMDB has provider data for the user's region
+        const tmdbProviders = data['watch/providers']?.results?.[TMDB_REGION];
+        const hasProviders = tmdbProviders && (tmdbProviders.flatrate || tmdbProviders.rent || tmdbProviders.buy);
+
+        if (!hasProviders) {
+            console.warn(`[TMDB] No providers found for ${TMDB_REGION}. Triggering RapidAPI fallback...`);
+
+            // Extract the year for precise matching
+            const releaseDate = data.release_date || data.first_air_date || '';
+            const year = releaseDate.split('-')[0];
+
+            const fallback = await fetchRapidOTT(data.title || data.name, TMDB_REGION, year);
+            if (fallback) {
+                // Merge fallback into the response structure
+                if (!data['watch/providers']) data['watch/providers'] = { results: {} };
+                if (!data['watch/providers'].results) data['watch/providers'].results = {};
+                data['watch/providers'].results[TMDB_REGION] = fallback;
+                console.log(`[TMDB] Fallback successful for ${TMDB_REGION}`);
+            }
+        }
+
+        return data;
     },
 
     getReleaseDates: async (id: number) => {
