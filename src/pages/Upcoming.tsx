@@ -2,12 +2,14 @@ import { useState, useMemo, useEffect } from 'react';
 import { useWatchlist } from '../context/WatchlistContext';
 import { UpcomingCard } from '../components/cards/UpcomingCard';
 import { calculateMediaRuntime, TMDB_REGION, type TMDBMedia } from '../lib/tmdb';
+import { SlidingToggle } from '../components/common/SlidingToggle';
+import { UpcomingModal } from '../components/modals/UpcomingModal';
+import { ManualDateModal } from '../components/modals/ManualDateModal';
 
 // ... (helper functions omitted for brevity, they are unchanged)
 
 const getDaysUntil = (dateStr: string) => {
     const today = new Date();
-    // Reset time to start of day for accurate day diff
     today.setHours(0, 0, 0, 0);
     const target = new Date(dateStr);
     target.setHours(0, 0, 0, 0);
@@ -17,21 +19,17 @@ const getDaysUntil = (dateStr: string) => {
     return diffDays;
 };
 
-const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
-};
-
-import { SlidingToggle } from '../components/common/SlidingToggle';
-import { UpcomingModal } from '../components/modals/UpcomingModal';
-import { ManualDateModal } from '../components/modals/ManualDateModal';
-
 export const Upcoming = () => {
     const { watchlist, markAsWatched, dismissFromUpcoming, removeFromWatchlist, updateWatchlistItemMetadata, updateStatus, moveToLibrary, refreshMetadata } = useWatchlist();
     const [selectedMedia, setSelectedMedia] = useState<any | null>(null);
     const [viewMode, setViewMode] = useState<string>('On OTT');
     const [showDatePicker, setShowDatePicker] = useState<any | null>(null);
     const [refreshedIds] = useState(new Set<number>());
+
+    // Sync tab title
+    useEffect(() => {
+        document.title = 'CineTrack | Upcoming';
+    }, []);
 
     // Derived State: Process watchlist into "Upcoming" items
     const upcomingItems = useMemo(() => {

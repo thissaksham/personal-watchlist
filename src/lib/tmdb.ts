@@ -12,7 +12,13 @@ const isBearerToken = TMDB_API_KEY && TMDB_API_KEY.length > 60;
 
 // Initialize Region from LocalStorage (User Preference)
 // This will be synced with user_metadata on login
-export const TMDB_REGION = localStorage.getItem('tmdb_region') || 'IN';
+export let TMDB_REGION = localStorage.getItem('tmdb_region') || 'IN';
+
+export const updateTmdbRegion = (newRegion: string) => {
+    TMDB_REGION = newRegion;
+    localStorage.setItem('tmdb_region', newRegion);
+    console.log(`[TMDB] Region updated to: ${newRegion}`);
+};
 
 export const REGIONS = [
     { code: 'IN', name: 'India', flag: '🇮🇳' },

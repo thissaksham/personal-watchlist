@@ -18,6 +18,7 @@ export const Trending = () => {
 
     useEffect(() => {
         const fetchTrending = async () => {
+            document.title = 'CineTrack | Trending';
             // Quick check for API key
             if (!import.meta.env.VITE_TMDB_API_KEY) {
                 setError("Missing API Key. Please add VITE_TMDB_API_KEY to your .env file.");

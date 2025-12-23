@@ -2,7 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { Clapperboard, Mail, Lock, ArrowRight, Loader, User, Globe } from 'lucide-react';
-import { REGIONS } from '../lib/tmdb';
+import { REGIONS, updateTmdbRegion } from '../lib/tmdb';
+import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
     const [isSignUp, setIsSignUp] = useState(false);
@@ -16,6 +17,19 @@ export default function Login() {
     const [showRegionDropdown, setShowRegionDropdown] = useState(false);
     const regionDropdownRef = useRef<HTMLDivElement>(null);
     const navigate = useNavigate();
+    const { user, loading: authLoading } = useAuth();
+
+    // Redirect if already logged in
+    useEffect(() => {
+        if (user && !authLoading) {
+            navigate('/', { replace: true });
+        }
+    }, [user, authLoading, navigate]);
+
+    // Sync tab title
+    useEffect(() => {
+        document.title = 'CineTrack | Authentication';
+    }, []);
 
     // Close region dropdown when clicking outside
     useEffect(() => {
@@ -49,17 +63,16 @@ export default function Login() {
 
                 if (signUpError) throw signUpError;
 
-                // Even if "email confirmations" are on, the session might be null. 
-                // But user requested "immediate access" so we assume they disabled confirmation.
-                // If session is present -> Success.
-                // If no session but no error -> "Check inbox" (fallback if they didn't disable it).
-
                 if (data?.session) {
+                    // Reactive Sync: Update region without reload
+                    updateTmdbRegion(selectedRegion);
+                    // Trigger Welcome Splash for first time users
+                    sessionStorage.setItem('show_welcome', 'true');
+                    sessionStorage.setItem('splash_type', 'welcome');
                     navigate('/');
                 } else {
-                    // Fallback just in case setting wasn't changed
                     alert('Account created! If not redirected, please check if email confirmation is required.');
-                    setIsSignUp(false); // Switch to login view
+                    setIsSignUp(false);
                 }
 
             } else {
@@ -70,7 +83,10 @@ export default function Login() {
                 });
 
                 if (signInError) throw signInError;
-
+                // Trigger shorter Welcome Back splash for returning users
+                sessionStorage.setItem('show_welcome', 'true');
+                sessionStorage.setItem('splash_type', 'returning');
+                // Note: AuthContext will handle region reactive sync for existing users
                 navigate('/');
             }
 
@@ -84,7 +100,7 @@ export default function Login() {
 
     // Inline Styles System
     const theme = {
-        primary: '#14b8a6', // Teal-500
+        primary: '#14b8a6',
         primaryHover: '#0d9488',
         surface: 'rgba(20, 20, 20, 0.7)',
         border: 'rgba(255, 255, 255, 0.1)',
@@ -99,6 +115,48 @@ export default function Login() {
         }
     };
 
+    // Splash mask
+    if (authLoading || user) {
+        return (
+            <div style={{
+                height: '100vh',
+                width: '100%',
+                backgroundColor: '#000',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '1.5rem'
+            }}>
+                <div style={{
+                    padding: '1.5rem',
+                    background: 'rgba(20, 184, 166, 0.1)',
+                    borderRadius: '24px',
+                    border: '1px solid rgba(20, 184, 166, 0.2)',
+                    animation: 'pulse 2s infinite ease-in-out'
+                }}>
+                    <Clapperboard size={48} color={theme.primary} />
+                </div>
+                <h1 style={{
+                    color: 'white',
+                    fontSize: '1.5rem',
+                    fontWeight: 800,
+                    letterSpacing: '0.1em',
+                    fontFamily: "'Outfit', sans-serif"
+                }}>
+                    CINETRACK
+                </h1>
+                <style>{`
+                    @keyframes pulse {
+                        0% { transform: scale(1); opacity: 0.8; }
+                        50% { transform: scale(1.1); opacity: 1; }
+                        100% { transform: scale(1); opacity: 0.8; }
+                    }
+                `}</style>
+            </div>
+        );
+    }
+
     return (
         <div style={{
             minHeight: '100vh',
@@ -109,7 +167,6 @@ export default function Login() {
             backgroundColor: '#000',
             fontFamily: "'Inter', sans-serif"
         }}>
-            {/* Cinematic Background */}
             <div style={{
                 position: 'absolute',
                 inset: 0,
@@ -118,10 +175,9 @@ export default function Login() {
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
                 filter: 'brightness(0.35) saturate(1.1)',
-                transform: 'scale(1.05)' // Slight zoom for cinematic feel
+                transform: 'scale(1.05)'
             }} />
 
-            {/* Content Container */}
             <div style={{
                 position: 'relative',
                 zIndex: 10,
@@ -129,18 +185,14 @@ export default function Login() {
                 maxWidth: '1200px',
                 margin: '0 auto',
                 display: 'flex',
-                flexDirection: 'row', // Default to row for desktop
+                flexDirection: 'row',
                 alignItems: 'center',
-                justifyContent: 'space-between', // Split layout
+                justifyContent: 'space-between',
                 padding: '2rem',
                 gap: '4rem',
-                flexWrap: 'wrap' // Allow wrapping on mobile
             }}>
-
-                {/* Branding Section */}
                 <div style={{
-                    flex: '1 1 500px', // Grow, shrink, basis
-                    color: 'white',
+                    flex: '1',
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '1.5rem',
@@ -156,7 +208,7 @@ export default function Login() {
                         }}>
                             <Clapperboard size={32} color={theme.primary} />
                         </div>
-                        <h1 style={{ fontSize: '2rem', fontWeight: 800, letterSpacing: '-0.02em' }}>Watchlist</h1>
+                        <h1 style={{ fontSize: '2rem', fontWeight: 800, letterSpacing: '-0.02em' }}>CineTrack</h1>
                     </div>
 
                     <h2 style={{ fontSize: '3.5rem', fontWeight: 900, lineHeight: 1.1 }}>
@@ -173,11 +225,9 @@ export default function Login() {
 
                     <p style={{ fontSize: '1.125rem', color: '#d1d5db', maxWidth: '500px', lineHeight: 1.6 }}>
                         The ultimate personal tracking library for movies and TV shows.
-                        Sort by runtime, find streaming sources, and track your progress in style.
                     </p>
                 </div>
 
-                {/* Login Card */}
                 <div style={{
                     flex: '0 1 450px',
                     width: '100%',
@@ -187,7 +237,6 @@ export default function Login() {
                     position: 'relative',
                     overflow: 'hidden'
                 }}>
-                    {/* Ambient Glow */}
                     <div style={{
                         position: 'absolute',
                         top: '-50%',
@@ -209,230 +258,181 @@ export default function Login() {
                             </p>
                         </div>
 
-                        <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                            {error && (
-                                <div style={{
-                                    padding: '0.75rem',
-                                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                                    border: '1px solid rgba(239, 68, 68, 0.2)',
-                                    borderRadius: '8px',
-                                    color: '#fca5a5',
-                                    fontSize: '0.875rem'
-                                }}>
-                                    {error}
-                                </div>
-                            )}
+                        {error && (
+                            <div style={{
+                                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                border: '1px solid rgba(239, 68, 68, 0.2)',
+                                color: '#f87171',
+                                padding: '1rem',
+                                borderRadius: '12px',
+                                marginBottom: '1.5rem',
+                                fontSize: '0.9rem'
+                            }}>
+                                {error}
+                            </div>
+                        )}
 
-                            {/* Name Input (Sign Up Only) */}
+                        <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                             {isSignUp && (
-                                <div style={{ position: 'relative', animation: 'fade-in-up 0.3s' }}>
-                                    <User
-                                        size={20}
-                                        color={focusedInput === 'fullName' ? theme.primary : '#6b7280'}
-                                        style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', transition: 'color 0.2s' }}
-                                    />
+                                <div style={{ position: 'relative' }}>
+                                    <User size={18} color={focusedInput === 'name' ? theme.primary : '#6b7280'} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', transition: 'color 0.2s' }} />
                                     <input
                                         type="text"
-                                        required={isSignUp}
                                         placeholder="Full Name"
-                                        onFocus={() => setFocusedInput('fullName')}
+                                        required
+                                        value={fullName}
+                                        onChange={(e) => setFullName(e.target.value)}
+                                        onFocus={() => setFocusedInput('name')}
                                         onBlur={() => setFocusedInput(null)}
                                         style={{
                                             width: '100%',
-                                            padding: '1rem 1rem 1rem 3rem',
-                                            backgroundColor: 'rgba(0, 0, 0, 0.4)',
-                                            border: focusedInput === 'fullName' ? `1px solid ${theme.primary}` : '1px solid rgba(255, 255, 255, 0.1)',
+                                            padding: '0.875rem 1rem 0.875rem 2.75rem',
+                                            backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                                            border: `1px solid ${focusedInput === 'name' ? theme.primary : 'rgba(255,255,255,0.08)'}`,
                                             borderRadius: '12px',
                                             color: 'white',
-                                            fontSize: '1rem',
                                             outline: 'none',
-                                            transition: 'all 0.2s ease'
+                                            transition: 'all 0.2s'
                                         }}
-                                        value={fullName}
-                                        onChange={(e) => setFullName(e.target.value)}
                                     />
                                 </div>
                             )}
 
-                            {/* Region Selection (Sign Up Only) */}
-                            {isSignUp && (
-                                <div style={{ position: 'relative', animation: 'fade-in-up 0.4s' }} ref={regionDropdownRef}>
-                                    <Globe
-                                        size={20}
-                                        color={(focusedInput === 'region' || showRegionDropdown) ? theme.primary : '#6b7280'}
-                                        style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', transition: 'color 0.2s', zIndex: 10 }}
-                                    />
+                            <div style={{ position: 'relative' }}>
+                                <Mail size={18} color={focusedInput === 'email' ? theme.primary : '#6b7280'} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', transition: 'color 0.2s' }} />
+                                <input
+                                    type="email"
+                                    placeholder="Email Address"
+                                    required
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    onFocus={() => setFocusedInput('email')}
+                                    onBlur={() => setFocusedInput(null)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.875rem 1rem 0.875rem 2.75rem',
+                                        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                                        border: `1px solid ${focusedInput === 'email' ? theme.primary : 'rgba(255,255,255,0.08)'}`,
+                                        borderRadius: '12px',
+                                        color: 'white',
+                                        outline: 'none',
+                                        transition: 'all 0.2s'
+                                    }}
+                                />
+                            </div>
 
-                                    <div
+                            <div style={{ position: 'relative' }}>
+                                <Lock size={18} color={focusedInput === 'pass' ? theme.primary : '#6b7280'} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', transition: 'color 0.2s' }} />
+                                <input
+                                    type="password"
+                                    placeholder="Password"
+                                    required
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    onFocus={() => setFocusedInput('pass')}
+                                    onBlur={() => setFocusedInput(null)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.875rem 1rem 0.875rem 2.75rem',
+                                        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                                        border: `1px solid ${focusedInput === 'pass' ? theme.primary : 'rgba(255,255,255,0.08)'}`,
+                                        borderRadius: '12px',
+                                        color: 'white',
+                                        outline: 'none',
+                                        transition: 'all 0.2s'
+                                    }}
+                                />
+                            </div>
+
+                            {isSignUp && (
+                                <div style={{ position: 'relative' }} ref={regionDropdownRef}>
+                                    <Globe size={18} color={showRegionDropdown ? theme.primary : '#6b7280'} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)' }} />
+                                    <button
+                                        type="button"
                                         onClick={() => setShowRegionDropdown(!showRegionDropdown)}
                                         style={{
                                             width: '100%',
-                                            padding: '1rem 1rem 1rem 3rem',
-                                            backgroundColor: 'rgba(0, 0, 0, 0.4)',
-                                            border: (focusedInput === 'region' || showRegionDropdown) ? `1px solid ${theme.primary}` : '1px solid rgba(255, 255, 255, 0.1)',
+                                            padding: '0.875rem 1rem 0.875rem 2.75rem',
+                                            backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                                            border: `1px solid ${showRegionDropdown ? theme.primary : 'rgba(255,255,255,0.08)'}`,
                                             borderRadius: '12px',
                                             color: 'white',
-                                            fontSize: '1rem',
+                                            textAlign: 'left',
                                             cursor: 'pointer',
-                                            transition: 'all 0.2s ease',
                                             display: 'flex',
                                             alignItems: 'center',
-                                            justifyContent: 'space-between',
-                                            userSelect: 'none'
+                                            justifyContent: 'space-between'
                                         }}
                                     >
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                            <img
-                                                src={`https://flagcdn.com/28x21/${selectedRegion.toLowerCase()}.png`}
-                                                alt={selectedRegion}
-                                                style={{ width: 24, height: 18, objectFit: 'cover', borderRadius: 2 }}
-                                            />
-                                            <span>{REGIONS.find(r => r.code === selectedRegion)?.name}</span>
-                                        </div>
-                                        <ArrowRight size={16} style={{ transform: showRegionDropdown ? 'rotate(-90deg)' : 'rotate(90deg)', transition: 'transform 0.3s', color: '#6b7280' }} />
-                                    </div>
+                                        <span>{REGIONS.find(r => r.code === selectedRegion)?.flag} {REGIONS.find(r => r.code === selectedRegion)?.name}</span>
+                                        <ArrowRight size={16} style={{ transform: showRegionDropdown ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }} />
+                                    </button>
 
-                                    {/* Custom Dropdown Content */}
                                     {showRegionDropdown && (
-                                        <div className="dropdown-scroll-box" style={{
+                                        <div style={{
                                             position: 'absolute',
-                                            bottom: 'calc(100% + 10px)', // Show above input to avoid being cut off
+                                            bottom: '100%',
                                             left: 0,
                                             width: '100%',
-                                            maxHeight: '200px',
-                                            backgroundColor: '#121212',
-                                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                                            backgroundColor: '#1a1a1a',
+                                            border: '1px solid rgba(255,255,255,0.1)',
                                             borderRadius: '12px',
-                                            zIndex: 100,
+                                            marginBottom: '0.5rem',
+                                            maxHeight: '200px',
                                             overflowY: 'auto',
-                                            boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
-                                            padding: '0.5rem'
+                                            zIndex: 20,
+                                            boxShadow: '0 10px 25px rgba(0,0,0,0.5)'
                                         }}>
                                             {REGIONS.map(r => (
-                                                <div
+                                                <button
                                                     key={r.code}
+                                                    type="button"
                                                     onClick={() => {
                                                         setSelectedRegion(r.code);
                                                         setShowRegionDropdown(false);
                                                     }}
                                                     style={{
+                                                        width: '100%',
                                                         padding: '0.75rem 1rem',
+                                                        textAlign: 'left',
+                                                        backgroundColor: selectedRegion === r.code ? 'rgba(20, 184, 166, 0.1)' : 'transparent',
+                                                        border: 'none',
+                                                        color: selectedRegion === r.code ? theme.primary : 'white',
+                                                        cursor: 'pointer',
                                                         display: 'flex',
                                                         alignItems: 'center',
-                                                        gap: '1rem',
-                                                        cursor: 'pointer',
-                                                        borderRadius: '8px',
-                                                        transition: 'background 0.2s',
-                                                        backgroundColor: selectedRegion === r.code ? 'rgba(20, 184, 166, 0.1)' : 'transparent',
-                                                        color: selectedRegion === r.code ? theme.primary : '#d1d5db'
+                                                        gap: '0.75rem',
+                                                        borderBottom: '1px solid rgba(255,255,255,0.05)'
                                                     }}
-                                                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)'}
-                                                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = selectedRegion === r.code ? 'rgba(20, 184, 166, 0.1)' : 'transparent'}
                                                 >
-                                                    <img
-                                                        src={`https://flagcdn.com/28x21/${r.code.toLowerCase()}.png`}
-                                                        alt={r.code}
-                                                        style={{ width: 18, height: 14, objectFit: 'cover', borderRadius: 1 }}
-                                                    />
-                                                    <span style={{ fontSize: '0.9rem', fontWeight: selectedRegion === r.code ? 600 : 400 }}>{r.name}</span>
-                                                </div>
+                                                    <span style={{ fontSize: '1.2rem' }}>{r.flag}</span>
+                                                    <span>{r.name}</span>
+                                                </button>
                                             ))}
                                         </div>
                                     )}
-
-                                    <div style={{
-                                        marginTop: '0.4rem',
-                                        fontSize: '0.75rem',
-                                        color: '#fbbf24',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.25rem'
-                                    }}>
-                                        <span style={{ fontWeight: 'bold' }}>⚠️ Permanent:</span> Region cannot be changed after signup.
-                                    </div>
                                 </div>
                             )}
 
-                            {/* Email Input */}
-                            <div style={{ position: 'relative' }}>
-                                <Mail
-                                    size={20}
-                                    color={focusedInput === 'email' ? theme.primary : '#6b7280'}
-                                    style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', transition: 'color 0.2s' }}
-                                />
-                                <input
-                                    type="email"
-                                    required
-                                    placeholder="Email address"
-                                    onFocus={() => setFocusedInput('email')}
-                                    onBlur={() => setFocusedInput(null)}
-                                    style={{
-                                        width: '100%',
-                                        padding: '1rem 1rem 1rem 3rem',
-                                        backgroundColor: 'rgba(0, 0, 0, 0.4)',
-                                        border: focusedInput === 'email' ? `1px solid ${theme.primary}` : '1px solid rgba(255, 255, 255, 0.1)',
-                                        borderRadius: '12px',
-                                        color: 'white',
-                                        fontSize: '1rem',
-                                        outline: 'none',
-                                        transition: 'all 0.2s ease'
-                                    }}
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                />
-                            </div>
-
-                            {/* Password Input */}
-                            <div style={{ position: 'relative' }}>
-                                <Lock
-                                    size={20}
-                                    color={focusedInput === 'password' ? theme.primary : '#6b7280'}
-                                    style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', transition: 'color 0.2s' }}
-                                />
-                                <input
-                                    type="password"
-                                    required
-                                    minLength={6}
-                                    placeholder="Password"
-                                    onFocus={() => setFocusedInput('password')}
-                                    onBlur={() => setFocusedInput(null)}
-                                    style={{
-                                        width: '100%',
-                                        padding: '1rem 1rem 1rem 3rem',
-                                        backgroundColor: 'rgba(0, 0, 0, 0.4)',
-                                        border: focusedInput === 'password' ? `1px solid ${theme.primary}` : '1px solid rgba(255, 255, 255, 0.1)',
-                                        borderRadius: '12px',
-                                        color: 'white',
-                                        fontSize: '1rem',
-                                        outline: 'none',
-                                        transition: 'all 0.2s ease'
-                                    }}
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                />
-                            </div>
-
-                            {/* Submit Button */}
                             <button
                                 type="submit"
                                 disabled={loading}
                                 style={{
                                     marginTop: '1rem',
-                                    width: '100%',
                                     padding: '1rem',
                                     backgroundColor: theme.primary,
                                     color: 'white',
-                                    fontWeight: 600,
-                                    fontSize: '1rem',
                                     border: 'none',
                                     borderRadius: '12px',
+                                    fontWeight: 700,
                                     cursor: loading ? 'not-allowed' : 'pointer',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    gap: '0.5rem',
-                                    transition: 'transform 0.2s, background-color 0.2s',
-                                    boxShadow: '0 4px 12px rgba(20, 184, 166, 0.3)'
+                                    gap: '0.75rem',
+                                    transition: 'all 0.2s',
+                                    opacity: loading ? 0.7 : 1,
+                                    boxShadow: `0 4px 14px 0 rgba(20, 184, 166, 0.39)`
                                 }}
                                 onMouseOver={(e) => !loading && (e.currentTarget.style.transform = 'translateY(-2px)')}
                                 onMouseOut={(e) => !loading && (e.currentTarget.style.transform = 'translateY(0)')}
@@ -477,24 +477,27 @@ export default function Login() {
                 </div>
             </div>
 
-            {/* Mobile Responsive Helper */}
             <style>{`
-                @media (max-width: 768px) {
+                @media (max-width: 900px) {
                     div[style*="flex-direction: row"] {
                         flex-direction: column !important;
                         justify-content: center !important;
                         gap: 2rem !important;
+                        padding-top: 4rem !important;
                     }
-                    div[style*="text-align: left"] {
+                    div[style*="text-shadow"] {
                         text-align: center !important;
+                        margin-bottom: 2rem;
                     }
-                    h1 { font-size: 1.5rem !important; }
+                    div[style*="max-width: 500px"] {
+                        margin: 0 auto;
+                    }
                     h2 { font-size: 2.5rem !important; }
-                    p { display: none !important; } /* Hide tagline on mobile */
                 }
-                @keyframes fade-in-up {
-                    from { opacity: 0; transform: translateY(10px); }
-                    to { opacity: 1; transform: translateY(0); }
+                @keyframes pulse {
+                    0% { transform: scale(1); opacity: 0.8; }
+                    50% { transform: scale(1.1); opacity: 1; }
+                    100% { transform: scale(1); opacity: 0.8; }
                 }
             `}</style>
         </div>

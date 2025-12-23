@@ -5,12 +5,17 @@ import { useAuth } from '../context/AuthContext';
 import { SearchModal } from './SearchModal';
 import { WatchlistModal } from './modals/WatchlistModal';
 import { ChangePasswordModal } from './modals/ChangePasswordModal';
-// No regional logic needed in header
+import { WelcomeSplash } from './WelcomeSplash';
 import type { TMDBMedia } from '../lib/tmdb';
+
+// This flag resets to false on every page refresh (full JS reload),
+// but stays true during in-app navigation.
+let initialSplashShown = false;
 
 export default function Layout() {
     const { signOut, deleteAccount, user } = useAuth();
     const navigate = useNavigate();
+
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [recentlyAddedMedia, setRecentlyAddedMedia] = useState<TMDBMedia | null>(null);
@@ -19,6 +24,34 @@ export default function Layout() {
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
     const [showPasswordModal, setShowPasswordModal] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
+
+    // Welcome Splash Logic (Handles first-time, returning, and simple session entry)
+    const [welcomeData, setWelcomeData] = useState<{ show: boolean, type: 'welcome' | 'returning' | 'entry' }>(() => {
+        const showSignupWelcome = sessionStorage.getItem('show_welcome') === 'true';
+        if (showSignupWelcome) {
+            const type = (sessionStorage.getItem('splash_type') as 'welcome' | 'returning') || 'welcome';
+            return { show: true, type };
+        }
+
+        // If no explicit signup/signin welcome, show the 1s entry splash on every refresh/boot
+        if (!initialSplashShown) {
+            return { show: true, type: 'entry' };
+        }
+
+        return { show: false, type: 'welcome' };
+    });
+
+    const handleWelcomeComplete = () => {
+        setWelcomeData({ show: false, type: 'welcome' });
+        sessionStorage.removeItem('show_welcome');
+        sessionStorage.removeItem('splash_type');
+        initialSplashShown = true; // Prevents splash on in-app navigation, but resets on refresh
+    };
+
+    // Sync default title
+    useEffect(() => {
+        document.title = 'CineTrack | Your Personal Watchlist';
+    }, []);
 
     // Close menu when clicking outside
     useEffect(() => {
@@ -61,14 +94,20 @@ export default function Layout() {
 
     return (
         <div className="app-container">
+            {welcomeData.show && (
+                <WelcomeSplash
+                    type={welcomeData.type}
+                    onComplete={handleWelcomeComplete}
+                />
+            )}
             {/* Top Navbar */}
             <header className="navbar">
 
                 {/* Left: Logo & Nav */}
                 <div className="flex-center">
                     <NavLink to="/" className="nav-brand" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none' }}>
-                        <Clapperboard size={24} strokeWidth={2.5} color="white" />
-                        <span style={{ color: 'white', fontWeight: 'bold', fontSize: '1.2rem' }}>Watchlist</span>
+                        <Clapperboard size={24} strokeWidth={2.5} color="var(--primary)" />
+                        <span style={{ color: 'white', fontWeight: 'bold', fontSize: '1.2rem' }}>CineTrack</span>
                     </NavLink>
 
                     <nav className="nav-links" style={{ display: 'none', marginLeft: '1rem' }}>

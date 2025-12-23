@@ -20,10 +20,59 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ padding: 20, color: 'red', background: '#fff', border: '2px solid red', margin: 20 }}>
-          <h1>Something went wrong.</h1>
-          <h2 style={{ color: 'black' }}>Error: {this.state.error?.toString()}</h2>
-          <pre style={{ background: '#eee', padding: 10, overflow: 'auto' }}>{this.state.error?.stack}</pre>
+        <div style={{
+          height: '100vh',
+          width: '100vw',
+          backgroundColor: '#121212',
+          color: 'white',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '2rem',
+          textAlign: 'center',
+          fontFamily: "'Outfit', sans-serif"
+        }}>
+          <h1 style={{ fontSize: '3rem', marginBottom: '1rem', color: '#14b8a6' }}>Oops!</h1>
+          <p style={{ fontSize: '1.2rem', color: '#9ca3af', maxWidth: '600px', marginBottom: '2rem' }}>
+            CineTrack encountered an unexpected error. Don't worry, your data is safe. Try refreshing the page.
+          </p>
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.05)',
+            padding: '1.5rem',
+            borderRadius: '16px',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            textAlign: 'left',
+            width: '100%',
+            maxWidth: '800px',
+            overflow: 'auto',
+            maxHeight: '40vh'
+          }}>
+            <code style={{ fontSize: '0.9rem', color: '#f87171' }}>
+              {this.state.error?.toString()}
+            </code>
+            <pre style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '1rem', whiteSpace: 'pre-wrap' }}>
+              {this.state.error?.stack}
+            </pre>
+          </div>
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              marginTop: '2rem',
+              padding: '0.75rem 2rem',
+              backgroundColor: '#14b8a6',
+              border: 'none',
+              borderRadius: '12px',
+              color: 'white',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'transform 0.2s'
+            }}
+            onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+            onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+          >
+            Refresh Page
+          </button>
         </div>
       );
     }

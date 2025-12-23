@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useWatchlist } from '../context/WatchlistContext';
 import { WatchlistCard } from '../components/cards/WatchlistCard';
 import { Search, Archive, Trash2, Undo2 } from 'lucide-react';
@@ -9,6 +9,11 @@ export const DroppedPage = () => {
     const [searchTerm, setSearchTerm] = useState('');
     // Default to 'movie', following the 3-way toggle request (Movies, Shows, Games)
     const [selectedType, setSelectedType] = useState<'movie' | 'show' | 'game'>('movie');
+
+    // Sync tab title
+    useEffect(() => {
+        document.title = 'CineTrack | Dropped';
+    }, []);
 
     // Filter Dropped Items
     const droppedItems = useMemo(() => {

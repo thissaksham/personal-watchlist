@@ -31,6 +31,11 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
     const [searchTerm, setSearchTerm] = useState('');
     const sortRef = useRef<HTMLDivElement>(null);
 
+    // Sync browser tab title
+    useEffect(() => {
+        document.title = `CineTrack | ${title}`;
+    }, [title]);
+
     // Close sort menu when clicking outside
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {

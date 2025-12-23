@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { updateTmdbRegion } from '../lib/tmdb';
 
 interface AuthContextType {
     user: User | null;
@@ -44,9 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 if (currentUser?.user_metadata?.region) {
                     const savedRegion = localStorage.getItem('tmdb_region');
                     if (savedRegion !== currentUser.user_metadata.region) {
-                        localStorage.setItem('tmdb_region', currentUser.user_metadata.region);
-                        // Only reload if we actually changed it to avoid loops
-                        window.location.reload();
+                        updateTmdbRegion(currentUser.user_metadata.region);
                     }
                 }
             } catch (err: any) {
@@ -69,8 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (currentUser?.user_metadata?.region) {
                 const savedRegion = localStorage.getItem('tmdb_region');
                 if (savedRegion !== currentUser.user_metadata.region) {
-                    localStorage.setItem('tmdb_region', currentUser.user_metadata.region);
-                    window.location.reload();
+                    updateTmdbRegion(currentUser.user_metadata.region);
                 }
             }
 

@@ -5,6 +5,7 @@ import { WatchlistProvider } from './context/WatchlistContext';
 import { GlobalSearchProvider } from './context/GlobalSearchContext';
 import Layout from './components/Layout';
 import Login from './pages/Login';
+import { Clapperboard } from 'lucide-react';
 import { Trending } from './pages/Trending';
 import { Movies } from './pages/Movies';
 import { Shows } from './pages/Shows';
@@ -18,7 +19,39 @@ import { DroppedPage } from './pages/DroppedPage';
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
 
-  if (loading) return <div className="min-h-screen bg-[var(--background)] flex items-center justify-center">Loading...</div>;
+  if (loading) return (
+    <div style={{
+      height: '100vh',
+      width: '100%',
+      backgroundColor: '#000',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '1.5rem',
+      fontFamily: "'Outfit', sans-serif"
+    }}>
+      <div style={{
+        padding: '1.5rem',
+        background: 'rgba(20, 184, 166, 0.1)',
+        borderRadius: '24px',
+        border: '1px solid rgba(20, 184, 166, 0.2)',
+        animation: 'pulse 2s infinite ease-in-out'
+      }}>
+        <Clapperboard size={48} color="#14b8a6" />
+      </div>
+      <h1 style={{ color: 'white', fontSize: '1.5rem', fontWeight: 800, letterSpacing: '0.1em' }}>
+        CINETRACK
+      </h1>
+      <style>{`
+        @keyframes pulse {
+          0% { transform: scale(1); opacity: 0.8; }
+          50% { transform: scale(1.1); opacity: 1; }
+          100% { transform: scale(1); opacity: 0.8; }
+        }
+      `}</style>
+    </div>
+  );
 
   if (!user) {
     return <Navigate to="/auth" replace />;
