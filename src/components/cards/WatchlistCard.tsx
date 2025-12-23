@@ -12,6 +12,8 @@ interface WatchlistCardProps {
     onClick: (media: TMDBMedia) => void;
     removeIcon?: React.ReactNode;
     removeLabel?: string;
+    actionIcon?: React.ReactNode;
+    actionLabel?: string;
 }
 
 export const WatchlistCard = ({
@@ -23,7 +25,9 @@ export const WatchlistCard = ({
     onRestoreToUpcoming,
     onClick,
     removeIcon,
-    removeLabel
+    removeLabel,
+    actionIcon,
+    actionLabel
 }: WatchlistCardProps) => {
     const { watchlist } = useWatchlist();
 
@@ -187,9 +191,9 @@ export const WatchlistCard = ({
                     <button
                         className="add-btn bg-white/10 hover:bg-teal-500/80 text-white"
                         onClick={(e) => { e.stopPropagation(); onMarkWatched(media); }}
-                        title="Mark as Watched"
+                        title={actionLabel || "Mark as Watched"}
                     >
-                        <Check size={16} />
+                        {actionIcon || <Check size={16} />}
                     </button>
                     <button
                         className="add-btn text-white hover:scale-110"

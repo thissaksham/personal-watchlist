@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { X, Calendar, Clock, Star, PlayCircle, Play, Layers, Hash, Hourglass } from 'lucide-react';
 import { tmdb, type TMDBMedia, TMDB_REGION } from '../../lib/tmdb';
 import { useWatchlist } from '../../context/WatchlistContext';
-import { getMoctaleUrl, getTMDBUrl, TMDB_ICON_BASE64, MOCTALE_ICON_BASE64 } from '../../lib/urls';
+import { getMoctaleUrl, getTMDBUrl, TMDB_ICON_BASE64, MOCTALE_ICON_BASE64, JUSTWATCH_ICON_BASE64 } from '../../lib/urls';
 import { calculateShowStats, getWatchProviders, getWatchLink } from '../../utils/mediaUtils';
 
 interface UpcomingModalProps {
@@ -119,6 +119,15 @@ export const UpcomingModal = ({ media, type, onClose }: UpcomingModalProps) => {
                             title="View on Moctale"
                         >
                             <img src={MOCTALE_ICON_BASE64} alt="Moctale" />
+                        </a>
+                        <a
+                            href={`https://www.justwatch.com/in/search?content_type=${type === 'movie' ? 'movie' : 'show'}&q=${encodeURIComponent(title || '')}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="floating-link-btn justwatch-btn"
+                            title="View on JustWatch"
+                        >
+                            <img src={JUSTWATCH_ICON_BASE64} alt="JustWatch" />
                         </a>
                     </div>
                 </div>

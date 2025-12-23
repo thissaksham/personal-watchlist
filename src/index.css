@@ -1124,6 +1124,11 @@ body {
     box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
 }
 
+.floating-link-btn.justwatch-btn:hover {
+    border-color: #fbc02d;
+    box-shadow: 0 0 15px rgba(253, 193, 37, 0.4);
+}
+
 @keyframes slideInRight {
     from {
         opacity: 0;

@@ -45,7 +45,7 @@ export const Upcoming = () => {
             // If item is already in Library, skip it.
             // Exclude: watched, unwatched, show_finished, show_ongoing, show_watched, show_watching
             // Exclude: watched, unwatched, show_finished, show_ongoing, show_watched
-            if (['watched', 'unwatched', 'dropped', 'movie_watched', 'movie_unwatched', 'movie_dropped', 'show_finished', 'show_ongoing', 'show_watched', 'show_dropped'].includes(item.status)) return null;
+            if (['movie_watched', 'movie_unwatched', 'movie_dropped', 'show_finished', 'show_ongoing', 'show_watched', 'show_dropped'].includes(item.status)) return null;
 
             // ... (rest of metadata extraction for display) ...
 
@@ -93,8 +93,8 @@ export const Upcoming = () => {
                     category = 'theatrical';
                     targetDate = tDate || rDate || today;
                     seasonInfo = targetDate > today ? 'Releasing in Theatres' : 'Released';
-                } else if (item.status === 'plan_to_watch') {
-                    // Legacy fallback: Keep existing logic for un-migrated items
+                } else {
+                    // Legacy fallback or unknown: use digital/theatrical dates
                     if (dDate && dDate > today) { category = 'ott'; targetDate = dDate; }
                     else { category = 'theatrical'; targetDate = tDate || rDate || today; seasonInfo = targetDate > today ? 'Releasing' : 'Released'; }
                 }

@@ -197,7 +197,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        let initialStatus: WatchlistItem['status'] = 'unwatched';
+        let initialStatus: WatchlistItem['status'] = type === 'movie' ? 'movie_unwatched' : 'show_new';
         let movedToLibrary = true;
 
         if (tmdbType === 'movie') {
@@ -228,7 +228,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
                 if (!currentStatus) {
                     // Scenario 1: Add movie from search -> Library
                     movedToLibrary = true;
-                    initialStatus = 'unwatched';
+                    initialStatus = 'movie_unwatched';
                 } else {
                     // Scenario 2/3: Background Refresh -> move to or keep in movie_on_ott
                     movedToLibrary = false;
@@ -241,11 +241,11 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
             } else if (isAvailableGlobally) {
                 // Step 3: Available Globally + 6 months old
                 movedToLibrary = true;
-                initialStatus = 'unwatched';
+                initialStatus = 'movie_unwatched';
             } else if (releaseDateObj && releaseDateObj < new Date(new Date().setFullYear(new Date().getFullYear() - 1))) {
                 // Step 4: Older than 1 year fallback
                 movedToLibrary = true;
-                initialStatus = 'unwatched';
+                initialStatus = 'movie_unwatched';
             } else {
                 // Step 5: Default Coming Soon
                 movedToLibrary = false;
@@ -253,13 +253,13 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
             }
 
             // Scenario 3 Protection: Sticky On OTT
-            if (currentStatus === 'movie_on_ott' && initialStatus === 'unwatched') {
+            if (currentStatus === 'movie_on_ott' && initialStatus === 'movie_unwatched') {
                 initialStatus = 'movie_on_ott';
                 movedToLibrary = false;
             }
             // Watched status remains watched
-            if (currentStatus === 'watched') {
-                initialStatus = 'watched';
+            if (currentStatus === 'movie_watched') {
+                initialStatus = 'movie_watched';
                 movedToLibrary = true;
             }
         } else {
@@ -325,7 +325,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
             title: media.title || media.name || 'Unknown',
             poster_path: media.poster_path,
             vote_average: media.vote_average,
-            status: 'plan_to_watch'
+            status: type === 'movie' ? 'movie_unwatched' : 'show_new'
         };
 
         const { initialStatus, finalMetadata } = await getEnrichedMetadata(media.id, type, media);
@@ -369,10 +369,12 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
     };
 
     const moveToLibrary = async (tmdbId: number, type: 'movie' | 'show') => {
+        const targetStatus = type === 'movie' ? 'movie_unwatched' : 'show_new';
+
         setWatchlist((prev) => prev.map(item => {
             if (item.tmdb_id === tmdbId && item.type === type) {
                 const newMeta = { ...(item.metadata || {}), moved_to_library: true } as TMDBMedia;
-                return { ...item, status: 'unwatched', metadata: newMeta };
+                return { ...item, status: targetStatus, metadata: newMeta };
             }
             return item;
         }));
@@ -383,7 +385,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
         if (currentItem) {
             const newMeta = { ...(currentItem.metadata || {}), moved_to_library: true };
             const pruned = pruneMetadata(newMeta);
-            await supabase.from('watchlist').update({ status: 'unwatched', metadata: pruned }).eq('user_id', user.id).eq('tmdb_id', tmdbId).eq('type', type);
+            await supabase.from('watchlist').update({ status: targetStatus, metadata: pruned }).eq('user_id', user.id).eq('tmdb_id', tmdbId).eq('type', type);
         }
     };
 
@@ -526,7 +528,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
 
     // Moved from above to allow usage of updateWatchlistItemMetadata
     const markAsWatched = async (tmdbId: number, type: 'movie' | 'show') => {
-        let newStatus: WatchlistItem['status'] = 'watched';
+        let newStatus: WatchlistItem['status'] = 'movie_watched';
 
         if (type === 'show') {
             const item = watchlist.find(i => i.tmdb_id === tmdbId && i.type === 'show');
@@ -604,13 +606,13 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
             return;
         }
 
-        setWatchlist((prev) => prev.map(item => (item.tmdb_id === tmdbId && item.type === type) ? { ...item, status: 'unwatched' } : item));
+        setWatchlist((prev) => prev.map(item => (item.tmdb_id === tmdbId && item.type === type) ? { ...item, status: 'movie_unwatched' } : item));
         if (!user) {
             const local = JSON.parse(localStorage.getItem('watchlist') || '[]');
-            localStorage.setItem('watchlist', JSON.stringify(local.map((i: any) => (i.tmdb_id === tmdbId && i.type === type) ? { ...i, status: 'unwatched' } : i)));
+            localStorage.setItem('watchlist', JSON.stringify(local.map((i: any) => (i.tmdb_id === tmdbId && i.type === type) ? { ...i, status: 'movie_unwatched' } : i)));
             return;
         }
-        await supabase.from('watchlist').update({ status: 'unwatched' }).eq('user_id', user.id).eq('tmdb_id', tmdbId).eq('type', type);
+        await supabase.from('watchlist').update({ status: 'movie_unwatched' }).eq('user_id', user.id).eq('tmdb_id', tmdbId).eq('type', type);
     };
 
     const markAsDropped = async (tmdbId: number, type: 'movie' | 'show') => {

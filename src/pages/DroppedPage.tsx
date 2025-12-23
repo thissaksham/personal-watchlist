@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useWatchlist } from '../context/WatchlistContext';
 import { WatchlistCard } from '../components/cards/WatchlistCard';
-import { Search, Archive, Trash2 } from 'lucide-react';
+import { Search, Archive, Trash2, Undo2 } from 'lucide-react';
 import { SlidingToggle } from '../components/common/SlidingToggle';
 
 export const DroppedPage = () => {
@@ -14,7 +14,7 @@ export const DroppedPage = () => {
     const droppedItems = useMemo(() => {
         return watchlist.filter(item => {
             // Check status
-            const isDropped = item.status === 'dropped' || item.status === 'show_dropped' || item.status === 'movie_dropped';
+            const isDropped = item.status === 'show_dropped' || item.status === 'movie_dropped';
             if (!isDropped) return false;
 
             // Check Type (Strict 3-way toggle)
@@ -102,7 +102,7 @@ export const DroppedPage = () => {
                     </p>
                 </div>
             ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-6">
+                <div className="media-grid">
                     {droppedItems.map((item) => (
                         <div key={item.id} className="relative group/card">
                             <WatchlistCard
@@ -118,6 +118,8 @@ export const DroppedPage = () => {
                                 removeIcon={<Trash2 size={16} />}
                                 removeLabel="Delete Permanently"
                                 onMarkWatched={() => handleRestore(item)} // Restore
+                                actionIcon={<Undo2 size={16} />}
+                                actionLabel="Restore to Library"
                                 onClick={() => { }} // No-op for now unless we want details 
                             />
                             {/* Overlay Label for Clarity */}

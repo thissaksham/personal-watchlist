@@ -21,7 +21,7 @@ export const Watchlist = () => {
             try {
                 console.log("Watchlist Page: Loading data...");
                 console.log("Raw Watchlist:", watchlist);
-                const unwatched = watchlist.filter(item => item.status === 'unwatched');
+                const unwatched = watchlist.filter(item => ['movie_unwatched', 'show_ongoing', 'show_watching'].includes(item.status));
                 console.log("Unwatched Items:", unwatched);
 
                 const items = unwatched
