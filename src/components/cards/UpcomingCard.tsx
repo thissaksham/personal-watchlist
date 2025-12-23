@@ -1,5 +1,5 @@
 import { X, Check, Calendar, ArrowUp, Pencil } from 'lucide-react';
-import { type TMDBMedia } from '../../lib/tmdb';
+import { type TMDBMedia, TMDB_REGION } from '../../lib/tmdb';
 import { useWatchlist } from '../../context/WatchlistContext';
 
 interface UpcomingCardProps {
@@ -123,6 +123,8 @@ export const UpcomingCard = ({
         // If stats exist (TV), calc remaining
         if (stats) {
             const totalMinutes = stats.remainingEpisodes * avgRuntime;
+            if (totalMinutes <= 0) return null; // Hide if 0
+
             if (totalMinutes >= 24 * 60) {
                 const days = Math.floor(totalMinutes / (24 * 60));
                 const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
@@ -145,16 +147,146 @@ export const UpcomingCard = ({
 
 
                 {/* Stats Pills for Upcoming (New) */}
-                {(stats && stats.remainingSeasons > 0) && (
-                    <div className="absolute top-2 left-2 flex flex-col gap-1 items-start">
-                        <div className="media-pill pill-seasons">
-                            <span>{stats.remainingSeasons > 1 ? `${stats.remainingSeasons}S ` : ''}{stats.remainingEpisodes}E</span>
-                        </div>
-                        {duration && (
-                            <div className="media-pill pill-duration"><span>{duration}</span></div>
-                        )}
-                    </div>
-                )}
+                {(() => {
+                    const isTV = media.media_type === 'tv' || media.number_of_seasons || (media as any).tmdbMediaType === 'tv' || (media as any).tmdbMediaType === 'show';
+                    const status = (media as any).status;
+                    const isMovieOTT = status === 'movie_on_ott' || (media as any).tabCategory === 'ott';
+                    const isMovieComingSoon = status === 'movie_coming_soon' || (media as any).tabCategory === 'coming_soon';
+
+                    let providerName = '';
+                    let formattedDate = '';
+                    let label = '';
+                    let labelColor = '';
+                    let contextLabel = '';
+
+                    const formatDisplayDate = (d: string | undefined | null) => {
+                        if (!d) return '';
+                        if (d.length === 4) return d;
+                        const date = new Date(d);
+                        const year = date.getFullYear();
+                        const currentYear = new Date().getFullYear();
+                        if (year > currentYear) {
+                            return `${date.getDate()} ${date.toLocaleString(undefined, { month: 'short' })} '${year.toString().slice(-2)}`;
+                        }
+                        return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                    };
+
+                    // 1. Unified Logic for TV Shows
+                    if (isTV) {
+                        const nextEp = media.next_episode_to_air;
+                        let nextEpDate = nextEp?.air_date;
+                        let seasonNumber = nextEp?.season_number;
+                        let episodeNumber = nextEp?.episode_number;
+
+                        if (!nextEpDate && media.seasons && Array.isArray(media.seasons)) {
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            const futureSeason = media.seasons.find((s: any) => s.air_date && new Date(s.air_date) >= today);
+                            if (futureSeason) {
+                                nextEpDate = futureSeason.air_date;
+                                seasonNumber = futureSeason.season_number;
+                                episodeNumber = 1;
+                            }
+                        }
+
+                        const dateStr = nextEpDate || media.first_air_date || media.release_date;
+                        formattedDate = formatDisplayDate(dateStr);
+
+                        if (isMovieOTT) {
+                            const providers = media['watch/providers']?.results?.[TMDB_REGION];
+                            providerName = providers?.flatrate?.[0]?.provider_name ||
+                                providers?.ads?.[0]?.provider_name ||
+                                providers?.free?.[0]?.provider_name || 'OTT';
+                        }
+
+                        // Granular Context Label Logic
+                        const isEnded = media.status === 'Ended' || media.status === 'Canceled';
+                        const lastSeasonNumber = media.number_of_seasons || 0;
+                        const currentSeason = media.seasons?.find((s: any) => s.season_number === seasonNumber);
+                        const isLastEpisodeOfSeason = currentSeason && episodeNumber && episodeNumber === currentSeason.episode_count;
+                        const isLastSeason = seasonNumber && seasonNumber === lastSeasonNumber;
+
+                        if (seasonNumber === 1 && episodeNumber === 1) {
+                            contextLabel = 'New Show';
+                        } else if (isLastSeason && isEnded) {
+                            if (episodeNumber === 1) contextLabel = 'Final Season';
+                            else if (isLastEpisodeOfSeason) contextLabel = 'Final Episode';
+                            else contextLabel = 'Next Episode';
+                        } else if (episodeNumber === 1) {
+                            contextLabel = 'New Season';
+                        } else if (isLastEpisodeOfSeason) {
+                            contextLabel = 'Last Episode';
+                        } else {
+                            contextLabel = 'Next Episode';
+                        }
+                    }
+
+                    // 2. Custom Logic for Movie OTT
+                    else if (isMovieOTT) {
+                        const dateStr = (media as any).manual_date_override || media.release_date;
+                        formattedDate = formatDisplayDate(dateStr);
+
+                        const providers = media['watch/providers']?.results?.[TMDB_REGION];
+                        providerName = providers?.flatrate?.[0]?.provider_name ||
+                            providers?.ads?.[0]?.provider_name ||
+                            providers?.free?.[0]?.provider_name || 'OTT';
+                        contextLabel = 'New Movie';
+                    }
+
+                    // 3. Custom Logic for Movie Coming Soon
+                    else if (isMovieComingSoon) {
+                        const dateStr = (media as any).manual_date_override || media.release_date;
+                        formattedDate = formatDisplayDate(dateStr);
+
+                        const isInTheatres = dateStr && new Date(dateStr) <= new Date();
+                        label = isInTheatres ? 'In Theatres' : 'Coming Soon';
+                        labelColor = isInTheatres ? 'text-amber-400 border-amber-500/30' : 'text-blue-400 border-blue-500/30';
+                        contextLabel = 'New Movie';
+                    }
+
+                    if (!isTV && !isMovieOTT && !isMovieComingSoon) return null;
+
+                    return (
+                        <>
+                            <div className="pill-stack">
+                                {providerName && (
+                                    <div className="media-pill" style={{ backgroundColor: 'rgba(20, 20, 20, 0.8)', border: '1px solid rgba(255, 255, 255, 0.2)' }}>
+                                        <span className="text-gray-300">{providerName}</span>
+                                    </div>
+                                )}
+                                {formattedDate && (
+                                    <div className="media-pill font-bold px-2 py-0.5 text-[10px] uppercase tracking-wider" style={{ backgroundColor: 'rgba(20, 20, 20, 0.9)', color: 'white', border: '1px solid rgba(255, 255, 255, 0.3)' }}>
+                                        {formattedDate}
+                                    </div>
+                                )}
+                                {isTV && ((stats && stats.remainingSeasons > 0) || !stats) && (
+                                    <div className="media-pill pill-seasons">
+                                        <span>{stats && stats.remainingSeasons > 0 ? (stats.remainingSeasons > 1 ? `${stats.remainingSeasons}S ` : '') + `${stats.remainingEpisodes}E` :
+                                            (media.number_of_seasons ? `${media.number_of_seasons} Seasons` : 'New Series')}</span>
+                                    </div>
+                                )}
+                                {isTV && duration && (
+                                    <div className="media-pill pill-duration"><span>{duration}</span></div>
+                                )}
+                                {label && (
+                                    <div className={`media-pill ${labelColor}`} style={{ backgroundColor: 'rgba(20, 20, 20, 0.8)' }}>
+                                        <span>{label}</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Bottom Info Stack: Label + Title */}
+                            <div className="discovery-info-stack">
+                                {contextLabel && (
+                                    <div className="media-pill" style={{ backgroundColor: 'rgba(20, 20, 20, 0.8)', border: '1px solid rgba(255, 255, 255, 0.2)' }}>
+                                        <span className="text-gray-300">{contextLabel}</span>
+                                    </div>
+                                )}
+                                <h4 className="discovery-title line-clamp-2">{title}</h4>
+                            </div>
+                        </>
+                    );
+                })()}
 
 
                 {/* Actions Stack */}
@@ -208,11 +340,6 @@ export const UpcomingCard = ({
                         <Pencil size={14} strokeWidth={3} />
                     </button>
                 )}
-            </div>
-
-            <div className="card-info">
-                <h3 className="text-sm font-semibold truncate text-gray-100">{title}</h3>
-                {/* {!media.first_air_date && <p className="text-xs text-gray-400">{releaseDate}</p>} */}
             </div>
         </div>
     );

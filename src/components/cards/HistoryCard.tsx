@@ -29,16 +29,21 @@ export const HistoryCard = ({
             <div className="poster-wrapper">
                 <img src={imageUrl} alt={title} className="poster-img" style={{ filter: 'grayscale(100%)' }} loading="lazy" />
 
-                {/* Overlays */}
-                {media.vote_average > 0 && (
-                    <div className="media-pill pill-rating">
-                        <Star size={10} fill="#fbbf24" strokeWidth={0} />
-                        <span>{media.vote_average.toFixed(1)}</span>
-                    </div>
-                )}
-                {year && (
-                    <div className="media-pill pill-year"><span>{year}</span></div>
-                )}
+                {/* Top-Left Pills Container */}
+                <div className="pill-stack">
+                    {media.vote_average > 0 && (
+                        <div className="media-pill pill-rating">
+                            <Star size={10} fill="#fbbf24" strokeWidth={0} />
+                            <span>{media.vote_average.toFixed(1)}</span>
+                        </div>
+                    )}
+                    {year && (
+                        <div className="media-pill pill-year">
+                            <span>{year}</span>
+                        </div>
+                    )}
+                </div>
+
                 {/* Actions Stack */}
                 <div className="card-actions-stack">
                     {/* Restore to Upcoming Button */}
@@ -67,10 +72,11 @@ export const HistoryCard = ({
                         <X size={16} />
                     </button>
                 </div>
-            </div>
 
-            <div className="card-info">
-                <h3 className="text-sm font-semibold truncate text-gray-400">{title}</h3>
+                {/* Bottom Info Stack: Title */}
+                <div className="discovery-info-stack">
+                    <h4 className="discovery-title line-clamp-2" style={{ color: 'var(--text-secondary)' }}>{title}</h4>
+                </div>
             </div>
         </div>
     );

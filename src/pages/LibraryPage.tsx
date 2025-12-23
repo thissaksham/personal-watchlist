@@ -2,7 +2,8 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { calculateMediaRuntime, TMDB_REGION } from '../lib/tmdb';
 import { useWatchlist } from '../context/WatchlistContext';
 import { WatchlistCard } from '../components/cards/WatchlistCard';
-import { WatchlistModal } from '../components/modals/WatchlistModal';
+import { MovieModal } from '../components/modals/MovieModal';
+import { ShowModal } from '../components/modals/ShowModal';
 
 import { FAB } from '../components/FAB';
 import { FilterBar, FilterExpandable } from '../components/FilterBar';
@@ -57,6 +58,7 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
         const s = item.status;
         if (s === 'show_watched' || s === 'show_returning' || s === 'movie_watched') return 'Watched'; // Include movie_watched just in case
         if (s === 'show_watching') return 'Watching';
+        if (s === 'show_new') return 'Upcoming';
 
         // show_finished, show_ongoing, movie_unwatched
         // Note: 'Upcoming' page handles show_new/show_coming_soon.
@@ -435,11 +437,11 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
 
             {
                 selectedMedia && (
-                    <WatchlistModal
-                        media={selectedMedia}
-                        type={tmdbType}
-                        onClose={() => setSelectedMedia(null)}
-                    />
+                    tmdbType === 'tv' ? (
+                        <ShowModal media={selectedMedia} onClose={() => setSelectedMedia(null)} />
+                    ) : (
+                        <MovieModal media={selectedMedia} onClose={() => setSelectedMedia(null)} />
+                    )
                 )
             }
         </div >

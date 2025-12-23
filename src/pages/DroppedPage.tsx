@@ -3,10 +3,14 @@ import { useWatchlist } from '../context/WatchlistContext';
 import { WatchlistCard } from '../components/cards/WatchlistCard';
 import { Search, Archive, Trash2, Undo2 } from 'lucide-react';
 import { SlidingToggle } from '../components/common/SlidingToggle';
+import { MovieModal } from '../components/modals/MovieModal';
+import { ShowModal } from '../components/modals/ShowModal';
+import { type TMDBMedia } from '../lib/tmdb';
 
 export const DroppedPage = () => {
     const { watchlist, removeFromWatchlist, restoreFromDropped } = useWatchlist();
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedMedia, setSelectedMedia] = useState<TMDBMedia | null>(null);
     // Default to 'movie', following the 3-way toggle request (Movies, Shows, Games)
     const [selectedType, setSelectedType] = useState<'movie' | 'show' | 'game'>('movie');
 
@@ -125,7 +129,7 @@ export const DroppedPage = () => {
                                 onMarkWatched={() => handleRestore(item)} // Restore
                                 actionIcon={<Undo2 size={16} />}
                                 actionLabel="Restore to Library"
-                                onClick={() => { }} // No-op for now unless we want details 
+                                onClick={(m) => setSelectedMedia(m)}
                             />
                             {/* Overlay Label for Clarity */}
                             <div className="absolute top-2 left-2 z-10 px-2 py-1 bg-red-500/80 text-white text-[10px] uppercase font-bold rounded backdrop-blur-md border border-red-400/30">
@@ -134,6 +138,14 @@ export const DroppedPage = () => {
                         </div>
                     ))}
                 </div>
+            )}
+
+            {selectedMedia && (
+                selectedMedia.media_type === 'tv' ? (
+                    <ShowModal media={selectedMedia} onClose={() => setSelectedMedia(null)} />
+                ) : (
+                    <MovieModal media={selectedMedia} onClose={() => setSelectedMedia(null)} />
+                )
             )}
         </div>
     );

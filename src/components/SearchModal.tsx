@@ -4,7 +4,6 @@ import { tmdb, type TMDBMedia } from '../lib/tmdb';
 import { useWatchlist } from '../context/WatchlistContext';
 import { SlidingToggle } from './common/SlidingToggle';
 import { DiscoveryCard } from './cards/DiscoveryCard';
-import { WatchlistModal } from './modals/WatchlistModal';
 
 interface SearchModalProps {
     isOpen: boolean;
@@ -20,7 +19,6 @@ export const SearchModal = ({ isOpen, onClose, type: initialType, onSuccess, ini
     const [results, setResults] = useState<TMDBMedia[]>([]);
     const [trending, setTrending] = useState<TMDBMedia[]>([]);
     const [loading, setLoading] = useState(false);
-    const [selectedMedia, setSelectedMedia] = useState<TMDBMedia | null>(null);
 
     const { addToWatchlist, isInWatchlist } = useWatchlist();
 
@@ -32,7 +30,6 @@ export const SearchModal = ({ isOpen, onClose, type: initialType, onSuccess, ini
             setQuery(initialQuery);
             setSearchType(initialType);
             setResults([]);
-            setSelectedMedia(null);
         }
     }, [isOpen, initialType, initialQuery]);
 
@@ -177,7 +174,6 @@ export const SearchModal = ({ isOpen, onClose, type: initialType, onSuccess, ini
                                             media={media}
                                             isAdded={isInWatchlist(media.id, targetType)}
                                             onAdd={() => handleAdd(media)}
-                                            onClick={() => setSelectedMedia(media)}
                                         />
                                     );
                                 })}
@@ -187,13 +183,6 @@ export const SearchModal = ({ isOpen, onClose, type: initialType, onSuccess, ini
                 </div>
             </div>
 
-            {selectedMedia && (
-                <WatchlistModal
-                    media={selectedMedia}
-                    type={(selectedMedia.media_type || (searchType === 'tv' ? 'tv' : 'movie')) as 'movie' | 'tv'}
-                    onClose={() => setSelectedMedia(null)}
-                />
-            )}
         </div>
     );
 };

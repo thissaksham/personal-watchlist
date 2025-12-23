@@ -3,7 +3,8 @@ import { useWatchlist } from '../context/WatchlistContext';
 import { UpcomingCard } from '../components/cards/UpcomingCard';
 import { calculateMediaRuntime, TMDB_REGION, type TMDBMedia } from '../lib/tmdb';
 import { SlidingToggle } from '../components/common/SlidingToggle';
-import { UpcomingModal } from '../components/modals/UpcomingModal';
+import { MovieModal } from '../components/modals/MovieModal';
+import { ShowModal } from '../components/modals/ShowModal';
 import { ManualDateModal } from '../components/modals/ManualDateModal';
 
 // ... (helper functions omitted for brevity, they are unchanged)
@@ -78,19 +79,34 @@ export const Upcoming = () => {
                 const tDate = theatricalDateStr ? new Date(theatricalDateStr) : null;
                 const rDate = releaseDateStr ? new Date(releaseDateStr) : null;
 
-                if (item.status === 'movie_on_ott') {
-                    category = 'ott';
-                    targetDate = dDate || rDate || today;
-                    if (targetDate > today) {
-                        const ottName = meta.manual_ott_name || meta.digital_release_note;
-                        seasonInfo = ottName ? `Coming to ${ottName}` : 'Coming to OTT';
+                if (item.status === 'movie_on_ott' || item.status === 'movie_coming_soon') {
+                    category = item.status === 'movie_on_ott' ? 'ott' : 'theatrical';
+                    const primaryDate = item.status === 'movie_on_ott' ? (dDate || rDate) : (tDate || rDate);
+
+                    if (primaryDate) {
+                        targetDate = primaryDate;
+                        if (item.status === 'movie_on_ott') {
+                            if (targetDate > today) {
+                                const ottName = meta.manual_ott_name || meta.digital_release_note;
+                                seasonInfo = ottName ? `Coming to ${ottName}` : 'Coming to OTT';
+                            } else {
+                                seasonInfo = 'Streaming Now';
+                            }
+                        } else {
+                            seasonInfo = targetDate > today ? 'Releasing in Theatres' : 'Released';
+                        }
                     } else {
-                        seasonInfo = 'Streaming Now';
+                        // NO specific date found (primaryDate is null)
+                        const fallbackYearMatch = releaseDateStr?.match(/^\d{4}/);
+                        if (fallbackYearMatch) {
+                            // Extract year and set to end of that year for sorting
+                            targetDate = new Date(`${fallbackYearMatch[0]}-12-31`);
+                        } else {
+                            // No date/year at all -> Push to far future so it appears last
+                            targetDate = new Date('2099-12-31');
+                        }
+                        category = 'theatrical';
                     }
-                } else if (item.status === 'movie_coming_soon') {
-                    category = 'theatrical';
-                    targetDate = tDate || rDate || today;
-                    seasonInfo = targetDate > today ? 'Releasing in Theatres' : 'Released';
                 } else {
                     // Legacy fallback or unknown: use digital/theatrical dates
                     if (dDate && dDate > today) { category = 'ott'; targetDate = dDate; }
@@ -130,7 +146,12 @@ export const Upcoming = () => {
                 tabCategory: category
             };
         }).filter((item): item is NonNullable<typeof item> => item !== null)
-            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+            .sort((a, b) => {
+                const dateA = new Date(a.date).getTime();
+                const dateB = new Date(b.date).getTime();
+                if (dateA !== dateB) return dateA - dateB;
+                return a.title.localeCompare(b.title);
+            });
 
         // Strict Status-Based Filtering
         return items.filter(item => {
@@ -277,8 +298,6 @@ export const Upcoming = () => {
                                 showDateOverride={viewMode === 'Coming Soon'}
                                 onClick={() => setSelectedMedia(show)}
                             />
-                            <div className="absolute -bottom-6 left-0 w-full text-center opacity-0 transition-opacity duration-300 pointer-events-none">
-                            </div>
                         </div>
                     ))}
                 </div>
@@ -287,11 +306,11 @@ export const Upcoming = () => {
             {/* FAB Removed - Global Add replaces it. Random not strictly needed here or can be added back if requested. */}
 
             {selectedMedia && (
-                <UpcomingModal
-                    media={selectedMedia}
-                    type={selectedMedia.tmdbMediaType}
-                    onClose={() => setSelectedMedia(null)}
-                />
+                selectedMedia.tmdbMediaType === 'tv' ? (
+                    <ShowModal media={selectedMedia} onClose={() => setSelectedMedia(null)} />
+                ) : (
+                    <MovieModal media={selectedMedia} onClose={() => setSelectedMedia(null)} />
+                )
             )}
 
             {showDatePicker && (

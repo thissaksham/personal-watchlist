@@ -150,23 +150,30 @@ export const WatchlistCard = ({
             <div className="poster-wrapper">
                 <img src={imageUrl} alt={title} className="poster-img" loading="lazy" />
 
-                {media.vote_average > 0 && (
-                    <div className="media-pill pill-rating">
-                        <Star size={10} fill="#fbbf24" strokeWidth={0} />
-                        <span>{media.vote_average.toFixed(1)}</span>
-                    </div>
-                )}
-                {year && (
-                    <div className="media-pill pill-year"><span>{year}</span></div>
-                )}
-
-                {(type === 'tv' && stats && stats.remainingEpisodes > 0) && (
-                    <div className="media-pill pill-seasons"><span>{stats.remainingSeasons}S {stats.remainingEpisodes}E</span></div>
-                )}
-
-                {duration && (
-                    <div className="media-pill pill-duration"><span>{duration}</span></div>
-                )}
+                {/* Top-Left Pills Container */}
+                <div className="pill-stack">
+                    {media.vote_average > 0 && (
+                        <div className="media-pill pill-rating">
+                            <Star size={10} fill="#fbbf24" strokeWidth={0} />
+                            <span>{media.vote_average.toFixed(1)}</span>
+                        </div>
+                    )}
+                    {year && (
+                        <div className="media-pill pill-year">
+                            <span>{year}</span>
+                        </div>
+                    )}
+                    {duration && (
+                        <div className="media-pill pill-duration">
+                            <span>{duration}</span>
+                        </div>
+                    )}
+                    {(type === 'tv' && stats && stats.remainingEpisodes > 0) && (
+                        <div className="media-pill pill-seasons">
+                            <span>{stats.remainingSeasons}S {stats.remainingEpisodes}E</span>
+                        </div>
+                    )}
+                </div>
 
                 <div className="card-actions-stack">
                     {(type === 'tv' && (media as any).dismissed_from_upcoming && onRestoreToUpcoming) && (
@@ -204,10 +211,11 @@ export const WatchlistCard = ({
                         {removeIcon || <X size={16} />}
                     </button>
                 </div>
-            </div>
 
-            <div className="card-info">
-                <h3 className="text-sm font-semibold truncate text-gray-100">{title}</h3>
+                {/* Bottom Info Stack: Title */}
+                <div className="discovery-info-stack">
+                    <h4 className="discovery-title line-clamp-2">{title}</h4>
+                </div>
             </div>
         </div>
     );

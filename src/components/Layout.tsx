@@ -3,7 +3,8 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { LogOut, Clapperboard, MonitorPlay, Calendar, Gamepad2, Menu, X, Plus, Lock, Trash2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { SearchModal } from './SearchModal';
-import { WatchlistModal } from './modals/WatchlistModal';
+import { MovieModal } from './modals/MovieModal';
+import { ShowModal } from './modals/ShowModal';
 import { ChangePasswordModal } from './modals/ChangePasswordModal';
 import { WelcomeSplash } from './WelcomeSplash';
 import type { TMDBMedia } from '../lib/tmdb';
@@ -237,18 +238,25 @@ export default function Layout() {
                 onClose={() => setIsAddOpen(false)}
                 type="multi"
                 onSuccess={(media) => {
-                    if (media.media_type === 'tv') {
+                    const isTV = media.media_type === 'tv' || !!(media as any).first_air_date;
+                    if (isTV) {
                         setRecentlyAddedMedia(media);
                     }
                 }}
             />
 
             {recentlyAddedMedia && (
-                <WatchlistModal
-                    media={recentlyAddedMedia}
-                    type="tv"
-                    onClose={() => setRecentlyAddedMedia(null)}
-                />
+                recentlyAddedMedia.media_type === 'tv' ? (
+                    <ShowModal
+                        media={recentlyAddedMedia}
+                        onClose={() => setRecentlyAddedMedia(null)}
+                    />
+                ) : (
+                    <MovieModal
+                        media={recentlyAddedMedia}
+                        onClose={() => setRecentlyAddedMedia(null)}
+                    />
+                )
             )}
 
             {showPasswordModal && <ChangePasswordModal onClose={() => setShowPasswordModal(false)} />}

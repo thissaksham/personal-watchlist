@@ -1,14 +1,12 @@
 import { useEffect, useState } from 'react';
 import { tmdb, type TMDBMedia } from '../lib/tmdb';
 import { DiscoveryCard } from '../components/cards/DiscoveryCard';
-import { DiscoveryModal } from '../components/modals/DiscoveryModal';
 import { useWatchlist } from '../context/WatchlistContext';
 import { Flame } from 'lucide-react';
 
 export const Trending = () => {
     const [trending, setTrending] = useState<TMDBMedia[]>([]);
     const [loading, setLoading] = useState(true);
-    const [selectedMedia, setSelectedMedia] = useState<TMDBMedia | null>(null);
     const { addToWatchlist, isInWatchlist } = useWatchlist();
 
     // Filters
@@ -84,19 +82,10 @@ export const Trending = () => {
                                 media={media}
                                 isAdded={isInWatchlist(media.id, media.media_type === 'tv' ? 'show' : 'movie')}
                                 onAdd={() => handleAdd(media)}
-                                onClick={() => setSelectedMedia(media)}
                             />
                         </div>
                     ))}
                 </div>
-            )}
-
-            {selectedMedia && (
-                <DiscoveryModal
-                    media={selectedMedia}
-                    type={selectedMedia.media_type as 'movie' | 'tv'}
-                    onClose={() => setSelectedMedia(null)}
-                />
             )}
         </div>
     );

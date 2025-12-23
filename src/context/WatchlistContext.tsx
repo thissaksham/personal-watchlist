@@ -328,6 +328,10 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
             status: type === 'movie' ? 'movie_unwatched' : 'show_new'
         };
 
+        // Optimistic Update: Add to state immediately so UI responds instantly
+        setWatchlist((prev) => [newItemBase, ...prev]);
+
+        // Proceed with enrichment in the background
         const { initialStatus, finalMetadata } = await getEnrichedMetadata(media.id, type, media);
         const prunedMetadata = pruneMetadata(finalMetadata);
         const finalItem = { ...newItemBase, status: initialStatus, metadata: prunedMetadata };
@@ -337,6 +341,8 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
             const cleaned = local.filter((item: any) => !(item.tmdb_id == media.id && item.type === type));
             const updated = [finalItem, ...cleaned];
             localStorage.setItem('watchlist', JSON.stringify(updated));
+            // Update state with final enriched data (it replaces the optimistic one because of the same tmdb_id check elsewhere usually, 
+            // but here we just update the whole list)
             setWatchlist(updated);
             return;
         }
@@ -344,13 +350,16 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
         const { data: insertedData, error } = await supabase.from('watchlist').insert(finalItem).select().single();
         if (error) {
             console.error('Watchlist Insert Error:', error);
+            // Revert optimistic update on error
+            setWatchlist((prev) => prev.filter(i => i.id !== tempId));
             if (error.code === '23503') {
                 alert('Session Error: Please Sign Out and Log In again.');
             } else {
                 alert('Error adding to watchlist: ' + error.message);
             }
         } else if (insertedData) {
-            setWatchlist((prev) => [insertedData, ...prev]);
+            // Replace optimistic item with real DB item
+            setWatchlist((prev) => prev.map(item => item.id === tempId ? insertedData : item));
         }
     };
 

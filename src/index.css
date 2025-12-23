@@ -430,6 +430,23 @@ h6,
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
 }
 
+.poster-wrapper::after,
+.discovery-poster-wrapper::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.4) 50%, transparent 100%);
+    opacity: 0.9;
+    transition: opacity 0.3s;
+    z-index: 10;
+    pointer-events: none;
+}
+
+.media-card:hover .poster-wrapper::after,
+.discovery-card:hover .discovery-poster-wrapper::after {
+    opacity: 1;
+}
+
 .poster-img {
     width: 100%;
     height: 100%;
@@ -437,8 +454,21 @@ h6,
 }
 
 /* Media Card Overlay Pills */
-.media-pill {
+.pill-stack {
     position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    align-items: flex-start;
+    z-index: 20;
+    pointer-events: none;
+    /* Let clicks pass through to card */
+}
+
+.media-pill {
+    position: relative;
     padding: 0.25rem 0.5rem;
     border-radius: 6px;
     font-size: 0.7rem;
@@ -452,36 +482,28 @@ h6,
 }
 
 .pill-rating {
-    top: 0.5rem;
-    left: 0.5rem;
-    background-color: rgba(20, 20, 20, 0.8);
+    background-color: rgba(20, 20, 20, 0.9);
     color: #fbbf24;
     /* Amber */
     border: 1px solid rgba(251, 191, 36, 0.3);
 }
 
 .pill-year {
-    bottom: 0.5rem;
-    left: 0.5rem;
-    background-color: rgba(20, 20, 20, 0.7);
-    color: #9ca3af;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background-color: rgba(20, 20, 20, 0.9);
+    color: #e5e7eb;
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .pill-duration {
-    bottom: 0.5rem;
-    right: 0.5rem;
-    background-color: rgba(20, 20, 20, 0.7);
+    background-color: rgba(20, 20, 20, 0.9);
     color: #f3f4f6;
     border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .pill-seasons {
-    bottom: 2.25rem;
-    right: 0.5rem;
-    background-color: rgba(20, 20, 20, 0.7);
+    background-color: rgba(20, 20, 20, 0.9);
     color: #d1d5db;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .card-info {
@@ -543,7 +565,7 @@ h6,
     background-color: var(--surface);
     width: 100%;
     max-width: 900px;
-    max-height: 80vh;
+    max-height: 90vh;
     overflow-y: auto;
     border-radius: 16px;
     border: 1px solid var(--border);
@@ -582,7 +604,7 @@ h6,
 }
 
 .hero-title {
-    font-size: 2.5rem;
+    font-size: 2rem;
     font-weight: 800;
     color: white;
     margin-bottom: 0.5rem;
@@ -596,6 +618,7 @@ h6,
     font-size: 0.875rem;
     color: #e5e5e5;
     font-weight: 500;
+    width: 100%;
 }
 
 .tag {
@@ -614,25 +637,29 @@ h6,
 }
 
 .modal-body {
-    padding: 0.5rem 2rem 2rem 2rem;
-    display: grid;
-    gap: 1.5rem;
+    padding: 1rem 2rem 2rem 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
 }
 
 @media (min-width: 768px) {
     .modal-body {
-        grid-template-columns: 2fr 1fr;
+        display: grid;
+        grid-template-columns: 1.8fr 1fr;
+        gap: 3rem;
     }
 }
 
 .section-title {
-    font-size: 1.125rem;
-    font-weight: 600;
+    font-size: 1rem;
+    font-weight: 700;
     color: var(--primary);
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    text-transform: capitalize;
 }
 
 .overview-text {
@@ -752,10 +779,21 @@ h6,
     gap: 0.5rem;
 }
 
+.section-label,
 .subtitle-text {
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: var(--text-secondary);
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.mb-6 {
+    margin-bottom: 2.5rem !important;
 }
 
 /* FAB */
@@ -1523,84 +1561,37 @@ h6,
     transform: scale(1.1);
 }
 
-.discovery-overlay {
+/* discovery-overlay div removed and replaced with ::after pseudo-elements above */
+
+.discovery-info-stack {
     position: absolute;
-    inset: 0;
-    background: linear-gradient(to top, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.4) 50%, transparent 100%);
+    bottom: 0.8rem;
+    left: 0.5rem;
+    right: 0.5rem;
     display: flex;
     flex-direction: column;
-    justify-content: flex-end;
-    padding: 1.25rem;
-    opacity: 0.9;
-    transition: opacity 0.3s;
-}
-
-.discovery-card:hover .discovery-overlay {
-    opacity: 1;
-}
-
-.pill-stacked {
-    top: 2.25rem;
-    left: 0.5rem;
-    bottom: auto;
-    right: auto;
-}
-
-.discovery-actions {
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
-    z-index: 20;
-}
-
-.discovery-add-btn {
-    width: 2.5rem;
-    height: 2.5rem;
-    border-radius: 50%;
-    background: var(--primary);
-    color: white;
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 8px 16px rgba(20, 184, 166, 0.4);
-    transform: scale(0.8);
-    opacity: 0;
-    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    cursor: pointer;
-}
-
-.discovery-card:hover .discovery-add-btn {
-    transform: scale(1);
-    opacity: 1;
-}
-
-.discovery-add-btn:hover {
-    background: var(--primary-hover);
-    transform: scale(1.1);
-}
-
-.added-badge {
-    padding: 0.35rem 0.75rem;
-    border-radius: 999px;
-    background: rgba(0, 0, 0, 0.6);
-    border: 1px solid var(--primary);
-    color: var(--primary);
-    font-size: 0.75rem;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 0.35rem;
-    backdrop-filter: blur(8px);
-}
-
-.discovery-info {
+    z-index: 20;
     transform: translateY(10px);
-    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    opacity: 0.9;
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+    pointer-events: none;
 }
 
-.discovery-card:hover .discovery-info {
+.discovery-card:hover .discovery-info-stack,
+.media-card:hover .discovery-info-stack {
     transform: translateY(0);
+    opacity: 1;
+}
+
+.discovery-title {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: white;
+    letter-spacing: -0.01em;
+    text-align: left;
+    margin: 0;
 }
 
 .discovery-rating {
@@ -1620,14 +1611,6 @@ h6,
     font-size: 0.75rem;
     color: rgba(255, 255, 255, 0.5);
     font-weight: 500;
-}
-
-.discovery-title {
-    font-size: 1.1rem;
-    font-weight: 800;
-    color: white;
-    margin-bottom: 0.25rem;
-    letter-spacing: -0.01em;
 }
 
 .discovery-overview {
@@ -1709,4 +1692,326 @@ h6,
 .media-grid.loading-state {
     opacity: 0.5;
     pointer-events: none;
+}
+
+/* Unified Modal Enhancements */
+
+.modal-main-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 0.8rem 1.5rem;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 1rem;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex: 1;
+}
+
+.btn-add {
+    background-color: var(--primary);
+    color: white;
+}
+
+.btn-add:hover {
+    background-color: var(--primary-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(20, 184, 166, 0.3);
+}
+
+.btn-watched-active {
+    background-color: var(--primary);
+    color: white;
+}
+
+.btn-watched-inactive {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+}
+
+.btn-watched-inactive:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.btn-danger {
+    background-color: #ef44441a;
+    color: #ef4444;
+    border: 1px solid #ef444433;
+    padding: 0.8rem;
+    flex: 0 0 3.5rem;
+}
+
+.btn-danger:hover {
+    background-color: #ef444433;
+}
+
+.btn-danger-ghost {
+    background: transparent;
+    color: #ef4444;
+    border: 1px solid #ef444433;
+    font-size: 0.875rem;
+    padding: 0.5rem 1rem;
+}
+
+.btn-danger-ghost:hover {
+    background-color: #ef444411;
+}
+
+/* Seasons Grid */
+.seasons-section {
+    margin-bottom: 0.5rem;
+}
+
+
+.seasons-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding: 0.5rem 0;
+}
+
+.season-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 50px;
+}
+
+.season-bubble {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.season-bubble:hover:not(:disabled) {
+    border-color: var(--primary);
+    color: white;
+    transform: scale(1.1);
+}
+
+.season-bubble.watched {
+    background: radial-gradient(circle at center, #5eead4 0%, #0f766e 100%);
+    border: none;
+    color: #000;
+    font-weight: 800;
+    box-shadow: 0 0 15px rgba(20, 184, 166, 0.4);
+}
+
+.season-bubble.ongoing-watched {
+    background: linear-gradient(90deg, #0f766e 50%, rgba(20, 184, 166, 0.2) 50%);
+    border: 1px solid #0f766e;
+    color: white;
+    box-shadow: 0 0 10px rgba(20, 184, 166, 0.2);
+}
+
+.season-bubble.preview {
+    background-color: rgba(20, 184, 166, 0.1);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.season-bubble.future {
+    opacity: 0.4;
+    cursor: not-allowed;
+    border-style: dashed;
+}
+
+.season-num {
+    font-size: 0.9rem;
+    letter-spacing: -0.02em;
+}
+
+.season-label-small {
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.season-label-small.future {
+    color: var(--text-secondary);
+}
+
+.season-label-small.ongoing {
+    color: var(--primary);
+    font-weight: 800;
+}
+
+.season-label-small.next {
+    color: #facc15;
+}
+
+/* Yellow-400 */
+
+/* Trailer Portal */
+.trailer-portal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    background-color: rgba(0, 0, 0, 0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+}
+
+.trailer-close-btn {
+    position: absolute;
+    top: 2rem;
+    right: 2rem;
+    color: white;
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.trailer-close-btn:hover {
+    transform: scale(1.1);
+}
+
+.trailer-container {
+    width: 90%;
+    max-width: 1200px;
+    height: 80vh;
+    background-color: black;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.hero-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.hero-gradient {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, var(--surface) 0%, transparent 100%);
+}
+
+.hero-play-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 20;
+    pointer-events: none;
+}
+
+.play-trailer-btn {
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 1.5rem 0.75rem 0.75rem;
+    background-color: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 50px;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.play-trailer-btn:hover {
+    background-color: rgba(0, 0, 0, 0.6);
+    transform: scale(1.05);
+}
+
+.play-icon-wrapper {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: black;
+}
+
+.hero-backdrop {
+    position: absolute;
+    inset: 0;
+}
+
+.floating-link-bar {
+    margin-left: auto;
+    display: flex;
+    gap: 0.75rem;
+    z-index: 30;
+}
+
+.floating-link-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.floating-link-btn:hover {
+    transform: scale(1.1);
+    background-color: rgba(0, 0, 0, 0.8);
+    border-color: var(--primary);
+}
+
+.floating-link-btn img {
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+}
+
+.provider-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+.provider-logo {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: #27272a;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.provider-logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
 }
