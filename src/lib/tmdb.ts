@@ -10,7 +10,8 @@ if (!TMDB_API_KEY) {
 // V3 API Keys are shorter hex strings (~32 chars)
 const isBearerToken = TMDB_API_KEY && TMDB_API_KEY.length > 60;
 
-export const TMDB_REGION = 'IN';
+// Initialize Region from LocalStorage (User Preference)
+export const TMDB_REGION = localStorage.getItem('tmdb_region') || 'IN';
 
 console.log(`[TMDB] Initializing. Key Present: ${!!TMDB_API_KEY}, Length: ${TMDB_API_KEY?.length}, Mode: ${isBearerToken ? 'Bearer' : 'API Key'}, Region: ${TMDB_REGION}`);
 

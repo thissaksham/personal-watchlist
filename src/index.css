@@ -128,11 +128,45 @@ body {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    background-color: rgba(0, 0, 0, 0.2);
+    background-color: rgba(255, 255, 255, 0.05);
+    /* Slightly lighter background */
     padding: 0.35rem 0.75rem;
     border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     font-size: 0.875rem;
+    color: #e5e5e5;
+    /* Explicit light text color */
+    transition: background-color 0.2s;
+}
+
+.profile-pill:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.navbar-add-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background-color: var(--primary);
+    color: white;
+    padding: 0.4rem 1rem;
+    border-radius: 999px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    margin: 0;
+    /* Explicitly remove margin */
+    transition: background-color 0.2s;
+}
+
+.navbar-add-btn:hover {
+    background-color: var(--primary-hover);
+}
+
+.rotate-180 {
+    transform: rotate(180deg);
 }
 
 .avatar {
@@ -146,6 +180,148 @@ body {
     justify-content: center;
     font-weight: bold;
     font-size: 0.75rem;
+    font-size: 0.75rem;
+}
+
+/* User Dropdown Menu */
+.user-dropdown-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 0.5rem;
+    width: 250px;
+    background-color: #1a1a1a;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    padding: 0.5rem;
+    z-index: 50;
+    animation: fadeIn 0.2s ease-out;
+    transform-origin: top right;
+}
+
+.dropdown-section {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    margin-bottom: 0.25rem;
+}
+
+.dropdown-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.dropdown-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.25rem;
+}
+
+.dropdown-value {
+    font-size: 0.875rem;
+    color: white;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.region-badge {
+    background-color: rgba(20, 184, 166, 0.1);
+    color: var(--primary);
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 0.75rem;
+}
+
+.dropdown-btn {
+    width: 100%;
+    text-align: left;
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s;
+}
+
+.dropdown-btn:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: white;
+}
+
+.dropdown-btn.danger {
+    color: #f87171;
+    /* Red-400 */
+}
+
+.dropdown-btn.danger:hover {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: #f87171;
+}
+
+.dropdown-divider {
+    height: 1px;
+    background-color: rgba(255, 255, 255, 0.05);
+    margin: 0.25rem 0;
+}
+
+.dropdown-submenu {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-in-out;
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    margin: 0 0.25rem;
+}
+
+.dropdown-submenu.open {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.submenu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    width: 100%;
+    color: var(--text-secondary);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 0.8rem;
+    text-align: left;
+    transition: all 0.2s;
+}
+
+.submenu-item:hover {
+    color: white;
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.submenu-item.active {
+    color: var(--primary);
+    background-color: rgba(20, 184, 166, 0.05);
+}
+
+/* Scrollbar for submenu */
+.dropdown-submenu::-webkit-scrollbar {
+    width: 4px;
+}
+
+.dropdown-submenu::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
 }
 
 /* Movie Grid */
