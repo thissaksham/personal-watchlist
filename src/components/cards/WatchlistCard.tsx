@@ -1,4 +1,4 @@
-import { Star, Check, X, Undo2 } from 'lucide-react';
+import { Star, Check, X, Undo2, CalendarPlus } from 'lucide-react';
 import { type TMDBMedia } from '../../lib/tmdb';
 import { useWatchlist } from '../../context/WatchlistContext';
 
@@ -8,6 +8,7 @@ interface WatchlistCardProps {
     onRemove: (media: TMDBMedia) => void;
     onMarkWatched: (media: TMDBMedia) => void;
     onMarkUnwatched?: (media: TMDBMedia) => void;
+    onRestoreToUpcoming?: (media: TMDBMedia) => void;
     onClick: (media: TMDBMedia) => void;
 }
 
@@ -17,6 +18,7 @@ export const WatchlistCard = ({
     onRemove,
     onMarkWatched,
     onMarkUnwatched,
+    onRestoreToUpcoming,
     onClick
 }: WatchlistCardProps) => {
     const { watchlist } = useWatchlist();
@@ -185,6 +187,17 @@ export const WatchlistCard = ({
 
                 {/* Actions Stack */}
                 <div className="card-actions-stack">
+                    {/* Restore to Upcoming Button */}
+                    {(type === 'tv' && (media as any).dismissed_from_upcoming && onRestoreToUpcoming) && (
+                        <button
+                            className="add-btn bg-white/10 hover:bg-blue-500/80 text-white"
+                            onClick={(e) => { e.stopPropagation(); onRestoreToUpcoming(media); }}
+                            title="Start Tracking Upcoming Seasons"
+                        >
+                            <CalendarPlus size={16} />
+                        </button>
+                    )}
+
                     {onMarkUnwatched && (
                         <button
                             className="add-btn bg-white/10 hover:bg-yellow-500/80 text-white"

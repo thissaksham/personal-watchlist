@@ -1,11 +1,12 @@
 
-import { Star, Undo2, X } from 'lucide-react';
+import { Star, Undo2, X, CalendarPlus } from 'lucide-react';
 import { type TMDBMedia } from '../../lib/tmdb';
 
 interface HistoryCardProps {
     media: TMDBMedia;
     onUnwatch: (media: TMDBMedia) => void;
     onRemove: (media: TMDBMedia) => void;
+    onRestoreToUpcoming?: (media: TMDBMedia) => void;
     onClick: (media: TMDBMedia) => void;
 }
 
@@ -13,6 +14,7 @@ export const HistoryCard = ({
     media,
     onUnwatch,
     onRemove,
+    onRestoreToUpcoming,
     onClick
 }: HistoryCardProps) => {
     const title = media.title || media.name || 'Unknown';
@@ -39,6 +41,16 @@ export const HistoryCard = ({
                 )}
                 {/* Actions Stack */}
                 <div className="card-actions-stack">
+                    {/* Restore to Upcoming Button */}
+                    {((media as any).dismissed_from_upcoming && onRestoreToUpcoming) && (
+                        <button
+                            className="add-btn bg-white/10 hover:bg-blue-500/80 text-white"
+                            onClick={(e) => { e.stopPropagation(); onRestoreToUpcoming(media); }}
+                            title="Start Tracking Upcoming Seasons"
+                        >
+                            <CalendarPlus size={16} />
+                        </button>
+                    )}
                     <button
                         className="add-btn"
                         onClick={(e) => { e.stopPropagation(); onUnwatch(media); }}

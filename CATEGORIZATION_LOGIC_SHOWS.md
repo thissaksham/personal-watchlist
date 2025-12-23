@@ -79,3 +79,27 @@ For items appearing in the **Upcoming** section (typically `show_new` or `show_r
 | `show_returning` | **Watched** | **Visible** |
 | `show_watching` | **Watching** | **Visible** (if future ep exists) |
 | `show_watched` | **Watched** | - |
+
+---
+
+## 5. Workflow Examples
+
+### A. Simulcast / Weekly Episodes (e.g., "House of the Dragon")
+1.  **Announced:** Show is in **Upcoming** as `show_returning` (Label: "New Season").
+2.  **Premiere:** Episode 1 airs.
+3.  **Action:** User clicks S2 (or "Check" in Upcoming).
+4.  **Result:**
+    *   Status moves to `show_watching` (**Library: Watching**).
+    *   **Watchlist Modal:** Shows **"ONGOING"** text below S2 circle.
+    *   **Upcoming:** Remains visible (showing Next Ep date) because future episodes exist.
+5.  **Finale:** User watches Last Episode.
+6.  **Result:** Status moves to `show_returning` (if S3 announced) or `show_watched` (if Series Ended). Removed from Upcoming (unless S3 dated).
+
+### B. Binge / Full Season Drop (e.g., "Stranger Things")
+1.  **Announced:** Show is in **Upcoming** as `show_returning`.
+2.  **Release:** All episodes drop at once.
+3.  **Action:** User clicks S2 (or "Check" in Upcoming).
+4.  **Result:**
+    *   User effectively marks *all* released episodes as watched.
+    *   Since no future episodes exist (all released today), status moves directly to `show_watched` (**Library: Watched**).
+    *   Removed from Upcoming immediately.

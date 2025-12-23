@@ -7,7 +7,7 @@ import { FilterBar, FilterExpandable } from '../components/FilterBar';
 import { useMediaProviders } from '../hooks/useMediaProviders';
 
 export const Watchlist = () => {
-    const { watchlist, removeFromWatchlist, markAsWatched } = useWatchlist();
+    const { watchlist, removeFromWatchlist, markAsWatched, restoreToUpcoming } = useWatchlist();
     const [selectedMedia, setSelectedMedia] = useState<TMDBMedia | null>(null);
     const [enrichedWatchlist, setEnrichedWatchlist] = useState<TMDBMedia[]>([]);
     const [loading, setLoading] = useState(true);
@@ -119,6 +119,7 @@ export const Watchlist = () => {
                                 type={media.media_type as 'movie' | 'tv'}
                                 onRemove={() => handleRemove(media.id, media.media_type === 'movie' ? 'movie' : 'show')}
                                 onMarkWatched={() => markAsWatched(media.id, media.media_type === 'movie' ? 'movie' : 'show')}
+                                onRestoreToUpcoming={() => restoreToUpcoming(media.id, media.media_type === 'movie' ? 'movie' : 'show')}
                                 onClick={() => setSelectedMedia(media)}
                             />
                         </div>

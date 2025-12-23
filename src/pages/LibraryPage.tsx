@@ -21,7 +21,7 @@ interface LibraryPageProps {
 }
 
 export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMessage }: LibraryPageProps) => {
-    const { watchlist, removeFromWatchlist, markAsWatched, markAsUnwatched } = useWatchlist();
+    const { watchlist, removeFromWatchlist, markAsWatched, markAsUnwatched, restoreToUpcoming } = useWatchlist();
     const [selectedMedia, setSelectedMedia] = useState<TMDBMedia | null>(null);
     const [filterProvider, setFilterProvider] = useState<number | null>(null);
     const [seriesStatusFilter, setSeriesStatusFilter] = useState<string>('Finished');
@@ -405,6 +405,7 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
                                         onUnwatch={(m) => {
                                             markAsUnwatched(Number(m.id), watchlistType);
                                         }}
+                                        onRestoreToUpcoming={(m) => restoreToUpcoming(Number(m.id), watchlistType)}
                                         onClick={() => setSelectedMedia(media)}
                                     />
                                 ) : (
@@ -423,6 +424,7 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
                                         onMarkUnwatched={viewMode === 'Watching' ? (m) => {
                                             markAsUnwatched(Number(m.id), watchlistType);
                                         } : undefined}
+                                        onRestoreToUpcoming={(m) => restoreToUpcoming(Number(m.id), watchlistType)}
                                         onClick={() => setSelectedMedia(media)}
                                     />
                                 )}

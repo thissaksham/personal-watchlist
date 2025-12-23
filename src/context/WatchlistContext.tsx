@@ -28,6 +28,7 @@ interface WatchlistContextType {
     markSeasonWatched: (tmdbId: number, seasonNumber: number) => Promise<void>;
     markSeasonUnwatched: (tmdbId: number, seasonNumber: number) => Promise<void>;
     dismissFromUpcoming: (tmdbId: number, type: 'movie' | 'show') => Promise<void>;
+    restoreToUpcoming: (tmdbId: number, type: 'movie' | 'show') => Promise<void>;
     updateWatchlistItemMetadata: (tmdbId: number, type: 'movie' | 'show', newMetadata: any) => Promise<void>;
     updateStatus: (tmdbId: number, type: 'movie' | 'show', newStatus: WatchlistItem['status']) => Promise<void>;
     refreshMetadata: (tmdbId: number, type: 'movie' | 'show', overrideMetadata?: any) => Promise<void>;
@@ -261,7 +262,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
             }
         } else {
             // TV Show Logic V3
-            const nextEp = details.next_episode_to_air;
+
             const lastEp = details.last_episode_to_air;
             const lastWatched = existingMetadata?.last_watched_season || 0;
 
@@ -638,6 +639,24 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
         await supabase.from('watchlist').update({ metadata: newMeta }).eq('user_id', user.id).eq('tmdb_id', tmdbId).eq('type', type);
     };
 
+    const restoreToUpcoming = async (tmdbId: number, type: 'movie' | 'show') => {
+        const item = watchlist.find(i => i.tmdb_id === tmdbId && i.type === type);
+        if (!item) return;
+
+        // Remove the flag or set to false
+        const newMeta: any = { ...(item.metadata || {}), dismissed_from_upcoming: false };
+
+        // Optimistic Update
+        setWatchlist(prev => prev.map(i => (i.tmdb_id === tmdbId && i.type === type) ? { ...i, metadata: newMeta } : i));
+
+        if (!user) {
+            const local = JSON.parse(localStorage.getItem('watchlist') || '[]');
+            localStorage.setItem('watchlist', JSON.stringify(local.map((i: any) => (i.tmdb_id === tmdbId && i.type === type) ? { ...i, metadata: newMeta } : i)));
+            return;
+        }
+        await supabase.from('watchlist').update({ metadata: newMeta }).eq('user_id', user.id).eq('tmdb_id', tmdbId).eq('type', type);
+    };
+
     const updateWatchlistItemMetadata = async (tmdbId: number, type: 'movie' | 'show', newMetadata: any) => {
         const pruned = pruneMetadata(newMetadata);
         setWatchlist(prev => prev.map(i => (i.tmdb_id === tmdbId && i.type === type) ? { ...i, metadata: pruned } : i));
@@ -692,6 +711,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
             markSeasonWatched,
             markSeasonUnwatched,
             dismissFromUpcoming,
+            restoreToUpcoming,
             updateWatchlistItemMetadata,
             updateStatus,
             refreshMetadata
