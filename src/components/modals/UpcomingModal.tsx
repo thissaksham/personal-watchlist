@@ -136,9 +136,9 @@ export const UpcomingModal = ({ media, type, onClose }: UpcomingModalProps) => {
                     <div className="u-vstack">
 
                         {type === 'tv' && (details?.seasons || media.seasons) && (
-                            <div style={{ marginBottom: '24px', width: '100%' }}>
-                                <div style={{ textTransform: 'uppercase', fontSize: '12px', fontWeight: 'bold', letterSpacing: '0.1em', color: '#6b7280', marginBottom: '12px' }}>Seasons</div>
-                                <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '16px', overflowX: 'auto', padding: '16px', scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }} onMouseLeave={() => setHoveredSeason(null)}>
+                            <div style={{ marginBottom: '0px', width: '100%' }}>
+                                <div style={{ textTransform: 'uppercase', fontSize: '11px', fontWeight: 'bold', letterSpacing: '0.1em', color: '#6b7280', marginBottom: '4px' }}>Seasons</div>
+                                <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: '12px', padding: '12px', margin: '-12px' }} onMouseLeave={() => setHoveredSeason(null)}>
                                     {(details?.seasons || media.seasons).filter((s: any) => s.season_number > 0).map((season: any) => {
                                         const showId = Number(media.id);
                                         const seasonNum = Number(season.season_number);

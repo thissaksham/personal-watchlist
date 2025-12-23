@@ -279,41 +279,7 @@ export const Upcoming = () => {
                                 showDateOverride={viewMode === 'Coming Soon'}
                                 onClick={() => setSelectedMedia(show)}
                             />
-                            <div className="absolute -bottom-6 left-0 w-full text-center opacity-0 group-hover/upcoming:opacity-100 transition-opacity duration-300 pointer-events-none">
-                                <span className="text-[10px] font-bold text-teal-400 bg-black/80 px-2 py-1 rounded-full border border-teal-500/20 backdrop-blur-sm">
-                                    {formatDate(show.date)}
-                                    <span className="text-white"> &bull; {
-                                        (() => {
-                                            if (show.tmdbMediaType === 'movie') return show.seasonInfo || 'Movie';
-
-                                            const nextEp = show.next_episode_to_air;
-                                            if (!nextEp) return show.seasonInfo || 'Upcoming';
-
-                                            const currentSeason = show.seasons?.find((s: any) => s.season_number === nextEp.season_number);
-                                            const totalEpsInSeason = currentSeason?.episode_count || 0;
-
-                                            const isSeasonPremiere = nextEp.episode_number === 1;
-                                            const isSeasonFinale = totalEpsInSeason > 0 && nextEp.episode_number === totalEpsInSeason;
-
-                                            // Heuristic for "Final Season"
-                                            // 1. Check if season name contains "Final"
-                                            // 2. Check if this is the last season in the array AND show status is 'Ended' or 'Returning Series' (sometimes final season airs as returning)
-                                            // Reliable: matching season name
-                                            const seasonName = currentSeason?.name || '';
-                                            const isFinalSeason = seasonName.toLowerCase().includes('final');
-
-                                            if (isFinalSeason) {
-                                                if (isSeasonPremiere) return 'Final Season';
-                                                if (isSeasonFinale) return 'Final Episode';
-                                                return 'New Episode'; // Or 'Final Season' generic? User said specific logic.
-                                            }
-
-                                            if (isSeasonPremiere) return 'New Season';
-                                            if (isSeasonFinale) return 'Last Episode';
-                                            return 'New Episode';
-                                        })()
-                                    }</span>
-                                </span>
+                            <div className="absolute -bottom-6 left-0 w-full text-center opacity-0 transition-opacity duration-300 pointer-events-none">
                             </div>
                         </div>
                     ))}

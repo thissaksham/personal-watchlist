@@ -32,6 +32,7 @@ export const SearchModal = ({ isOpen, onClose, type: initialType, onSuccess, ini
             setQuery(initialQuery);
             setSearchType(initialType);
             setResults([]);
+            setSelectedMedia(null);
         }
     }, [isOpen, initialType, initialQuery]);
 

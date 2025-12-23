@@ -327,7 +327,7 @@ body {
     background-color: var(--surface);
     width: 100%;
     max-width: 900px;
-    max-height: 90vh;
+    max-height: 80vh;
     overflow-y: auto;
     border-radius: 16px;
     border: 1px solid var(--border);
@@ -398,9 +398,9 @@ body {
 }
 
 .modal-body {
-    padding: 2rem;
+    padding: 0.5rem 2rem 2rem 2rem;
     display: grid;
-    gap: 2rem;
+    gap: 1.5rem;
 }
 
 @media (min-width: 768px) {
