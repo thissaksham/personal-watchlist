@@ -283,8 +283,14 @@ export const Upcoming = () => {
                                             removeFromWatchlist(Number(show.id), 'movie');
                                         }
                                     } else {
-                                        if (window.confirm(`Hide ${show.title} from upcoming list? (It will remain in your library)`)) {
-                                            dismissFromUpcoming(Number(show.id), 'show');
+                                        if (show.status === 'show_new') {
+                                            if (window.confirm(`Delete ${show.title} from your watchlist completely?`)) {
+                                                removeFromWatchlist(Number(show.id), 'show');
+                                            }
+                                        } else {
+                                            if (window.confirm(`Hide ${show.title} from upcoming list? (It will remain in your library)`)) {
+                                                dismissFromUpcoming(Number(show.id), 'show');
+                                            }
                                         }
                                     }
                                 }}

@@ -107,7 +107,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
         const {
             backdrop_path, overview,
             release_date, first_air_date, runtime, status,
-            next_episode_to_air, seasons, external_ids,
+            next_episode_to_air, last_episode_to_air, seasons, external_ids,
             genres, number_of_episodes, number_of_seasons,
             episode_run_time, tvmaze_runtime,
             digital_release_date, digital_release_note, theatrical_release_date, moved_to_library,
@@ -121,7 +121,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
             backdrop_path, overview,
             vote_average: meta.vote_average,
             release_date, first_air_date, runtime, status,
-            next_episode_to_air, seasons, external_ids,
+            next_episode_to_air, last_episode_to_air, seasons, external_ids,
             genres, number_of_episodes, number_of_seasons,
             episode_run_time, tvmaze_runtime,
             digital_release_date, digital_release_note, theatrical_release_date, moved_to_library,
@@ -491,34 +491,33 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
             // Started
             if (lastWatchedSeason < totalReleased) {
                 // Partially watched relative to Release
-                newStatus = 'show_returning';
+                newStatus = 'show_watching';
             } else {
                 // Caught Up (lastWatchedSeason >= totalReleased)
-                // Check future
+                let isFutureConfirmed = false;
+
                 if (meta?.next_episode_to_air?.air_date) {
                     const nextEp = meta.next_episode_to_air;
                     const nextDate = new Date(nextEp.air_date);
 
                     if (nextDate > today) {
-                        // Future episode exists.
+                        isFutureConfirmed = true;
                         if (nextEp.season_number === lastWatchedSeason) {
-                            newStatus = 'show_watching';
+                            newStatus = 'show_watching'; // Waiting for next ep in current season
                         } else {
-                            newStatus = 'show_returning';
-                        }
-                    } else {
-                        // Edge case: next date passed but meta says it exists.
-                        const isReturning = meta?.status === 'Returning Series';
-                        if (isReturning) {
-                            newStatus = 'show_returning';
-                        } else {
-                            newStatus = 'show_watched';
+                            newStatus = 'show_returning'; // Waiting for next season
                         }
                     }
-                } else {
-                    // No future episode date known yet.
-                    const isReturning = meta?.status === 'Returning Series';
-                    if (isReturning) {
+                }
+
+                if (!isFutureConfirmed) { // Fallback to seasons array if next_episode_to_air didn't catch it
+                    const hasFutureSeason = (seasons || []).some((s: any) =>
+                        s.season_number > lastWatchedSeason &&
+                        s.air_date &&
+                        new Date(s.air_date) > today
+                    );
+
+                    if (hasFutureSeason) {
                         newStatus = 'show_returning';
                     } else {
                         newStatus = 'show_watched';

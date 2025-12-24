@@ -76,20 +76,35 @@ export const WatchlistCard = ({
             const remainingEpsCount = media.seasons.reduce((acc: number, season: any) => {
                 if (season.season_number > 0 && season.season_number > lastWatched) {
                     let count = season.episode_count || 0;
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    if (season.air_date && new Date(season.air_date) > today) {
-                        return acc;
+
+                    // Strict check for future seasons based on air_date
+                    if (season.air_date) {
+                        const seasonDate = new Date(season.air_date);
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        if (seasonDate > today) return acc;
                     }
 
+                    // Strict cap based on last_episode_to_air
                     if (media.last_episode_to_air) {
                         const lastSeason = media.last_episode_to_air.season_number;
                         const lastEp = media.last_episode_to_air.episode_number;
 
                         if (season.season_number > lastSeason) {
-                            count = 0;
+                            count = 0; // Future season not started yet
                         } else if (season.season_number === lastSeason) {
-                            count = lastEp;
+                            count = lastEp; // Cap at last aired episode
+                        }
+                    } else if (media.next_episode_to_air) {
+                        // Fallback: If we know next episode is S2E2, then we have 1 aired episode.
+                        const nextSeason = media.next_episode_to_air.season_number;
+                        const nextEpNum = media.next_episode_to_air.episode_number;
+
+                        if (season.season_number > nextSeason) {
+                            count = 0;
+                        } else if (season.season_number === nextSeason) {
+                            // If next is Ep 2, then released is 1. If next is Ep 1, released is 0.
+                            count = Math.max(0, nextEpNum - 1);
                         }
                     }
                     return acc + count;
@@ -170,7 +185,11 @@ export const WatchlistCard = ({
                     )}
                     {(type === 'tv' && stats && stats.remainingEpisodes > 0) && (
                         <div className="media-pill pill-seasons">
-                            <span>{stats.remainingSeasons}S {stats.remainingEpisodes}E</span>
+                            {stats.remainingSeasons === 1 ? (
+                                <span>{stats.remainingEpisodes} Eps</span>
+                            ) : (
+                                <span>{stats.remainingSeasons}S {stats.remainingEpisodes}E</span>
+                            )}
                         </div>
                     )}
                 </div>

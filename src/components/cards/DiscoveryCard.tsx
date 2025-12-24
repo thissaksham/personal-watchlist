@@ -117,11 +117,6 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
 
                     {/* Bottom Info Stack: Label + Title */}
                     <div className="discovery-info-stack">
-                        {tvStatus && tvStatus.label && (
-                            <div className="media-pill bg-teal-500 text-black border-teal-500 font-bold px-2 py-0.5 text-[10px] uppercase tracking-wider">
-                                {tvStatus.label}
-                            </div>
-                        )}
                         <h4 className="discovery-title line-clamp-2">{title}</h4>
                     </div>
                 </div>

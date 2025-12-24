@@ -32,9 +32,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
                 if (userError || !currentUser) {
                     // If server says user is gone, clear local session
+                    console.warn("User validation failed (deleted or invalid), clearing session.");
+
+                    // Force sign out to clear Supabase client state
+                    await supabase.auth.signOut();
+
+                    // Manually clear Supabase tokens from localStorage
+                    const keysToRemove = Object.keys(localStorage).filter(key => key.startsWith('sb-'));
+                    keysToRemove.forEach(key => localStorage.removeItem(key));
+
                     setSession(null);
                     setUser(null);
-                    localStorage.removeItem('supabase.auth.token'); // Clean up potentially stale data
                 } else {
                     const { data: { session: activeSession } } = await supabase.auth.getSession();
                     setSession(activeSession);

@@ -69,6 +69,7 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
     const library = watchlist
         .filter(item => {
             if (item.type !== watchlistType) return false;
+            if (item.status === 'show_dropped' || item.status === 'movie_dropped') return false;
 
             // Logic for Shows (Derived)
             if (tmdbType === 'tv') {

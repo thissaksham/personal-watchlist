@@ -553,7 +553,7 @@ h6,
     inset: 0;
     background-color: rgba(0, 0, 0, 0.8);
     backdrop-filter: blur(5px);
-    z-index: 100;
+    z-index: 2000;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1624,6 +1624,95 @@ h6,
 
 .discovery-card:hover .discovery-overview {
     opacity: 1;
+}
+
+/* Discovery Actions (Add Button / Added Badge) */
+.discovery-card .discovery-actions {
+    position: absolute;
+    top: 0.6rem;
+    right: 0.6rem;
+    z-index: 30;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.discovery-card:hover .discovery-actions {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.discovery-card .discovery-add-btn {
+    width: 2.5rem !important;
+    height: 2.5rem !important;
+    border-radius: 50% !important;
+    background-color: rgba(0, 0, 0, 0.7) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    color: white !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transform: translateZ(0);
+    /* Force GPU */
+    backface-visibility: hidden;
+    transition: background-color 0.2s, border-color 0.2s, color 0.2s, transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s;
+}
+
+.discovery-card .discovery-add-btn:hover {
+    background-color: var(--primary);
+    border-color: var(--primary);
+    color: black;
+    transform: scale(1.1);
+    box-shadow: 0 0 15px rgba(20, 184, 166, 0.4);
+}
+
+.discovery-card .added-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    background-color: rgba(0, 0, 0, 0.6);
+    color: #14b8a6;
+    padding: 0.3rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border: 1px solid #14b8a6;
+    cursor: pointer;
+    /* Restored pointer cursor */
+    box-shadow: none;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.discovery-card .added-badge:hover {
+    color: #ef4444;
+    /* Red Text */
+    border-color: #ef4444;
+    /* Red Border */
+    background-color: rgba(0, 0, 0, 0.8);
+    /* Darker background */
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+}
+
+/* Ensure consistent visibility for status badges */
+.discovery-card:hover .discovery-actions,
+.discovery-actions:has(.added-badge) {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.tv-status-badge {
+    background-color: #14b8a6;
+    color: #000;
+    font-weight: 700;
+    padding: 0.125rem 0.5rem;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    border: 1px solid #14b8a6;
 }
 
 @media (max-width: 640px) {

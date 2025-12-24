@@ -46,15 +46,15 @@ export const MovieModal = ({ media, onClose }: MovieModalProps) => {
     const trailerKey = trailer?.key;
 
 
-    return (
+    return createPortal(
         <div className="modal-overlay" onClick={onClose}>
-            {showTrailer && trailerKey && createPortal(
+            {showTrailer && trailerKey && (
                 <div className="trailer-portal-overlay" onClick={(e) => { e.stopPropagation(); setShowTrailer(false); }}>
                     <button onClick={() => setShowTrailer(false)} className="trailer-close-btn"><X size={32} /></button>
                     <div className="trailer-container">
                         <iframe width="100%" height="100%" src={`https://www.youtube.com/embed/${trailerKey}?autoplay=1`} title="Trailer" frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
                     </div>
-                </div>, document.body
+                </div>
             )}
 
             <div className="modal-content" onClick={e => e.stopPropagation()}>
@@ -150,6 +150,6 @@ export const MovieModal = ({ media, onClose }: MovieModalProps) => {
                     </div>
                 </div>
             </div>
-        </div>
+        </div>, document.body
     );
 };

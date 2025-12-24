@@ -53,15 +53,15 @@ export const ShowModal = ({ media, onClose }: ShowModalProps) => {
 
     const lastWatched = watchlistItem?.last_watched_season || 0;
 
-    return (
+    return createPortal(
         <div className="modal-overlay" onClick={onClose}>
-            {showTrailer && trailerKey && createPortal(
+            {showTrailer && trailerKey && (
                 <div className="trailer-portal-overlay" onClick={(e) => { e.stopPropagation(); setShowTrailer(false); }}>
                     <button onClick={() => setShowTrailer(false)} className="trailer-close-btn"><X size={32} /></button>
                     <div className="trailer-container">
                         <iframe width="100%" height="100%" src={`https://www.youtube.com/embed/${trailerKey}?autoplay=1`} title="Trailer" frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
                     </div>
-                </div>, document.body
+                </div>
             )}
 
             <div className="modal-content" onClick={e => e.stopPropagation()}>
@@ -97,6 +97,8 @@ export const ShowModal = ({ media, onClose }: ShowModalProps) => {
                             {showStats?.bingeTime && <span className="tag theme-teal"><Hourglass size={14} /> {showStats.bingeTime}</span>}
                             {((showStats as any)?.seasons || 0) > 0 && <span className="tag"><Layers size={14} /> {(showStats as any).seasons} Seasons</span>}
                             {((showStats as any)?.episodes || 0) > 0 && <span className="tag"><Hash size={14} /> {(showStats as any).episodes} Episodes</span>}
+
+
 
                             <div className="floating-link-bar">
                                 <a href={getTMDBUrl(media.id, 'tv')} target="_blank" rel="noopener noreferrer" className="floating-link-btn tmdb-btn" title="View on TMDB">
@@ -154,7 +156,7 @@ export const ShowModal = ({ media, onClose }: ShowModalProps) => {
                                                     onClick={(e) => {
                                                         e.stopPropagation();
                                                         if (!isAdded) return;
-                                                        if (seasonNum === lastWatched) {
+                                                        if (seasonNum <= lastWatched) {
                                                             markSeasonUnwatched(media.id, seasonNum);
                                                         } else {
                                                             markSeasonWatched(media.id, seasonNum);
@@ -220,6 +222,6 @@ export const ShowModal = ({ media, onClose }: ShowModalProps) => {
                     </div>
                 </div>
             </div>
-        </div>
+        </div>, document.body
     );
 };

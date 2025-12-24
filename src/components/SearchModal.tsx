@@ -90,7 +90,7 @@ export const SearchModal = ({ isOpen, onClose, type: initialType, onSuccess, ini
         const targetType: 'movie' | 'show' = mediaType === 'tv' ? 'show' : 'movie';
 
         if (isInWatchlist(media.id, targetType)) return;
-        await addToWatchlist(media, targetType);
+        addToWatchlist(media, targetType); // Fire and forget for instant close
         if (onSuccess) onSuccess(media);
         onClose();
     };

@@ -313,17 +313,20 @@ export const UpcomingCard = ({
                             <ArrowUp size={16} strokeWidth={3} />
                         </button>
                     )}
-                    <button
-                        className="add-btn bg-white/10 hover:bg-teal-500/80 text-white"
-                        onClick={(e) => { e.stopPropagation(); onMarkWatched(media); }}
-                        title="Mark as Watched"
-                    >
-                        <Check size={16} />
-                    </button>
+                    {/* Mark as Watched (Hide for future show_new) */}
+                    {(!((media as any).status === 'show_new' && media.countdown !== undefined && media.countdown > 0)) && (
+                        <button
+                            className="add-btn bg-white/10 hover:bg-teal-500/80 text-white"
+                            onClick={(e) => { e.stopPropagation(); onMarkWatched(media); }}
+                            title="Mark as Watched"
+                        >
+                            <Check size={16} />
+                        </button>
+                    )}
                     <button
                         className="add-btn text-white hover:scale-110"
                         onClick={(e) => { e.stopPropagation(); onRemove(media); }}
-                        title="Hide from Upcoming"
+                        title="Remove from Upcoming"
                         style={{ backgroundColor: '#dc2626', borderColor: '#dc2626' }}
                     >
                         <X size={16} />
