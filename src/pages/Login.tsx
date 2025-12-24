@@ -364,7 +364,14 @@ export default function Login() {
                                             justifyContent: 'space-between'
                                         }}
                                     >
-                                        <span>{REGIONS.find(r => r.code === selectedRegion)?.flag} {REGIONS.find(r => r.code === selectedRegion)?.name}</span>
+                                        <span>
+                                            <img
+                                                src={`https://flagcdn.com/w40/${selectedRegion.toLowerCase()}.png`}
+                                                alt={selectedRegion}
+                                                style={{ width: '24px', height: 'auto', borderRadius: '2px', objectFit: 'cover' }}
+                                            />
+                                            <span style={{ marginLeft: '10px' }}>{REGIONS.find(r => r.code === selectedRegion)?.name}</span>
+                                        </span>
                                         <ArrowRight size={16} style={{ transform: showRegionDropdown ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }} />
                                     </button>
 
@@ -405,7 +412,11 @@ export default function Login() {
                                                         borderBottom: '1px solid rgba(255,255,255,0.05)'
                                                     }}
                                                 >
-                                                    <span style={{ fontSize: '1.2rem' }}>{r.flag}</span>
+                                                    <img
+                                                        src={`https://flagcdn.com/w40/${r.code.toLowerCase()}.png`}
+                                                        alt={r.name}
+                                                        style={{ width: '24px', height: 'auto', borderRadius: '2px', objectFit: 'cover' }}
+                                                    />
                                                     <span>{r.name}</span>
                                                 </button>
                                             ))}
