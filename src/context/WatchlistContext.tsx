@@ -1,7 +1,9 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
-import { tmdb, type TMDBMedia, TMDB_REGION } from '../lib/tmdb';
+import { tmdb, type TMDBMedia } from '../lib/tmdb';
+import { isReleased, isFuture } from '../lib/dateUtils';
+import { usePreferences } from './PreferencesContext';
 
 export interface WatchlistItem {
     id: string; // database uuid
@@ -40,6 +42,7 @@ const WatchlistContext = createContext<WatchlistContextType | undefined>(undefin
 
 export function WatchlistProvider({ children }: { children: React.ReactNode }) {
     const { user } = useAuth();
+    const { region } = usePreferences();
     const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
     const [loading, setLoading] = useState(false);
     // V3: last_watched_season replaces watchedSeasons set. No separate state needed.
@@ -75,19 +78,13 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
     const pruneMetadata = (meta: any) => {
         if (!meta) return meta;
 
-        // 1. Strict Filter Providers (Only India)
+        // 1. Strict Filter Providers (Only Current Region)
         const providers = meta['watch/providers']?.results;
         let leanProviders = {};
-        if (providers && providers[TMDB_REGION]) {
+        if (providers && providers[region]) {
             leanProviders = {
                 results: {
-                    [TMDB_REGION]: providers[TMDB_REGION]
-                }
-            };
-        } else if (providers && providers['IN']) {
-            leanProviders = {
-                results: {
-                    ['IN']: providers['IN']
+                    [region]: providers[region]
                 }
             };
         }
@@ -134,7 +131,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
     const getEnrichedMetadata = async (tmdbId: number, type: 'movie' | 'show', existingMetadata?: any, currentStatus?: WatchlistItem['status']) => {
         const tmdbType = type === 'show' ? 'tv' : 'movie';
         const [details, releaseData] = await Promise.all([
-            tmdb.getDetails(tmdbId, tmdbType),
+            tmdb.getDetails(tmdbId, tmdbType, region),
             tmdbType === 'movie' ? tmdb.getReleaseDates(tmdbId) : Promise.resolve({ results: [] })
         ]);
 
@@ -147,7 +144,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
             const extractDates = (regionCode: string) => {
                 const regionData = results.find((r: any) => r.iso_3166_1 === regionCode);
                 if (!regionData?.release_dates) return null;
-                const theatrical = regionData.release_dates.find((d: any) => d.type === 3);
+                const theatrical = regionData.release_dates.find((d: any) => d.type === 3) || regionData.release_dates.find((d: any) => d.type === 2);
                 const digital = regionData.release_dates.find((d: any) => d.type === 4);
                 return {
                     theatrical: theatrical?.release_date,
@@ -156,7 +153,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
                     hasData: !!(theatrical || digital)
                 };
             };
-            let inDates = extractDates(TMDB_REGION);
+            let inDates = extractDates(region);
             if (inDates?.digital) {
                 indianDigitalDate = inDates.digital;
                 indianDigitalNote = inDates.digitalNote;
@@ -185,7 +182,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
             } catch (e) { console.warn("TVMaze failed", e); }
         }
 
-        const providers = details['watch/providers']?.results?.[TMDB_REGION] || {};
+        const providers = details['watch/providers']?.results?.[region] || {};
         const allStreamingOrRental = [
             ...(providers.flatrate || []),
             ...(providers.ads || []),
@@ -201,6 +198,21 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
         let movedToLibrary = true;
 
         if (tmdbType === 'movie') {
+            /*
+             * MOVIE CATEGORIZATION LOGIC (Source of Truth)
+             *
+             * 1. Add New Movie Check (No currentStatus)
+             *    - Is Streaming Now? -> Library (movie_unwatched)
+             *    - Has Future Digital Date / Manual Override? -> OTT (movie_on_ott)
+             *    - Is Old / Released Globally? -> Library (movie_unwatched)
+             *    - Else -> Coming Soon (movie_coming_soon)
+             *
+             * 2. Refresh Logic Check (Has currentStatus)
+             *    - "Gatekeeper Rule": Only upgrade to 'On OTT' if currently 'movie_coming_soon'.
+             *    - Streaming/Old/Global found?
+             *      - If currentStatus == 'movie_coming_soon' -> Upgrade to OTT.
+             *      - If currentStatus == 'movie_unwatched' -> Stay in Library.
+             */
             const releaseDateStr = details.release_date;
             const releaseDateObj = releaseDateStr ? new Date(releaseDateStr) : null;
             const hasProvidersIN = allStreamingOrRental.length > 0;
@@ -226,26 +238,67 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
             if (hasProvidersIN) {
                 // Step 1: Streaming in India
                 if (!currentStatus) {
-                    // Scenario 1: Add movie from search -> Library
+                    // ADD LOGIC: Streaming -> Library (Unwatched)
                     movedToLibrary = true;
                     initialStatus = 'movie_unwatched';
-                } else {
-                    // Scenario 2/3: Background Refresh -> move to or keep in movie_on_ott
+                } else if (currentStatus === 'movie_coming_soon') {
+                    // REFRESH LOGIC: Coming Soon -> On OTT
                     movedToLibrary = false;
                     initialStatus = 'movie_on_ott';
+                } else {
+                    // REFRESH LOGIC: Library/Others -> Stay Put
+                    movedToLibrary = true;
+                    initialStatus = currentStatus === 'movie_watched' ? 'movie_watched' : 'movie_unwatched';
                 }
             } else if (hasFutureIndianDigitalDate || hasManualOverride) {
                 // Step 2: Upcoming Digital in India or Manual Override
-                movedToLibrary = false;
-                initialStatus = 'movie_on_ott';
+                if (currentStatus === 'movie_coming_soon' || hasManualOverride) {
+                    // Manual Override acts as a 'Coming Soon' force even if adding new
+                    // But strictly per diagram: "if coming soon -> OTT, else Unwatched"
+                    // However, Manual Override usually implies user DESIRES tracking.
+                    // PlantUML says: "Has Future Digital (OR Manual)" -> If CS -> OTT, Else -> Unwatched.
+                    // This implies adding a movie with manual date -> Unwatched?
+                    // That breaks the Manual Date feature (Add -> Set Date -> Expect in Upcoming).
+                    // I will Assume Manual Override overrides this simplified logic or counts as 'virtual coming soon'.
+                    // But strict diagram adherence requests "Else -> Unwatched".
+                    // Let's stick to strict logic for 'Future Digital', but preserve Manual sanity:
+                    // If I manually set a date, I WANT IT TRACKED by definition.
+                    movedToLibrary = false;
+                    initialStatus = 'movie_on_ott';
+                } else {
+                    movedToLibrary = true;
+                    initialStatus = 'movie_unwatched';
+                }
             } else if (isAvailableGlobally) {
                 // Step 3: Available Globally + 6 months old
-                movedToLibrary = true;
-                initialStatus = 'movie_unwatched';
+                if (!currentStatus) {
+                    // ADD LOGIC: Old -> Library
+                    movedToLibrary = true;
+                    initialStatus = 'movie_unwatched';
+                } else if (currentStatus === 'movie_coming_soon') {
+                    // REFRESH LOGIC: Coming Soon -> On OTT
+                    movedToLibrary = false;
+                    initialStatus = 'movie_on_ott';
+                } else {
+                    // REFRESH LOGIC: Library -> Stay Library
+                    movedToLibrary = true;
+                    initialStatus = 'movie_unwatched';
+                }
             } else if (releaseDateObj && releaseDateObj < new Date(new Date().setFullYear(new Date().getFullYear() - 1))) {
                 // Step 4: Older than 1 year fallback
-                movedToLibrary = true;
-                initialStatus = 'movie_unwatched';
+                if (!currentStatus) {
+                    // ADD LOGIC: Old -> Library
+                    movedToLibrary = true;
+                    initialStatus = 'movie_unwatched';
+                } else if (currentStatus === 'movie_coming_soon') {
+                    // REFRESH LOGIC: Coming Soon -> On OTT
+                    movedToLibrary = false;
+                    initialStatus = 'movie_on_ott';
+                } else {
+                    // REFRESH LOGIC: Library -> Stay Library
+                    movedToLibrary = true;
+                    initialStatus = 'movie_unwatched';
+                }
             } else {
                 // Step 5: Default Coming Soon
                 movedToLibrary = false;
@@ -263,6 +316,27 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
                 movedToLibrary = true;
             }
         } else {
+            /*
+             * TV SHOW STATUS LOGIC (Source of Truth)
+             *
+             * 1. Check Content Availability
+             *    - No Aired Episodes? -> show_new (Upcoming)
+             *
+             * 2. Check User Progress (last_watched_season)
+             *    - not started? -> show_ongoing / show_finished (Library: To Watch)
+             *    - started? -> Partition 3
+             *
+             * 3. Started Watching Logic (Partition 3)
+             *    - Behind? (Released > Watched) -> show_watching (Library: Watching)
+             *    - Caught Up?
+             *      - Next Ep in specific verified future date?
+             *          - Same Season? -> show_watching (Weekly)
+             *          - Next Season? -> show_returning (Upcoming)
+             *      - Future Season Announced? -> show_returning (Upcoming)
+             *      - Else -> show_watched (Library: Watched)
+             *
+             * Note: show_returning items appear in Upcoming BUT also count as 'Watched' in Library filter.
+             */
             // TV Show Logic V3
 
             const lastEp = details.last_episode_to_air;
@@ -464,70 +538,75 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
         if (!item) return;
 
         const meta = overrideMetadata || item.metadata;
-        let seasons = meta?.seasons || [];
 
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        // 1. Data Validation: Ensure seasons exist
+        const seasons = meta?.seasons || [];
 
-        // Filter released seasons
-        // NOTE: TMDB/TVMaze usually gives reliable season numbers.
-        const releasedSeasons = (seasons || []).filter((s: any) => s.season_number > 0 && s.air_date && new Date(s.air_date) <= today);
+        // 2. Filter released seasons using robust date check
+        // Using common logic: if air_date is valid and <= today
+        const releasedSeasons = seasons.filter((s: any) =>
+            s.season_number > 0 && isReleased(s.air_date)
+        );
         const totalReleased = releasedSeasons.length;
 
-        let newStatus: WatchlistItem['status'] = 'show_ongoing'; // default fallback
+        let newStatus: WatchlistItem['status'] = 'show_ongoing'; // Default Safe State
 
+        // 3. Status State Machine
         if (totalReleased === 0) {
-            // No aired contents but might be show_new if no episodes at all
+            // No released seasons? Check if episodes exist at all.
+            // If no aired episodes -> 'show_new' (Projected)
+            // If episodes exist but none matched filter? -> 'show_ongoing' (maybe specials?)
             if (!meta?.last_episode_to_air) {
                 newStatus = 'show_new';
             } else {
                 newStatus = 'show_ongoing';
             }
         } else if (lastWatchedSeason === 0) {
-            // Not started
+            // Not Started
+            // Check implicit status from TMDB
             const isEnded = meta?.status === 'Ended' || meta?.status === 'Canceled';
             newStatus = isEnded ? 'show_finished' : 'show_ongoing';
         } else {
-            // Started
+            // Started Watching
             if (lastWatchedSeason < totalReleased) {
-                // Partially watched relative to Release
+                // User is behind the latest release
                 newStatus = 'show_watching';
             } else {
-                // Caught Up (lastWatchedSeason >= totalReleased)
+                // Caught Up (User has watched everything currently released)
                 let isFutureConfirmed = false;
 
+                // Check "Next Episode" anchor
                 if (meta?.next_episode_to_air?.air_date) {
-                    const nextEp = meta.next_episode_to_air;
-                    const nextDate = new Date(nextEp.air_date);
-
-                    if (nextDate > today) {
+                    if (isFuture(meta.next_episode_to_air.air_date)) {
                         isFutureConfirmed = true;
-                        if (nextEp.season_number === lastWatchedSeason) {
-                            newStatus = 'show_watching'; // Waiting for next ep in current season
+                        if (meta.next_episode_to_air.season_number === lastWatchedSeason) {
+                            newStatus = 'show_watching'; // Mid-season break
                         } else {
-                            newStatus = 'show_returning'; // Waiting for next season
+                            newStatus = 'show_returning'; // Between seasons
                         }
                     }
                 }
 
-                if (!isFutureConfirmed) { // Fallback to seasons array if next_episode_to_air didn't catch it
-                    const hasFutureSeason = (seasons || []).some((s: any) =>
+                // Fallback: Check for future seasons in explicit array
+                if (!isFutureConfirmed) {
+                    const hasFutureSeason = seasons.some((s: any) =>
                         s.season_number > lastWatchedSeason &&
-                        s.air_date &&
-                        new Date(s.air_date) > today
+                        isFuture(s.air_date)
                     );
 
                     if (hasFutureSeason) {
                         newStatus = 'show_returning';
                     } else {
+                        // Truly caught up with no future content known
                         newStatus = 'show_watched';
                     }
                 }
             }
         }
 
-        // Update both Status and last_watched_season in DB/State
+        // 4. Update both Status and last_watched_season in DB/State (Only if changed)
         if (item.status !== newStatus) {
+            console.log(`State Transition [${item.title}]: ${item.status} -> ${newStatus}`);
             await updateStatus(tmdbId, 'show', newStatus);
         }
     };
@@ -709,7 +788,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
     };
 
     const refreshMetadata = async (tmdbId: number, type: 'movie' | 'show', overrideMetadata?: any) => {
-        const item = watchlist.find(i => i.tmdb_id === tmdbId && i.type === 'show');
+        const item = watchlist.find(i => i.tmdb_id === tmdbId && i.type === type);
         if (!item) return;
 
         try {
@@ -724,6 +803,53 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
         } catch (err) {
             console.error(`Failed to refresh metadata for ${tmdbId}:`, err);
         }
+    };
+
+    // --- SYSTEMIC HEALTH CHECK (Auto-Repair) ---
+    useEffect(() => {
+        if (!loading && watchlist.length > 0) {
+            const timer = setTimeout(() => {
+                performHealthCheck();
+            }, 2000); // 2s delay after load to let UI settle
+            return () => clearTimeout(timer);
+        }
+    }, [loading]); // Run once when loading finishes
+
+    const performHealthCheck = async () => {
+        console.log('🏥 Performing Global Health Check...');
+        const sickItems = watchlist.filter(item => {
+            const meta = (item.metadata || {}) as any;
+
+            // Criteria 1: TV Shows missing ANY episode anchors (Critical for sorting/status)
+            if (item.type === 'show') {
+                const hasNext = !!meta.next_episode_to_air;
+                const hasLast = !!meta.last_episode_to_air;
+                if (!hasNext && !hasLast) return true; // Completely lost show
+            }
+
+            // Criteria 2: Movies missing release date (rare but possible)
+            if (item.type === 'movie' && !meta.release_date) return true;
+
+            // Criteria 3: "Ghost" Items
+            return false;
+        });
+
+        if (sickItems.length === 0) {
+            console.log('✅ Health Check Passed: Library integrity is good.');
+            return;
+        }
+
+        console.log(`⚠️ Found ${sickItems.length} items requiring repair. Scheduling fixes...`);
+
+        // Process in batches of 5 to respect API limits but move fast
+        const chunkSize = 5;
+        for (let i = 0; i < sickItems.length; i += chunkSize) {
+            const chunk = sickItems.slice(i, i + chunkSize);
+            await Promise.all(chunk.map(item => refreshMetadata(item.tmdb_id, item.type)));
+            // Small breathing room between chunks
+            if (i + chunkSize < sickItems.length) await new Promise(r => setTimeout(r, 1000));
+        }
+        console.log('🏁 Health Check & Repair Complete.');
     };
 
     return (

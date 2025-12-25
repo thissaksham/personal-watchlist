@@ -4,6 +4,7 @@ import { tmdb, type TMDBMedia } from '../lib/tmdb';
 import { useWatchlist } from '../context/WatchlistContext';
 import { SlidingToggle } from './common/SlidingToggle';
 import { DiscoveryCard } from './cards/DiscoveryCard';
+import { usePreferences } from '../context/PreferencesContext';
 
 interface SearchModalProps {
     isOpen: boolean;
@@ -21,6 +22,7 @@ export const SearchModal = ({ isOpen, onClose, type: initialType, onSuccess, ini
     const [loading, setLoading] = useState(false);
 
     const { addToWatchlist, isInWatchlist } = useWatchlist();
+    const { region } = usePreferences();
 
     // Removed useEffect for initialQuery as useState handles it now.
 
@@ -38,7 +40,7 @@ export const SearchModal = ({ isOpen, onClose, type: initialType, onSuccess, ini
         if (isOpen) {
             setLoading(true);
             const tmdbType = searchType === 'multi' ? 'all' : (searchType === 'tv' ? 'tv' : 'movie');
-            tmdb.getTrending(tmdbType as any)
+            tmdb.getTrending(tmdbType as any, 'week', region)
                 .then(data => {
                     setTrending(data.results || []);
                 })
@@ -50,7 +52,7 @@ export const SearchModal = ({ isOpen, onClose, type: initialType, onSuccess, ini
             document.body.style.overflow = '';
         }
         return () => { document.body.style.overflow = ''; };
-    }, [isOpen, searchType]);
+    }, [isOpen, searchType, region]);
 
     // Search Logic with Instant Tab Switching
     const prevSearchType = useRef(searchType);
@@ -64,7 +66,7 @@ export const SearchModal = ({ isOpen, onClose, type: initialType, onSuccess, ini
 
             setLoading(true);
             try {
-                const data = await tmdb.search(query, searchType);
+                const data = await tmdb.search(query, searchType, region);
                 setResults(data.results || []);
             } catch (err) {
                 console.error(err);
@@ -83,7 +85,7 @@ export const SearchModal = ({ isOpen, onClose, type: initialType, onSuccess, ini
         prevSearchType.current = searchType;
         const timer = setTimeout(() => performSearch(), 500);
         return () => clearTimeout(timer);
-    }, [query, searchType]);
+    }, [query, searchType, region]);
 
     const handleAdd = async (media: TMDBMedia) => {
         const mediaType = media.media_type || (searchType === 'tv' ? 'tv' : 'movie');

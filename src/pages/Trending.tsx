@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react';
 import { tmdb, type TMDBMedia } from '../lib/tmdb';
 import { DiscoveryCard } from '../components/cards/DiscoveryCard';
 import { useWatchlist } from '../context/WatchlistContext';
+import { usePreferences } from '../context/PreferencesContext';
 import { Flame } from 'lucide-react';
 
 export const Trending = () => {
     const [trending, setTrending] = useState<TMDBMedia[]>([]);
     const [loading, setLoading] = useState(true);
     const { addToWatchlist, isInWatchlist } = useWatchlist();
+    const { region } = usePreferences();
 
     // Filters
     // Removed activeTab and timeWindow
@@ -28,7 +30,7 @@ export const Trending = () => {
             try {
                 // Fetch trending based on active tab
                 // Note: getTrending(type, time)
-                const data = await tmdb.getTrending('all', 'week');
+                const data = await tmdb.getTrending('all', 'week', region);
                 setTrending(data.results || []);
             } catch (err: any) {
                 console.error("Failed to fetch trending", err);
@@ -38,7 +40,7 @@ export const Trending = () => {
             }
         };
         fetchTrending();
-    }, []);
+    }, [region]);
 
     const handleAdd = async (media: TMDBMedia) => {
         const type = media.media_type === 'tv' ? 'show' : 'movie';

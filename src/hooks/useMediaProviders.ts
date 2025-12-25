@@ -7,14 +7,14 @@ export interface Provider {
     logo: string | null;
 }
 
-export const useMediaProviders = (mediaList: TMDBMedia[]) => {
+export const useMediaProviders = (mediaList: TMDBMedia[], region: string) => {
     return useMemo(() => {
         const providers = new Map<number, Provider>();
         let hasNoProvider = false;
 
         mediaList.forEach(media => {
             // @ts-ignore - dynamic property access
-            const providerData = media['watch/providers']?.results?.[TMDB_REGION];
+            const providerData = media['watch/providers']?.results?.[region];
             const flatrate = providerData?.flatrate || [];
 
             if (flatrate.length === 0) {

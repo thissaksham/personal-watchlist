@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Calendar, Star, PlayCircle, Play, Layers, Hash, Hourglass } from 'lucide-react';
-import { tmdb, type TMDBMedia, TMDB_REGION } from '../../lib/tmdb';
+import { tmdb, type TMDBMedia } from '../../lib/tmdb';
 import { useWatchlist } from '../../context/WatchlistContext';
 import { getMoctaleUrl, getTMDBUrl, TMDB_ICON_BASE64, MOCTALE_ICON_BASE64, JUSTWATCH_ICON_BASE64 } from '../../lib/urls';
+import { usePreferences } from '../../context/PreferencesContext';
 import { calculateShowStats, getWatchProviders, getWatchLink } from '../../utils/mediaUtils';
 
 interface ShowModalProps {
@@ -13,6 +14,7 @@ interface ShowModalProps {
 
 export const ShowModal = ({ media, onClose }: ShowModalProps) => {
     const { watchlist, markSeasonWatched, markSeasonUnwatched } = useWatchlist();
+    const { region } = usePreferences();
     const [details, setDetails] = useState<any>(null);
     const [hoveredSeason, setHoveredSeason] = useState<number | null>(null);
     const [showTrailer, setShowTrailer] = useState(false);
@@ -23,7 +25,7 @@ export const ShowModal = ({ media, onClose }: ShowModalProps) => {
     useEffect(() => {
         const fetchDetails = async () => {
             try {
-                const data = await tmdb.getDetails(media.id, 'tv');
+                const data = await tmdb.getDetails(media.id, 'tv', region);
                 setDetails(data);
             } catch (err) {
                 console.error("Failed to fetch show details", err);
@@ -42,8 +44,8 @@ export const ShowModal = ({ media, onClose }: ShowModalProps) => {
         : (posterPath ? `https://image.tmdb.org/t/p/w1280${posterPath}` : null);
 
     const showStats = calculateShowStats(media, details);
-    const providers = getWatchProviders(media, details, TMDB_REGION);
-    const watchLink = getWatchLink(media, details, TMDB_REGION);
+    const providers = getWatchProviders(media, details, region);
+    const watchLink = getWatchLink(media, details, region);
 
     const trailer = details?.videos?.results?.find(
         (v: any) => v.site === 'YouTube' && (v.type === 'Trailer' || v.type === 'Teaser')

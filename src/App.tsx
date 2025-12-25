@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { WatchlistProvider } from './context/WatchlistContext';
+import { PreferencesProvider } from './context/PreferencesContext';
 import { GlobalSearchProvider } from './context/GlobalSearchContext';
 import Layout from './components/Layout';
 import Login from './pages/Login';
@@ -65,28 +66,30 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <WatchlistProvider>
-          <GlobalSearchProvider>
-            <Routes>
-              <Route path="/auth" element={<Login />} />
-              <Route path="/auth/verified" element={<VerifySuccess />} />
+        <PreferencesProvider>
+          <WatchlistProvider>
+            <GlobalSearchProvider>
+              <Routes>
+                <Route path="/auth" element={<Login />} />
+                <Route path="/auth/verified" element={<VerifySuccess />} />
 
 
-              <Route path="/" element={
-                <ProtectedRoute>
-                  <Layout />
-                </ProtectedRoute>
-              }>
-                <Route index element={<Trending />} />
-                <Route path="movies" element={<Movies />} />
-                <Route path="shows" element={<Shows />} />
-                <Route path="upcoming" element={<Upcoming />} />
-                <Route path="games" element={<Games />} />
-                <Route path="dropped" element={<DroppedPage />} />
-              </Route>
-            </Routes>
-          </GlobalSearchProvider>
-        </WatchlistProvider>
+                <Route path="/" element={
+                  <ProtectedRoute>
+                    <Layout />
+                  </ProtectedRoute>
+                }>
+                  <Route index element={<Trending />} />
+                  <Route path="movies" element={<Movies />} />
+                  <Route path="shows" element={<Shows />} />
+                  <Route path="upcoming" element={<Upcoming />} />
+                  <Route path="games" element={<Games />} />
+                  <Route path="dropped" element={<DroppedPage />} />
+                </Route>
+              </Routes>
+            </GlobalSearchProvider>
+          </WatchlistProvider>
+        </PreferencesProvider>
       </AuthProvider>
     </BrowserRouter>
   );

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import { updateTmdbRegion } from '../lib/tmdb';
+
 
 interface AuthContextType {
     user: User | null;
@@ -49,13 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     setUser(currentUser);
                 }
 
-                // Sync region from metadata to localStorage
-                if (currentUser?.user_metadata?.region) {
-                    const savedRegion = localStorage.getItem('tmdb_region');
-                    if (savedRegion !== currentUser.user_metadata.region) {
-                        updateTmdbRegion(currentUser.user_metadata.region);
-                    }
-                }
+
             } catch (err: any) {
                 console.error("Auth Init Error:", err);
                 setError(err.message || "Unknown Auth Error");
@@ -72,13 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const currentUser = session?.user ?? null;
             setUser(currentUser);
 
-            // Sync region on state change (login/signup)
-            if (currentUser?.user_metadata?.region) {
-                const savedRegion = localStorage.getItem('tmdb_region');
-                if (savedRegion !== currentUser.user_metadata.region) {
-                    updateTmdbRegion(currentUser.user_metadata.region);
-                }
-            }
+
 
             setLoading(false);
         });

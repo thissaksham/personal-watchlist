@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { calculateMediaRuntime, TMDB_REGION } from '../lib/tmdb';
+import { calculateMediaRuntime, type TMDBMedia } from '../lib/tmdb';
 import { useWatchlist } from '../context/WatchlistContext';
+import { usePreferences } from '../context/PreferencesContext';
 import { WatchlistCard } from '../components/cards/WatchlistCard';
 import { MovieModal } from '../components/modals/MovieModal';
 import { ShowModal } from '../components/modals/ShowModal';
@@ -11,7 +12,6 @@ import { FilterBar, FilterExpandable } from '../components/FilterBar';
 import { HistoryCard } from '../components/cards/HistoryCard';
 import { SlidingToggle } from '../components/common/SlidingToggle';
 import { Search, ListFilter } from 'lucide-react';
-import type { TMDBMedia } from '../lib/tmdb';
 
 interface LibraryPageProps {
     title: string;
@@ -23,6 +23,7 @@ interface LibraryPageProps {
 
 export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMessage }: LibraryPageProps) => {
     const { watchlist, removeFromWatchlist, markAsDropped, markAsWatched, markAsUnwatched, restoreToUpcoming } = useWatchlist();
+    const { region } = usePreferences();
     const [selectedMedia, setSelectedMedia] = useState<TMDBMedia | null>(null);
     const [filterProvider, setFilterProvider] = useState<number | null>(null);
     const [seriesStatusFilter, setSeriesStatusFilter] = useState<string>('Finished');
@@ -104,7 +105,7 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
         let hasNoProvider = false;
 
         library.forEach(media => {
-            const providerData = media['watch/providers']?.results?.[TMDB_REGION];
+            const providerData = media['watch/providers']?.results?.[region];
             if (!providerData) {
                 hasNoProvider = true;
                 return;
@@ -154,7 +155,7 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
             result.push({ id: -1, name: 'Not Streaming', logo: '/ext-logo.png', count: 0 });
         }
         return result;
-    }, [library]);
+    }, [library, region]);
 
 
     const filteredLibrary = library.filter(media => {
@@ -178,7 +179,7 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
 
         // 3. Provider Filter
         if (filterProvider) {
-            const providerData = media['watch/providers']?.results?.[TMDB_REGION];
+            const providerData = media['watch/providers']?.results?.[region];
             if (!providerData) return filterProvider === -1;
 
             const available = [

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Calendar, Clock, Star, PlayCircle, Play } from 'lucide-react';
-import { tmdb, type TMDBMedia, TMDB_REGION } from '../../lib/tmdb';
+import { tmdb, type TMDBMedia } from '../../lib/tmdb';
 import { getMoctaleUrl, getTMDBUrl, TMDB_ICON_BASE64, MOCTALE_ICON_BASE64, JUSTWATCH_ICON_BASE64 } from '../../lib/urls';
 import { getWatchProviders, getWatchLink } from '../../utils/mediaUtils';
+import { usePreferences } from '../../context/PreferencesContext';
 
 interface MovieModalProps {
     media: TMDBMedia;
@@ -11,6 +12,7 @@ interface MovieModalProps {
 }
 
 export const MovieModal = ({ media, onClose }: MovieModalProps) => {
+    const { region } = usePreferences();
     const [details, setDetails] = useState<any>(null);
     const [showTrailer, setShowTrailer] = useState(false);
 
@@ -18,7 +20,7 @@ export const MovieModal = ({ media, onClose }: MovieModalProps) => {
     useEffect(() => {
         const fetchDetails = async () => {
             try {
-                const data = await tmdb.getDetails(media.id, 'movie');
+                const data = await tmdb.getDetails(media.id, 'movie', region);
                 setDetails(data);
             } catch (err) {
                 console.error("Failed to fetch movie details", err);
@@ -36,8 +38,8 @@ export const MovieModal = ({ media, onClose }: MovieModalProps) => {
         ? `https://image.tmdb.org/t/p/w1280${backdropPath}`
         : (posterPath ? `https://image.tmdb.org/t/p/w1280${posterPath}` : null);
 
-    const providers = getWatchProviders(media, details, TMDB_REGION);
-    const watchLink = getWatchLink(media, details, TMDB_REGION);
+    const providers = getWatchProviders(media, details, region);
+    const watchLink = getWatchLink(media, details, region);
     const runtime = details?.runtime || media.runtime;
 
     const trailer = details?.videos?.results?.find(

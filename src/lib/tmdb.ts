@@ -12,13 +12,8 @@ const isBearerToken = TMDB_API_KEY && TMDB_API_KEY.length > 60;
 
 // Initialize Region from LocalStorage (User Preference)
 // This will be synced with user_metadata on login
-export let TMDB_REGION = localStorage.getItem('tmdb_region') || 'IN';
-
-export const updateTmdbRegion = (newRegion: string) => {
-    TMDB_REGION = newRegion;
-    localStorage.setItem('tmdb_region', newRegion);
-    console.log(`[TMDB] Region updated to: ${newRegion}`);
-};
+// DEPRECATED: Use PreferencesContext
+// export let TMDB_REGION = localStorage.getItem('tmdb_region') || 'IN';
 
 export const REGIONS = [
     { code: 'IN', name: 'India', flag: '🇮🇳' },
@@ -37,12 +32,11 @@ export const REGIONS = [
     { code: 'SG', name: 'Singapore', flag: '🇸🇬' },
     { code: 'MY', name: 'Malaysia', flag: '🇲🇾' },
     { code: 'ID', name: 'Indonesia', flag: '🇮🇩' },
-    { code: 'PH', name: 'Philippines', flag: '🇵🇭' },
+    { code: 'PH', name: 'Philippines', flag: '🇵🇱' }, // Flag fix
     { code: 'TH', name: 'Thailand', flag: '🇹🇭' },
     { code: 'NZ', name: 'New Zealand', flag: '🇳🇿' },
     { code: 'ZA', name: 'South Africa', flag: '🇿🇦' },
     { code: 'SA', name: 'Saudi Arabia', flag: '🇸🇦' },
-    { code: 'AE', name: 'United Arab Emirates', flag: '🇦🇪' },
     { code: 'BG', name: 'Bulgaria', flag: '🇧🇬' },
     { code: 'DK', name: 'Denmark', flag: '🇩🇰' },
     { code: 'EG', name: 'Egypt', flag: '🇪🇬' },
@@ -69,10 +63,10 @@ const getHeaders = () => {
 };
 
 // Helper for fetching
-async function fetchTMDB(endpoint: string, params: Record<string, string> = {}) {
+async function fetchTMDB(endpoint: string, params: Record<string, string> = {}, region: string) {
     const queryParams: any = {
         language: 'en-US',
-        region: TMDB_REGION,
+        region: region,
         ...params,
     };
 
@@ -149,6 +143,15 @@ export interface TMDBMedia {
     countdown?: number; // UI propery for upcoming
     digital_release_date?: string;
     theatrical_release_date?: string;
+    // App-Specific Overrides
+    manual_date_override?: boolean;
+    manual_ott_name?: string;
+    moved_to_library?: boolean;
+    dismissed_from_upcoming?: boolean;
+    // UI Transient Properties
+    tmdbMediaType?: 'movie' | 'tv' | 'show'; // 'show' is legacy alias for 'tv'
+    tabCategory?: 'ott' | 'theatrical' | 'coming_soon' | 'other';
+    seasonInfo?: string;
 }
 
 const RAPIDAPI_KEY = import.meta.env.VITE_RAPIDAPI_KEY;
@@ -253,17 +256,17 @@ async function fetchRapidOTT(title: string, regionCode: string, targetYear?: str
 }
 
 export const tmdb = {
-    getTrending: async (type: 'movie' | 'tv' | 'all' = 'movie', timeWindow: 'day' | 'week' = 'week') => {
-        return fetchTMDB(`/trending/${type}/${timeWindow}`);
+    getTrending: async (type: 'movie' | 'tv' | 'all' = 'movie', timeWindow: 'day' | 'week' = 'week', region: string = 'IN') => {
+        return fetchTMDB(`/trending/${type}/${timeWindow}`, {}, region);
     },
 
-    search: async (query: string, type: 'movie' | 'tv' | 'multi') => {
+    search: async (query: string, type: 'movie' | 'tv' | 'multi', region: string = 'IN') => {
         console.log(`[TMDB] search called: query="${query}", type="${type}"`);
         if (!query.trim()) return { results: [] };
 
         // Explicitly constructing URL as requested by user:
         // https://api.themoviedb.org/3/search/tv?query={user_entry}&api_key={api_key}
-        const url = `${BASE_URL}/search/${type}?query=${encodeURIComponent(query)}&api_key=${TMDB_API_KEY}`;
+        const url = `${BASE_URL}/search/${type}?query=${encodeURIComponent(query)}&api_key=${TMDB_API_KEY}&region=${region}`;
 
         console.log(`[TMDB] Fetching explicitly: ${url}`);
 
@@ -281,29 +284,29 @@ export const tmdb = {
         }
     },
 
-    getDetails: async (id: number, type: 'movie' | 'tv') => {
+    getDetails: async (id: number, type: 'movie' | 'tv', region: string = 'IN') => {
         const data = await fetchTMDB(`/${type}/${id}`, {
             append_to_response: 'watch/providers,credits,external_ids,videos'
-        });
+        }, region);
 
         // Check if TMDB has provider data for the user's region
-        const tmdbProviders = data['watch/providers']?.results?.[TMDB_REGION];
+        const tmdbProviders = data['watch/providers']?.results?.[region];
         const hasProviders = tmdbProviders && (tmdbProviders.flatrate || tmdbProviders.rent || tmdbProviders.buy);
 
         if (!hasProviders) {
-            console.warn(`[TMDB] No providers found for ${TMDB_REGION}. Triggering RapidAPI fallback...`);
+            console.warn(`[TMDB] No providers found for ${region}. Triggering RapidAPI fallback...`);
 
             // Extract the year for precise matching
             const releaseDate = data.release_date || data.first_air_date || '';
             const year = releaseDate.split('-')[0];
 
-            const fallback = await fetchRapidOTT(data.title || data.name, TMDB_REGION, year);
+            const fallback = await fetchRapidOTT(data.title || data.name, region, year);
             if (fallback) {
                 // Merge fallback into the response structure
                 if (!data['watch/providers']) data['watch/providers'] = { results: {} };
                 if (!data['watch/providers'].results) data['watch/providers'].results = {};
-                data['watch/providers'].results[TMDB_REGION] = fallback;
-                console.log(`[TMDB] Fallback successful for ${TMDB_REGION}`);
+                data['watch/providers'].results[region] = fallback;
+                console.log(`[TMDB] Fallback successful for ${region}`);
             }
         }
 
@@ -311,7 +314,12 @@ export const tmdb = {
     },
 
     getReleaseDates: async (id: number) => {
-        return fetchTMDB(`/movie/${id}/release_dates`);
+        // Release dates are global, but maybe we should filter? No, standard API returns all.
+        // We do not need region param here necessarily, unless we want to filter on server side.
+        // For now, keep it simple.
+        // Passing 'US' as default just to satisfy fetchTMDB signature if we change it.
+        // But simpler:
+        return fetchTMDB(`/movie/${id}/release_dates`, {}, 'US');
     }
 };
 

@@ -1,8 +1,9 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useWatchlist } from '../context/WatchlistContext';
 import { UpcomingCard } from '../components/cards/UpcomingCard';
-import { calculateMediaRuntime, TMDB_REGION, type TMDBMedia } from '../lib/tmdb';
+import { calculateMediaRuntime, type TMDBMedia } from '../lib/tmdb';
 import { SlidingToggle } from '../components/common/SlidingToggle';
+import { usePreferences } from '../context/PreferencesContext';
 import { MovieModal } from '../components/modals/MovieModal';
 import { ShowModal } from '../components/modals/ShowModal';
 import { ManualDateModal } from '../components/modals/ManualDateModal';
@@ -21,7 +22,8 @@ const getDaysUntil = (dateStr: string) => {
 };
 
 export const Upcoming = () => {
-    const { watchlist, markAsWatched, dismissFromUpcoming, removeFromWatchlist, updateWatchlistItemMetadata, updateStatus, moveToLibrary, refreshMetadata } = useWatchlist();
+    const { watchlist, markAsWatched, dismissFromUpcoming, removeFromWatchlist, updateWatchlistItemMetadata, updateStatus, moveToLibrary, refreshMetadata, markAsDropped } = useWatchlist();
+    const { region } = usePreferences();
     const [selectedMedia, setSelectedMedia] = useState<any | null>(null);
     const [viewMode, setViewMode] = useState<string>('On OTT');
     const [showDatePicker, setShowDatePicker] = useState<any | null>(null);
@@ -44,7 +46,7 @@ export const Upcoming = () => {
             // If item is already in Library, skip it.
             // Exclude: watched, unwatched, show_finished, show_ongoing, show_watched, show_watching
             // Exclude: watched, unwatched, show_finished, show_ongoing, show_watched
-            if (['movie_watched', 'movie_unwatched', 'movie_dropped', 'show_finished', 'show_ongoing', 'show_watched', 'show_dropped'].includes(item.status)) return null;
+            if (['movie_watched', 'movie_unwatched', 'movie_dropped', 'show_dropped'].includes(item.status)) return null;
 
             // ... (rest of metadata extraction for display) ...
 
@@ -56,7 +58,7 @@ export const Upcoming = () => {
             if (meta.dismissed_from_upcoming) return null;
 
             const providerInfo = meta['watch/providers'] || meta['watch_providers'] || meta['providers'];
-            const regionData = providerInfo?.results?.[TMDB_REGION] || {};
+            const regionData = providerInfo?.results?.[region] || {};
             const flatrate = regionData.flatrate || [];
             // ... (rest of provider logic for logo) ...
             const allStreamingOrRental = [...flatrate, ...(regionData.ads || []), ...(regionData.free || []), ...(regionData.rent || []), ...(regionData.buy || [])];
@@ -81,7 +83,7 @@ export const Upcoming = () => {
 
                 if (item.status === 'movie_on_ott' || item.status === 'movie_coming_soon') {
                     category = item.status === 'movie_on_ott' ? 'ott' : 'theatrical';
-                    const primaryDate = item.status === 'movie_on_ott' ? (dDate || rDate) : (tDate || rDate);
+                    const primaryDate = meta.manual_date_override ? dDate : (item.status === 'movie_on_ott' ? (dDate || rDate) : (tDate || rDate));
 
                     if (primaryDate) {
                         targetDate = primaryDate;
@@ -116,12 +118,20 @@ export const Upcoming = () => {
                 // Shows
                 category = 'ott';
                 const nextEp = meta.next_episode_to_air;
+                const lastEp = meta.last_episode_to_air;
+
                 if (nextEp && nextEp.air_date) {
                     targetDate = new Date(nextEp.air_date);
                     seasonInfo = 'New Episode';
-                } else if (item.status === 'show_new' && (meta.first_air_date || meta.release_date)) {
+                } else if (lastEp && lastEp.air_date) {
+                    targetDate = new Date(lastEp.air_date);
+                    seasonInfo = 'Latest Episode';
+                } else if (meta.first_air_date || meta.release_date) {
                     targetDate = new Date(meta.first_air_date || meta.release_date);
-                    seasonInfo = 'Premiere';
+                    seasonInfo = item.status === 'show_new' ? 'Premiere' : 'Released';
+                } else {
+                    targetDate = today;
+                    seasonInfo = 'Streaming Now';
                 }
             }
 
@@ -156,14 +166,14 @@ export const Upcoming = () => {
         // Strict Status-Based Filtering
         return items.filter(item => {
             if (viewMode === 'On OTT') {
-                return item.status === 'movie_on_ott' || (item.tmdbMediaType === 'tv' && (item.status === 'show_new' || item.status === 'show_returning' || item.status === 'show_watching'));
+                return item.status === 'movie_on_ott' || item.tmdbMediaType === 'tv';
             }
             if (viewMode === 'Coming Soon') {
                 return item.status === 'movie_coming_soon';
             }
             return true;
         });
-    }, [watchlist, viewMode]);
+    }, [watchlist, viewMode, region]);
 
     // Auto-refresh metadata for items in Upcoming to catch official OTT dates/platforms
     useEffect(() => {
@@ -175,17 +185,17 @@ export const Upcoming = () => {
                 return item.status === 'movie_coming_soon' || item.status === 'movie_on_ott';
             }
             if (item.tmdbMediaType === 'tv') {
-                return item.status === 'show_returning' || item.status === 'show_coming_soon';
+                return ['show_returning', 'show_coming_soon', 'show_ongoing', 'show_finished', 'show_watched'].includes(item.status);
             }
             return false;
         });
 
         if (toRefresh.length > 0) {
-            // Limit to 2 refreshes per effect run to be gentle on API
-            const batch = toRefresh.slice(0, 2);
+            // Standard Auto-Refresh for Visible Items
+            const batch = toRefresh.slice(0, 3);
             batch.forEach(item => {
                 refreshedIds.add(item.id);
-                refreshMetadata(item.id, 'movie');
+                refreshMetadata(item.id, item.tmdbMediaType === 'movie' ? 'movie' : 'show');
             });
         }
     }, [upcomingItems, refreshMetadata, refreshedIds]);
@@ -279,8 +289,8 @@ export const Upcoming = () => {
                                 }}
                                 onRemove={() => {
                                     if (show.tmdbMediaType === 'movie') {
-                                        if (window.confirm(`Delete ${show.title} from your watchlist completely?`)) {
-                                            removeFromWatchlist(Number(show.id), 'movie');
+                                        if (window.confirm(`Drop ${show.title} from your watchlist? It will be moved to the Dropped list.`)) {
+                                            markAsDropped(Number(show.id), 'movie');
                                         }
                                     } else {
                                         if (show.status === 'show_new') {

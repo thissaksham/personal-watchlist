@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { X, Calendar, Save, Tv } from 'lucide-react';
 import { type TMDBMedia } from '../../lib/tmdb';
 
+import { getTodayIsoString } from '../../lib/dateUtils';
+
 interface ManualDateModalProps {
     media: TMDBMedia;
     onClose: () => void;
@@ -11,9 +13,9 @@ interface ManualDateModalProps {
 }
 
 export const ManualDateModal = ({ media, onClose, onSave, onReset }: ManualDateModalProps) => {
-    const meta = (media as any);
-    const [date, setDate] = useState(meta.digital_release_date || new Date().toISOString().split('T')[0]);
-    const [ottName, setOttName] = useState(meta.manual_ott_name || '');
+    // No casting needed: TMDBMedia now has these fields typed!
+    const [date, setDate] = useState(media.digital_release_date || getTodayIsoString());
+    const [ottName, setOttName] = useState(media.manual_ott_name || '');
     const [isSaving, setIsSaving] = useState(false);
 
     const handleSave = async () => {
@@ -151,25 +153,25 @@ export const ManualDateModal = ({ media, onClose, onSave, onReset }: ManualDateM
 
                         <div style={{ display: 'flex', gap: '16px', paddingTop: '16px' }}>
                             <button
-                                onClick={meta.manual_date_override ? handleReset : onClose}
+                                onClick={media.manual_date_override ? handleReset : onClose}
                                 disabled={isSaving}
                                 style={{
                                     flex: '1',
                                     padding: '16px',
                                     borderRadius: '16px',
-                                    backgroundColor: meta.manual_date_override ? 'rgba(239, 68, 68, 0.1)' : 'rgba(255,255,255,0.05)',
-                                    color: meta.manual_date_override ? '#ef4444' : 'white',
+                                    backgroundColor: media.manual_date_override ? 'rgba(239, 68, 68, 0.1)' : 'rgba(255,255,255,0.05)',
+                                    color: media.manual_date_override ? '#ef4444' : 'white',
                                     fontWeight: '700',
-                                    border: meta.manual_date_override ? '1px solid rgba(239, 68, 68, 0.2)' : 'none',
+                                    border: media.manual_date_override ? '1px solid rgba(239, 68, 68, 0.2)' : 'none',
                                     cursor: isSaving ? 'not-allowed' : 'pointer',
                                     transition: 'all 0.2s',
-                                    opacity: isSaving && meta.manual_date_override ? 0.6 : 1,
+                                    opacity: isSaving && media.manual_date_override ? 0.6 : 1,
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center'
                                 }}
-                                onMouseEnter={(e) => { if (!isSaving) e.currentTarget.style.backgroundColor = meta.manual_date_override ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255,255,255,0.1)'; }}
-                                onMouseLeave={(e) => { if (!isSaving) e.currentTarget.style.backgroundColor = meta.manual_date_override ? 'rgba(239, 68, 68, 0.1)' : 'rgba(255,255,255,0.05)'; }}
+                                onMouseEnter={(e) => { if (!isSaving) e.currentTarget.style.backgroundColor = media.manual_date_override ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255,255,255,0.1)'; }}
+                                onMouseLeave={(e) => { if (!isSaving) e.currentTarget.style.backgroundColor = media.manual_date_override ? 'rgba(239, 68, 68, 0.1)' : 'rgba(255,255,255,0.05)'; }}
                             >
                                 {isSaving && meta.manual_date_override ? (
                                     <div style={{ width: '18px', height: '18px', border: '2px solid rgba(239,68,68,0.3)', borderTopColor: '#ef4444', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />

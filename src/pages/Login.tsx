@@ -2,8 +2,9 @@ import { useState, useRef, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { Clapperboard, Mail, Lock, ArrowRight, Loader, User, Globe } from 'lucide-react';
-import { REGIONS, updateTmdbRegion } from '../lib/tmdb';
+import { REGIONS } from '../lib/tmdb';
 import { useAuth } from '../context/AuthContext';
+import { usePreferences } from '../context/PreferencesContext';
 
 export default function Login() {
     const [isSignUp, setIsSignUp] = useState(false);
@@ -18,6 +19,7 @@ export default function Login() {
     const regionDropdownRef = useRef<HTMLDivElement>(null);
     const navigate = useNavigate();
     const { user, loading: authLoading } = useAuth();
+    const { setRegion } = usePreferences();
 
     // Redirect if already logged in
     useEffect(() => {
@@ -65,7 +67,8 @@ export default function Login() {
 
                 if (data?.session) {
                     // Reactive Sync: Update region without reload
-                    updateTmdbRegion(selectedRegion);
+                    setRegion(selectedRegion);
+
                     // Trigger Welcome Splash for first time users
                     sessionStorage.setItem('show_welcome', 'true');
                     sessionStorage.setItem('splash_type', 'welcome');
@@ -86,7 +89,7 @@ export default function Login() {
                 // Trigger shorter Welcome Back splash for returning users
                 sessionStorage.setItem('show_welcome', 'true');
                 sessionStorage.setItem('splash_type', 'returning');
-                // Note: AuthContext will handle region reactive sync for existing users
+                // Note: AuthContext/PreferencesContext will handle region reactive sync for existing users automatically
                 navigate('/');
             }
 
@@ -231,6 +234,7 @@ export default function Login() {
                 <div style={{
                     flex: '0 1 450px',
                     width: '100%',
+                    maxWidth: '450px',
                     ...theme.glass,
                     padding: '3rem',
                     borderRadius: '24px',

@@ -3,12 +3,14 @@ import { WatchlistCard } from '../components/cards/WatchlistCard';
 import { MovieModal } from '../components/modals/MovieModal';
 import { ShowModal } from '../components/modals/ShowModal';
 import { useWatchlist } from '../context/WatchlistContext';
-import { type TMDBMedia, TMDB_REGION } from '../lib/tmdb';
+import { type TMDBMedia } from '../lib/tmdb';
 import { FilterBar, FilterExpandable } from '../components/FilterBar';
 import { useMediaProviders } from '../hooks/useMediaProviders';
+import { usePreferences } from '../context/PreferencesContext';
 
 export const Watchlist = () => {
     const { watchlist, removeFromWatchlist, markAsWatched, restoreToUpcoming } = useWatchlist();
+    const { region } = usePreferences();
     const [selectedMedia, setSelectedMedia] = useState<TMDBMedia | null>(null);
     const [enrichedWatchlist, setEnrichedWatchlist] = useState<TMDBMedia[]>([]);
     const [loading, setLoading] = useState(true);
@@ -51,7 +53,7 @@ export const Watchlist = () => {
     }, [watchlist]);
 
     // Extract Providers
-    const allProviders = useMediaProviders(enrichedWatchlist);
+    const allProviders = useMediaProviders(enrichedWatchlist, region);
 
     console.log('DEBUG: Enriched Watchlist:', enrichedWatchlist);
 
@@ -60,14 +62,14 @@ export const Watchlist = () => {
         return enrichedWatchlist.filter(media => {
             if (filterProvider) {
                 // @ts-ignore
-                const providerData = media['watch/providers']?.results?.[TMDB_REGION];
+                const providerData = media['watch/providers']?.results?.[region];
                 const flatrate = providerData?.flatrate || [];
                 if (filterProvider === -1) return flatrate.length === 0;
                 return flatrate.some((p: any) => p.provider_id === filterProvider);
             }
             return true;
         });
-    }, [enrichedWatchlist, filterProvider]);
+    }, [enrichedWatchlist, filterProvider, region]);
 
     console.log('DEBUG: Filtered List:', filteredList);
 
