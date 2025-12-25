@@ -653,7 +653,27 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
             }
 
             // Recalculate status with FRESH metadata
-            await recalculateShowStatus(tmdbId, maxSeason, { ...(item?.metadata || {}), last_watched_season: maxSeason, seasons: seasons });
+            // Apply Smart Update here too for the "Mark Watched" button
+            let finalMetaForStatus = { ...(item?.metadata || {}), last_watched_season: maxSeason, seasons: seasons };
+
+            const globalNext = item?.metadata?.next_episode_to_air;
+            if (globalNext && maxSeason >= (globalNext.season_number || 0)) {
+                try {
+                    const seasonDetails = await tmdb.getSeasonDetails(tmdbId, maxSeason);
+                    const todayStr = new Date().toISOString().split('T')[0];
+                    let nextEp = seasonDetails.episodes?.find((e: any) => e.air_date && e.air_date > todayStr);
+
+                    if (nextEp) {
+                        console.log(`[Smart Update (Main)] Found future episode in S${maxSeason}: Ep${nextEp.episode_number}`);
+                        finalMetaForStatus = { ...finalMetaForStatus, next_episode_to_air: nextEp };
+
+                        // Persist this specific update
+                        await updateWatchlistItemMetadata(tmdbId, 'show', finalMetaForStatus);
+                    }
+                } catch (err) { console.warn("Smart Update (Main) failed", err); }
+            }
+
+            await recalculateShowStatus(tmdbId, maxSeason, finalMetaForStatus);
             return;
         }
 
@@ -753,7 +773,42 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
             localStorage.setItem('watchlist', JSON.stringify(updatedLocal));
         }
 
-        await recalculateShowStatus(tmdbId, seasonNumber);
+        // Recalculate status requires freshness check
+        // If we just watched the season that contains the 'next_episode_to_air' (global),
+        // we should try to find the *real* next episode (future) to update metadata immediately.
+        const globalNext = item?.metadata?.next_episode_to_air;
+        let finalMeta = MetaWithUpdate;
+
+        if (globalNext && seasonNumber >= globalNext.season_number) {
+            // We caught up to the global pointer.
+            // Check if there are more episodes in this season or the next.
+            try {
+                // Fetch the season details for the season we just finished/caught up to
+                const seasonDetails = await tmdb.getSeasonDetails(tmdbId, seasonNumber);
+                const todayStr = new Date().toISOString().split('T')[0];
+
+                // Find first episode with air_date > today
+                let nextEp = seasonDetails.episodes?.find((e: any) => e.air_date && e.air_date > todayStr);
+
+                // If not found in this season, check if we are at the end, maybe check next season?
+                // But usually 'next_episode_to_air' handles season jumps.
+                // If it's empty, it means we are TRULY caught up beyond this season.
+
+                if (nextEp) {
+                    console.log(`[Smart Update] Found future episode in S${seasonNumber}: Ep${nextEp.episode_number} on ${nextEp.air_date}`);
+                    finalMeta = {
+                        ...finalMeta,
+                        next_episode_to_air: nextEp // Override stale global pointer
+                    };
+                    // Update DB with specific next episode
+                    await updateWatchlistItemMetadata(tmdbId, 'show', finalMeta);
+                }
+            } catch (err) {
+                console.warn("Smart Update failed:", err);
+            }
+        }
+
+        await recalculateShowStatus(tmdbId, seasonNumber, finalMeta);
     };
 
     const markSeasonUnwatched = async (tmdbId: number, seasonNumber: number) => {
