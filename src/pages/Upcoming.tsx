@@ -192,6 +192,15 @@ export const Upcoming = () => {
         const itemsToProcess = upcomingItems; // Use the value from useMemo
         const toRefresh = itemsToProcess.filter(item => {
             if (refreshedIds.has(item.id)) return false;
+
+            // API Throttle: Only auto-refresh if older than 12 hours
+            const lastUpdated = item.last_updated_at || (item as any).metadata?.last_updated_at;
+            if (lastUpdated) {
+                const diff = Date.now() - new Date(lastUpdated).getTime();
+                const twelveHours = 12 * 60 * 60 * 1000;
+                if (diff < twelveHours) return false;
+            }
+
             // Only refresh movies in Upcoming statuses
             if (item.tmdbMediaType === 'movie') {
                 return item.status === 'movie_coming_soon' || item.status === 'movie_on_ott';

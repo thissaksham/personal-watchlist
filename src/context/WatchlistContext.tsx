@@ -108,7 +108,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
             genres, number_of_episodes, number_of_seasons,
             episode_run_time, tvmaze_runtime,
             digital_release_date, digital_release_note, theatrical_release_date, moved_to_library,
-            manual_date_override, manual_ott_name, dismissed_from_upcoming
+            manual_date_override, manual_ott_name, dismissed_from_upcoming, last_updated_at
         } = meta;
 
         return {
@@ -122,7 +122,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
             genres, number_of_episodes, number_of_seasons,
             episode_run_time, tvmaze_runtime,
             digital_release_date, digital_release_note, theatrical_release_date, moved_to_library,
-            manual_date_override, manual_ott_name, dismissed_from_upcoming,
+            manual_date_override, manual_ott_name, dismissed_from_upcoming, last_updated_at,
             'watch/providers': leanProviders,
             videos: leanVideos
         };
@@ -786,7 +786,8 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
 
             let statusToUpdate: WatchlistItem['status'] = initialStatus;
 
-            await updateWatchlistItemMetadata(tmdbId, type, finalMetadata);
+            const finalWithTimestamp = { ...finalMetadata, last_updated_at: Date.now() };
+            await updateWatchlistItemMetadata(tmdbId, type, finalWithTimestamp);
             if (item.status !== statusToUpdate) {
                 await updateStatus(tmdbId, type, statusToUpdate);
             }
