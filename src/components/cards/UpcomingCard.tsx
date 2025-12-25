@@ -1,4 +1,4 @@
-import { X, Check, Calendar, ArrowUp, Pencil } from 'lucide-react';
+import { X, Check, Calendar, ArrowUp, Pencil, Star } from 'lucide-react';
 import { type TMDBMedia } from '../../lib/tmdb';
 import { useWatchlist } from '../../context/WatchlistContext';
 import { usePreferences } from '../../context/PreferencesContext';
@@ -114,6 +114,7 @@ export const UpcomingCard = ({
 
         if (!avgRuntime) return null;
 
+        // For TV Shows with stats (Calculated remaining time)
         if (stats) {
             const totalMinutes = stats.remainingEpisodes * avgRuntime;
             if (totalMinutes <= 0) return null;
@@ -128,6 +129,15 @@ export const UpcomingCard = ({
             if (h > 0) return `${h}h ${m}m`;
             return `${m}m`;
         }
+
+        // For Movies (Simple Runtime)
+        if (!isTV) {
+            const h = Math.floor(avgRuntime / 60);
+            const m = avgRuntime % 60;
+            if (h > 0) return `${h}h ${m}m`;
+            return `${m}m`;
+        }
+
         return null;
     };
     const duration = getDuration();
@@ -140,11 +150,21 @@ export const UpcomingCard = ({
     // Helper to format consistent dates
     // Using dateUtils formatDisplayDate which gives "19 Jan 2024"
     const getFormattedDate = (dateStr: string | undefined): string => {
-        const display = formatDisplayDate(dateStr);
+        let display = formatDisplayDate(dateStr);
         const currentYear = new Date().getFullYear().toString();
-        if (display.endsWith(currentYear)) {
+
+        if (display.endsWith(` ${currentYear}`)) {
             return display.replace(` ${currentYear}`, '');
         }
+
+        // Replace " 2026" with "'26"
+        const yearMatch = display.match(/ (\d{4})$/);
+        if (yearMatch) {
+            const yearWrapper = yearMatch[0]; // " 2026"
+            const shortYear = yearMatch[1].slice(2); // "26"
+            display = display.replace(yearWrapper, `'${shortYear}`);
+        }
+
         return display;
     };
 
@@ -201,17 +221,26 @@ export const UpcomingCard = ({
             contextLabel = 'Next Episode';
         }
     } else if (isMovieOTT) {
-        const dateStr = media.manual_date_override ? media.digital_release_date : media.release_date;
+        // Prioritize Digital Date (Streaming Date) over Theatrical Release Date for OTT items
+        const dateStr = media.manual_date_override
+            ? media.digital_release_date
+            : (media.digital_release_date || media.release_date);
         formattedDate = getFormattedDate(dateStr);
 
         const providers = media['watch/providers']?.results?.[region];
-        providerName = providers?.flatrate?.[0]?.provider_name ||
+        providerName = media.manual_ott_name || // Priority 1: Manual Name
+            providers?.flatrate?.[0]?.provider_name ||
             providers?.ads?.[0]?.provider_name ||
             providers?.free?.[0]?.provider_name || 'OTT';
         contextLabel = 'New Movie';
     } else if (isMovieComingSoon) {
         const dateStr = media.manual_date_override ? media.digital_release_date : (media.theatrical_release_date || media.release_date);
         formattedDate = getFormattedDate(dateStr);
+
+        // If manual override exists, show that provider even in 'Coming Soon'
+        if (media.manual_date_override && media.manual_ott_name) {
+            providerName = media.manual_ott_name;
+        }
 
         const isInTheatres = isReleased(dateStr); // <= Today
         label = isInTheatres ? 'In Theatres' : 'Coming Soon';
@@ -238,6 +267,12 @@ export const UpcomingCard = ({
                             {formattedDate}
                         </div>
                     )}
+                    {media.vote_average > 0 && (
+                        <div className="media-pill pill-rating">
+                            <Star size={10} fill="#fbbf24" strokeWidth={0} />
+                            <span>{media.vote_average.toFixed(1)}</span>
+                        </div>
+                    )}
                     {isTV && stats && stats.remainingEpisodes > 0 && (
                         <div className="media-pill pill-seasons">
                             <span>
@@ -248,7 +283,7 @@ export const UpcomingCard = ({
                             </span>
                         </div>
                     )}
-                    {isTV && duration && (
+                    {duration && (
                         <div className="media-pill pill-duration"><span>{duration}</span></div>
                     )}
                     {label && (

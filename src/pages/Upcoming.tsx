@@ -59,7 +59,8 @@ export const Upcoming = () => {
                 if (!nextDate || nextDate < today) return null;
             }
 
-            // ... (rest of metadata extraction for display) ...
+            // ... (metadata extraction) ...
+
 
             let targetDate: Date | null = null;
             let seasonInfo = '';
@@ -98,7 +99,7 @@ export const Upcoming = () => {
 
                     if (primaryDate) {
                         targetDate = primaryDate;
-                        if (item.status === 'movie_on_ott') {
+                        if (item.status === 'movie_on_ott' || (meta.manual_date_override && meta.digital_release_date)) {
                             if (targetDate > today) {
                                 const ottName = meta.manual_ott_name || meta.digital_release_note;
                                 seasonInfo = ottName ? `Coming to ${ottName}` : 'Coming to OTT';
@@ -300,8 +301,16 @@ export const Upcoming = () => {
                                 }}
                                 onRemove={() => {
                                     if (show.tmdbMediaType === 'movie') {
-                                        if (window.confirm(`Drop ${show.title} from your watchlist? It will be moved to the Dropped list.`)) {
-                                            markAsDropped(Number(show.id), 'movie');
+                                        const isFuture = show.status === 'movie_coming_soon' || (show.status === 'movie_on_ott' && new Date(show.date) > new Date());
+
+                                        if (isFuture) {
+                                            if (window.confirm(`Delete ${show.title} from your watchlist completely? (Unreleased)`)) {
+                                                removeFromWatchlist(Number(show.id), 'movie');
+                                            }
+                                        } else {
+                                            if (window.confirm(`Drop ${show.title} from your watchlist? It will be moved to the Dropped list.`)) {
+                                                markAsDropped(Number(show.id), 'movie');
+                                            }
                                         }
                                     } else {
                                         if (show.status === 'show_new') {

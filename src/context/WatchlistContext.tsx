@@ -235,8 +235,8 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
                 }
             }
 
-            if (hasProvidersIN) {
-                // Step 1: Streaming in India
+            if (hasProvidersIN && (!releaseDateObj || releaseDateObj <= today)) {
+                // Step 1: Streaming in India (AND Released)
                 if (!currentStatus) {
                     // ADD LOGIC: Streaming -> Library (Unwatched)
                     movedToLibrary = true;
@@ -250,15 +250,17 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
                     movedToLibrary = true;
                     initialStatus = currentStatus === 'movie_watched' ? 'movie_watched' : 'movie_unwatched';
                 }
-            } else if (hasFutureIndianDigitalDate || hasManualOverride) {
-                // Step 2: Upcoming Digital in India or Manual Override
-                if (!currentStatus || currentStatus === 'movie_coming_soon' || hasManualOverride) {
+            } else if (hasProvidersIN || hasFutureIndianDigitalDate || hasManualOverride) {
+                // Step 2: Upcoming Digital in India or Manual Override OR Future Streaming
+                // Note: We include hasProvidersIN here because if it failed Step 1 (due to Future Date), it falls here.
+                if (!currentStatus || currentStatus === 'movie_coming_soon' || hasManualOverride || hasProvidersIN) {
                     movedToLibrary = false;
                     initialStatus = 'movie_on_ott';
                 } else {
                     movedToLibrary = true;
                     initialStatus = 'movie_unwatched';
                 }
+
             } else if (isAvailableGlobally) {
                 // Step 3: Available Globally + 6 months old
                 if (!currentStatus) {
