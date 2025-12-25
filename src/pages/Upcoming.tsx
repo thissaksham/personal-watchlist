@@ -42,11 +42,22 @@ export const Upcoming = () => {
         const items = watchlist.map(item => {
             const meta = (item.metadata || {}) as any;
 
-            // Strict Status check first
-            // If item is already in Library, skip it.
-            // Exclude: watched, unwatched, show_finished, show_ongoing, show_watched, show_watching
-            // Exclude: watched, unwatched, show_finished, show_ongoing, show_watched
-            if (['movie_watched', 'movie_unwatched', 'movie_dropped', 'show_dropped'].includes(item.status)) return null;
+            // Exclude: watched, unwatched, show_finished, show_ongoing, show_watched, show_dropped
+            // Exception: 'show_watching' is allowed only if there is a known future episode (Next Ep tracking)
+            const excludedStatuses = [
+                'movie_watched', 'movie_unwatched', 'movie_dropped',
+                'show_finished', 'show_ongoing', 'show_watched', 'show_dropped'
+            ];
+
+            if (excludedStatuses.includes(item.status)) return null;
+
+            // Special Check for Waiting/Watching
+            if (item.status === 'show_watching') {
+                const nextEp = meta.next_episode_to_air;
+                const nextDate = nextEp?.air_date ? new Date(nextEp.air_date) : null;
+                // Only show in Upcoming if the next episode is in the future (or today)
+                if (!nextDate || nextDate < today) return null;
+            }
 
             // ... (rest of metadata extraction for display) ...
 

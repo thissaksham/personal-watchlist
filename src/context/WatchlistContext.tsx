@@ -628,10 +628,8 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
                     seasons = details.seasons || [];
                 } catch (e) { seasons = []; }
             }
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-
-            const released = (seasons || []).filter((s: any) => s.season_number > 0 && s.air_date && new Date(s.air_date) <= today);
+            const todayStr = new Date().toISOString().split('T')[0];
+            const released = (seasons || []).filter((s: any) => s.season_number > 0 && s.air_date && s.air_date <= todayStr);
             const maxSeason = released.length > 0 ? released[released.length - 1].season_number : 0;
 
             await updateWatchlistItemMetadata(tmdbId, 'show', { ...(item?.metadata || {}), last_watched_season: maxSeason, seasons: seasons });

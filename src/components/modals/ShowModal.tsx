@@ -132,11 +132,10 @@ export const ShowModal = ({ media, onClose }: ShowModalProps) => {
                                         let isFuture = false;
                                         let airDateLabel = '';
                                         if (season.air_date) {
-                                            const airDate = new Date(season.air_date);
-                                            const today = new Date();
-                                            today.setHours(0, 0, 0, 0);
-                                            if (airDate > today) {
+                                            const todayStr = new Date().toISOString().split('T')[0];
+                                            if (season.air_date > todayStr) {
                                                 isFuture = true;
+                                                const airDate = new Date(season.air_date);
                                                 airDateLabel = airDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                                             }
                                         }

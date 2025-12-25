@@ -73,7 +73,10 @@ export const UpcomingCard = ({
                         const nextEpNum = media.next_episode_to_air.episode_number;
 
                         if (season.season_number === nextSeason) {
-                            count = Math.max(0, nextEpNum - 1);
+                            // If next episode is TODAY (or earlier due to data lag), count it as available/pending
+                            const todayStr = new Date().toISOString().split('T')[0];
+                            const isAvailable = media.next_episode_to_air.air_date && media.next_episode_to_air.air_date <= todayStr;
+                            count = Math.max(0, nextEpNum - (isAvailable ? 0 : 1));
                         } else if (season.season_number > nextSeason) {
                             count = 0;
                         }
@@ -137,7 +140,12 @@ export const UpcomingCard = ({
     // Helper to format consistent dates
     // Using dateUtils formatDisplayDate which gives "19 Jan 2024"
     const getFormattedDate = (dateStr: string | undefined): string => {
-        return formatDisplayDate(dateStr);
+        const display = formatDisplayDate(dateStr);
+        const currentYear = new Date().getFullYear().toString();
+        if (display.endsWith(currentYear)) {
+            return display.replace(` ${currentYear}`, '');
+        }
+        return display;
     };
 
     let providerName = '';
@@ -230,10 +238,14 @@ export const UpcomingCard = ({
                             {formattedDate}
                         </div>
                     )}
-                    {isTV && ((stats && stats.remainingSeasons > 0) || !stats) && (
+                    {isTV && stats && stats.remainingEpisodes > 0 && (
                         <div className="media-pill pill-seasons">
-                            <span>{stats && stats.remainingSeasons > 0 ? (stats.remainingSeasons > 1 ? `${stats.remainingSeasons}S ` : '') + `${stats.remainingEpisodes}E` :
-                                (media.number_of_seasons ? `${media.number_of_seasons} Seasons` : 'New Series')}</span>
+                            <span>
+                                {stats.remainingSeasons > 0
+                                    ? (stats.remainingSeasons > 1 ? `${stats.remainingSeasons}S ` : '') + `${stats.remainingEpisodes}E`
+                                    : `${stats.remainingEpisodes}E`
+                                }
+                            </span>
                         </div>
                     )}
                     {isTV && duration && (
@@ -278,7 +290,8 @@ export const UpcomingCard = ({
                             <ArrowUp size={16} strokeWidth={3} />
                         </button>
                     )}
-                    {(!((media.status === 'show_new') && media.countdown !== undefined && media.countdown > 0)) && (
+                    {/* Mark Watched - Only if released */}
+                    {(media.countdown !== undefined && media.countdown <= 0) && (
                         <button
                             className="add-btn bg-white/10 hover:bg-teal-500/80 text-white"
                             onClick={(e) => { e.stopPropagation(); onMarkWatched(media); }}

@@ -70,14 +70,13 @@ export const DroppedPage = () => {
                     className="flex items-center"
                     style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '24px' }}
                 >
-                    {/* 3-Way Toggle */}
+                    {/* Toggle */}
                     <SlidingToggle
-                        options={['Movies', 'TV Shows', 'Games']}
-                        activeOption={selectedType === 'movie' ? 'Movies' : selectedType === 'show' ? 'TV Shows' : 'Games'}
+                        options={['Movies', 'TV Shows']}
+                        activeOption={selectedType === 'movie' ? 'Movies' : 'TV Shows'}
                         onToggle={(opt) => {
                             if (opt === 'Movies') setSelectedType('movie');
                             if (opt === 'TV Shows') setSelectedType('show');
-                            if (opt === 'Games') setSelectedType('game');
                         }}
                     />
 
@@ -102,19 +101,18 @@ export const DroppedPage = () => {
                         <Archive size={32} className="text-gray-400" />
                     </div>
                     <h2 className="text-2xl font-bold text-white mb-2">
-                        {selectedType === 'game' ? 'Games Not Implemented Yet' : `No Dropped ${selectedType === 'movie' ? 'Movies' : 'Shows'}`}
+                        {`No Dropped ${selectedType === 'movie' ? 'Movies' : 'Shows'}`}
                     </h2>
                     <p className="text-gray-400 max-w-md">
-                        {selectedType === 'game'
-                            ? "We'll be adding game tracking soon!"
-                            : "Items you remove/drop from your library will appear here."}
+                        Item's you remove/drop from your library will appear here.
                     </p>
                 </div>
             ) : (
                 <div className="media-grid">
                     {droppedItems.map((item) => (
-                        <div key={item.id} className="relative group/card">
+                        <div key={item.id} className="relative group/card transition-all duration-300">
                             <WatchlistCard
+                                isDropped={true}
                                 media={{
                                     ...item.metadata,
                                     id: Number(item.tmdb_id),
@@ -131,10 +129,7 @@ export const DroppedPage = () => {
                                 actionLabel="Restore to Library"
                                 onClick={(m) => setSelectedMedia(m)}
                             />
-                            {/* Overlay Label for Clarity */}
-                            <div className="absolute top-2 left-2 z-10 px-2 py-1 bg-red-500/80 text-white text-[10px] uppercase font-bold rounded backdrop-blur-md border border-red-400/30">
-                                Dropped
-                            </div>
+
                         </div>
                     ))}
                 </div>

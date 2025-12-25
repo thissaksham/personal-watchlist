@@ -14,6 +14,7 @@ interface WatchlistCardProps {
     removeLabel?: string;
     actionIcon?: React.ReactNode;
     actionLabel?: string;
+    isDropped?: boolean; // New prop
 }
 
 export const WatchlistCard = ({
@@ -27,7 +28,8 @@ export const WatchlistCard = ({
     removeIcon,
     removeLabel,
     actionIcon,
-    actionLabel
+    actionLabel,
+    isDropped = false // Default false
 }: WatchlistCardProps) => {
     const { watchlist } = useWatchlist();
 
@@ -163,7 +165,13 @@ export const WatchlistCard = ({
     return (
         <div className="media-card group" onClick={() => onClick(media)}>
             <div className="poster-wrapper">
-                <img src={imageUrl} alt={title} className="poster-img" loading="lazy" />
+                <img
+                    src={imageUrl}
+                    alt={title}
+                    className={`poster-img ${isDropped ? 'group-hover:!grayscale-0 group-hover:!opacity-100 transition-all duration-300' : ''}`}
+                    style={isDropped ? { filter: 'grayscale(100%)', opacity: 0.6 } : {}}
+                    loading="lazy"
+                />
 
                 {/* Top-Left Pills Container */}
                 <div className="pill-stack">
