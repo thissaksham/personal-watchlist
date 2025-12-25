@@ -252,17 +252,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
                 }
             } else if (hasFutureIndianDigitalDate || hasManualOverride) {
                 // Step 2: Upcoming Digital in India or Manual Override
-                if (currentStatus === 'movie_coming_soon' || hasManualOverride) {
-                    // Manual Override acts as a 'Coming Soon' force even if adding new
-                    // But strictly per diagram: "if coming soon -> OTT, else Unwatched"
-                    // However, Manual Override usually implies user DESIRES tracking.
-                    // PlantUML says: "Has Future Digital (OR Manual)" -> If CS -> OTT, Else -> Unwatched.
-                    // This implies adding a movie with manual date -> Unwatched?
-                    // That breaks the Manual Date feature (Add -> Set Date -> Expect in Upcoming).
-                    // I will Assume Manual Override overrides this simplified logic or counts as 'virtual coming soon'.
-                    // But strict diagram adherence requests "Else -> Unwatched".
-                    // Let's stick to strict logic for 'Future Digital', but preserve Manual sanity:
-                    // If I manually set a date, I WANT IT TRACKED by definition.
+                if (!currentStatus || currentStatus === 'movie_coming_soon' || hasManualOverride) {
                     movedToLibrary = false;
                     initialStatus = 'movie_on_ott';
                 } else {
