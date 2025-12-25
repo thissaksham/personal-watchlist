@@ -117,7 +117,7 @@ export interface TMDBMedia {
     overview: string;
     release_date?: string;
     first_air_date?: string;
-    media_type?: 'movie' | 'tv' | 'person';
+    media_type?: 'movie' | 'tv';
     runtime?: number;
     episode_run_time?: number[];
     number_of_episodes?: number;
@@ -152,8 +152,6 @@ export interface TMDBMedia {
     tmdbMediaType?: 'movie' | 'tv' | 'show'; // 'show' is legacy alias for 'tv'
     tabCategory?: 'ott' | 'theatrical' | 'coming_soon' | 'other';
     seasonInfo?: string;
-    vote_count?: number;
-    popularity?: number;
 }
 
 const RAPIDAPI_KEY = import.meta.env.VITE_RAPIDAPI_KEY;
@@ -268,7 +266,7 @@ export const tmdb = {
 
         // Explicitly constructing URL as requested by user:
         // https://api.themoviedb.org/3/search/tv?query={user_entry}&api_key={api_key}
-        const url = `${BASE_URL}/search/${type}?query=${encodeURIComponent(query)}&api_key=${TMDB_API_KEY}&region=${region}&language=en-US&include_adult=false`;
+        const url = `${BASE_URL}/search/${type}?query=${encodeURIComponent(query)}&api_key=${TMDB_API_KEY}&region=${region}`;
 
         console.log(`[TMDB] Fetching explicitly: ${url}`);
 
@@ -322,10 +320,6 @@ export const tmdb = {
         // Passing 'US' as default just to satisfy fetchTMDB signature if we change it.
         // But simpler:
         return fetchTMDB(`/movie/${id}/release_dates`, {}, 'US');
-    },
-
-    getSeasonDetails: async (id: number, seasonNumber: number) => {
-        return fetchTMDB(`/tv/${id}/season/${seasonNumber}`, {}, 'US');
     }
 };
 

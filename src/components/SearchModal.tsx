@@ -100,30 +100,20 @@ export const SearchModal = ({ isOpen, onClose, type: initialType, onSuccess, ini
     if (!isOpen) return null;
 
     const displayResults = query.trim() ? results : trending;
-    const itemsToShow = displayResults
-        .filter(item => {
-            // 1. Strict Filter: Remove People and Junk
-            const isPerson = item.media_type === 'person';
-            if (isPerson) return false;
+    const itemsToShow = displayResults.filter(item => {
+        // Relaxed Filter: Allow items without a date or poster
+        // DiscoveryCard handles missing posters with a placeholder.
+        // const hasPoster = !!item.poster_path; // Removed entirely
+        // if (!hasPoster) return false; // Removed to show everything found by API
 
-            const hasPoster = !!item.poster_path;
-            const hasVotes = (item.vote_count || 0) > 0;
-            const hasPopularity = (item.popularity || 0) > 1;
-
-            // MUST have a poster. If it has a poster, it should also have SOME engagement.
-            // Exception: If it's very popular (upcoming?) but maybe metrics lag? Usually not.
-            // Rule: Must have Poster AND (Popularity > 1 OR Votes > 0)
-            if (!hasPoster) return false;
-            if (!hasVotes && !hasPopularity) return false;
-
-            // 2. Filter by media_type if searchType is not 'multi'
-            if (searchType !== 'multi') {
-                const itemMediaType = item.media_type || searchType;
-                return itemMediaType === searchType;
-            }
-            return true;
-        })
-        .sort((a, b) => (b.popularity || 0) - (a.popularity || 0)); // Force Popularity Sort
+        // Filter by media_type if searchType is not 'multi'
+        if (searchType !== 'multi') {
+            // If media_type is missing, assume it matches searchType for specific categories
+            const itemMediaType = item.media_type || searchType;
+            return itemMediaType === searchType;
+        }
+        return true;
+    });
 
     return (
         <div className="search-overlay animate-fade-in" onClick={onClose}>

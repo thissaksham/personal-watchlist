@@ -55,18 +55,8 @@ export const Upcoming = () => {
             if (item.status === 'show_watching') {
                 const nextEp = meta.next_episode_to_air;
                 const nextDate = nextEp?.air_date ? new Date(nextEp.air_date) : null;
-                const lastWatched = item.last_watched_season || 0;
-
-                // 1. If no future episode tailored, exclude.
-                // 2. If 'next' episode is in the past, exclude.
-                // 3. CRITICAL: If 'next' episode is TODAY (or earlier) AND we have already watched that season (caught up), skip it.
-                //    This solves the "Still shows Today's date" issue after marking watched.
-                //    TMDB 'next_episode_to_air' lingers on 'Today' until tomorrow.
+                // Only show in Upcoming if the next episode is in the future (or today)
                 if (!nextDate || nextDate < today) return null;
-
-                if (nextEp && lastWatched >= nextEp.season_number && nextDate <= today) {
-                    return null;
-                }
             }
 
             // ... (rest of metadata extraction for display) ...
