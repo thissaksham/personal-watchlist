@@ -173,10 +173,10 @@ export const ManualDateModal = ({ media, onClose, onSave, onReset }: ManualDateM
                                 onMouseEnter={(e) => { if (!isSaving) e.currentTarget.style.backgroundColor = media.manual_date_override ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255,255,255,0.1)'; }}
                                 onMouseLeave={(e) => { if (!isSaving) e.currentTarget.style.backgroundColor = media.manual_date_override ? 'rgba(239, 68, 68, 0.1)' : 'rgba(255,255,255,0.05)'; }}
                             >
-                                {isSaving && meta.manual_date_override ? (
+                                {isSaving && media.manual_date_override ? (
                                     <div style={{ width: '18px', height: '18px', border: '2px solid rgba(239,68,68,0.3)', borderTopColor: '#ef4444', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
                                 ) : (
-                                    meta.manual_date_override ? 'Reset' : 'Cancel'
+                                    media.manual_date_override ? 'Reset' : 'Cancel'
                                 )}
                             </button>
                             <button
