@@ -65,7 +65,6 @@ const getHeaders = () => {
 // Helper for fetching
 async function fetchTMDB(endpoint: string, params: Record<string, string> = {}, region: string) {
     const queryParams: any = {
-        language: 'en-US',
         region: region,
         ...params,
     };
@@ -81,7 +80,7 @@ async function fetchTMDB(endpoint: string, params: Record<string, string> = {}, 
     console.log(`[TMDB] Fetching: ${safeUrl}`);
 
     const controller = new AbortController();
-    const id = setTimeout(() => controller.abort(), 20000); // 20s timeout
+    const id = setTimeout(() => controller.abort(), 60000); // 60s timeout for mobile stability
 
     try {
         const res = await fetch(url, {
