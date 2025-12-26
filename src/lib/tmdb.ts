@@ -77,7 +77,8 @@ async function fetchTMDB(endpoint: string, params: Record<string, string> = {}, 
 
     const query = new URLSearchParams(queryParams).toString();
     const url = `${BASE_URL}${endpoint}?${query}`;
-    console.log(`[TMDB] Fetching: ${url}`);
+    const safeUrl = url.replace(/api_key=[^&]*&?/i, 'api_key=HIDDEN&');
+    console.log(`[TMDB] Fetching: ${safeUrl}`);
 
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), 20000); // 20s timeout
@@ -101,7 +102,8 @@ async function fetchTMDB(endpoint: string, params: Record<string, string> = {}, 
         clearTimeout(id);
         console.error('[TMDB] Network/Fetch Error:', error);
         if (error.name === 'AbortError') {
-            throw new Error(`Request timed out for: ${url}`);
+            const safeUrl = url.replace(/api_key=[^&]*&?/i, 'api_key=HIDDEN&');
+            throw new Error(`Request timed out for: ${safeUrl}`);
         }
         throw error;
     }
@@ -267,8 +269,9 @@ export const tmdb = {
         // Explicitly constructing URL as requested by user:
         // https://api.themoviedb.org/3/search/tv?query={user_entry}&api_key={api_key}
         const url = `${BASE_URL}/search/${type}?query=${encodeURIComponent(query)}&api_key=${TMDB_API_KEY}&region=${region}`;
+        const safeUrl = url.replace(/api_key=[^&]*&?/i, 'api_key=HIDDEN&');
 
-        console.log(`[TMDB] Fetching explicitly: ${url}`);
+        console.log(`[TMDB] Fetching explicitly: ${safeUrl}`);
 
         try {
             const res = await fetch(url);
