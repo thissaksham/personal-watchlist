@@ -19,11 +19,11 @@ export default defineConfig(({ mode }) => {
         // console.log(`[Proxy] Rewriting TMDB: ${newPath}`); // Uncomment to debug paths
         return `${newPath}${separator}api_key=${env.VITE_TMDB_API_KEY}`;
       },
-      configure: (proxy: any, options: any) => {
-        proxy.on('error', (err: any, _req: any, _res: any) => {
+      configure: (_proxy: any, _options: any) => {
+        _proxy.on('error', (err: any, _req: any, _res: any) => {
           console.log('[Proxy] TMDB Error:', err);
         });
-        proxy.on('proxyReq', (proxyReq: any, req: any, _res: any) => {
+        _proxy.on('proxyReq', (_proxyReq: any, _req: any, _res: any) => {
           // console.log('[Proxy] Sending Request:', req.url);
         });
       }

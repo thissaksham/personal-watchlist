@@ -155,9 +155,6 @@ export interface TMDBMedia {
     seasonInfo?: string;
 }
 
-const RAPIDAPI_KEY = import.meta.env.VITE_RAPIDAPI_KEY;
-const RAPIDAPI_HOST = 'where-can-i-watch1.p.rapidapi.com';
-
 // Map TMDB regions to RapidAPI regions
 const REGION_MAP: Record<string, string> = {
     'IN': 'india',
