@@ -145,7 +145,8 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
                 const regionData = results.find((r: any) => r.iso_3166_1 === regionCode);
                 if (!regionData?.release_dates) return null;
                 const theatrical = regionData.release_dates.find((d: any) => d.type === 3) || regionData.release_dates.find((d: any) => d.type === 2);
-                const digital = regionData.release_dates.find((d: any) => d.type === 4);
+                // Priority: Digital (4) -> Physical (5) (Often proxy for Rental/VOD)
+                const digital = regionData.release_dates.find((d: any) => d.type === 4) || regionData.release_dates.find((d: any) => d.type === 5);
                 return {
                     theatrical: theatrical?.release_date,
                     digital: digital?.release_date,
