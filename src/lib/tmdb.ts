@@ -1,5 +1,5 @@
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY;
-const BASE_URL = 'https://api.themoviedb.org/3';
+const BASE_URL = '/api/tmdb';
 
 if (!TMDB_API_KEY) {
     console.error("Missing TMDB API Key! Check .env");
@@ -69,10 +69,10 @@ async function fetchTMDB(endpoint: string, params: Record<string, string> = {}, 
         ...params,
     };
 
-    // If it's NOT a bearer token, we must use query param
-    if (!isBearerToken && TMDB_API_KEY) {
-        queryParams.api_key = TMDB_API_KEY;
-    }
+    // Key is injected by Vite Proxy
+    // if (!isBearerToken && TMDB_API_KEY) {
+    //     queryParams.api_key = TMDB_API_KEY;
+    // }
 
     const query = new URLSearchParams(queryParams).toString();
     const url = `${BASE_URL}${endpoint}?${query}`;
@@ -203,17 +203,12 @@ const slugify = (text: string) => {
 async function fetchRapidOTT(title: string, regionCode: string, targetYear?: string) {
     const region = REGION_MAP[regionCode] || regionCode.toLowerCase();
     const slug = slugify(title);
-    const url = `https://${RAPIDAPI_HOST}/search/${region}/${slug}`;
+    const url = `/api/rapid/search/${region}/${slug}`;
 
     console.log(`[RapidAPI] Fetching fallback OTT: ${url} (Target Year: ${targetYear})`);
 
     try {
-        const res = await fetch(url, {
-            headers: {
-                'x-rapidapi-key': RAPIDAPI_KEY,
-                'x-rapidapi-host': RAPIDAPI_HOST
-            }
-        });
+        const res = await fetch(url);
 
         if (!res.ok) throw new Error(`RapidAPI Error: ${res.status}`);
         const data = await res.json();
@@ -267,7 +262,8 @@ export const tmdb = {
 
         // Explicitly constructing URL as requested by user:
         // https://api.themoviedb.org/3/search/tv?query={user_entry}&api_key={api_key}
-        const url = `${BASE_URL}/search/${type}?query=${encodeURIComponent(query)}&api_key=${TMDB_API_KEY}&region=${region}`;
+        // Proxy handles Key
+        const url = `${BASE_URL}/search/${type}?query=${encodeURIComponent(query)}&region=${region}`;
         const safeUrl = url.replace(/api_key=[^&]*&?/i, 'api_key=HIDDEN&');
 
         console.log(`[TMDB] Fetching explicitly: ${safeUrl}`);
