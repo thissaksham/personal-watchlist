@@ -172,22 +172,105 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
 
         let result = Array.from(providers.values());
 
-        // Merge Amazon Prime Video variations
-        const prime = result.find(p => p.name === 'Amazon Prime Video');
-        const primeAds = result.find(p => p.name === 'Amazon Prime Video with Ads');
+        // SMART MERGE LOGIC (Generic)
+        // 1. Group providers by a "Normalized Name"
+        //    (e.g. "Lionsgate Play Amazon Channel" -> "Lionsgate Play")
+        const groups = new Map<string, typeof result>();
 
-        if (prime && primeAds) {
-            prime.count += primeAds.count;
-            result = result.filter(p => p.id !== primeAds.id);
-        }
+        const normalize = (name: string) => {
+            // Specific overrides
+            if (name === 'Amazon MX Player') return 'MX Player';
+            if (name === 'Plex Channel') return 'Plex';
 
-        // Sort by occurrence count descending
-        result.sort((a, b) => b.count - a.count);
+            return name
+                .replace(/ Amazon Channel/i, '')
+                .replace(/ Apple TV Channel/i, '')
+                .replace(/ with Ads/i, '')
+                .trim();
+        };
+
+        result.forEach(p => {
+            const normal = normalize(p.name);
+            if (!groups.has(normal)) groups.set(normal, []);
+            groups.get(normal)!.push(p);
+        });
+
+        const finalProviders: typeof result = [];
+
+        groups.forEach((group, normalName) => {
+            if (group.length === 1) {
+                // Scenario: Only "Eros Now Select Apple TV Channel" exists -> Keep as is
+                finalProviders.push(group[0]);
+            } else {
+                // Scenario: "Lionsgate Play" AND "Lionsgate Play Amazon Channel" exist
+                // Merge into the "Parent" (shortest name usually, or the one matching normalName)
+
+                // Find a "Main" provider if it exists (exact match to normal name)
+                let main = group.find(p => p.name === normalName);
+
+                // If no exact parent (e.g. only "X Amazon" and "X Apple"), pick the first one or create a composite?
+                // User logic: "Merge into single Lionsgate channel". 
+                // We'll prioritize the one that matches the normalized name. 
+                // If distinct variants exist without a parent, we might still want to merge them?
+                // User said: "Lionsgate Play" + "Lionsgate Play Apple" -> Merge. 
+                // The prompt implies we want to see "Lionsgate Play".
+
+                if (!main) {
+                    // If we have "X Amazon" and "X Apple" but NO plain "X",
+                    // usually we'd just want to report "X". 
+                    // But to be safe and have a valid ID, we pick the first one 
+                    // and arguably rename it to the Normal Name for the UI?
+                    // User example 2: "Eros Now... Channel" -> Keep as is. (That was group.length === 1)
+
+                    // If group.length > 1, we definitely merge.
+                    main = group[0];
+                    // Optional: Rename for display? 
+                    // If we merge "Lionsgate Apple" and "Lionsgate Amazon", the filter should probably just say "Lionsgate".
+                    // Let's rely on the existence of a "clean" parent or default to the normalized name for the Label?
+                    // The Provider Object must trigger the ID.
+                }
+
+                // Sum counts
+                const totalCount = group.reduce((sum, p) => sum + p.count, 0);
+
+                // Create a merged entry. 
+                // Problem: Filter ID. We can't query by multiple IDs easily with the current single-select logic unless we change filtering.
+                // CURRENT FILTERING LOGIC (Line 230): p.provider_id === filterProvider.
+                // If we merge, clicking "Lionsgate" (ID 123) won't show "Lionsgate Amazon" (ID 456).
+                // WE MUST UPDATE THE FILTER LOGIC TOO if we merge IDs.
+
+                // For now, let's assuming we pick the "Main" ID and hope the user has the main one? 
+                // NO, that breaks filtering for the channel items.
+                // We need to return a "Virtual Provider" or handle the filter check.
+
+                // Actually, let's keep it simple: 
+                // The filter logic needs to know which IDs belong to this "Display Item".
+                // We'll attach a list of `mergedIds` to the provider object.
+
+                finalProviders.push({
+                    ...main,
+                    name: group.some(p => p.name === normalName) ? normalName : main.name, // Use pretty name if available
+                    count: totalCount,
+                    // We need to pass ALL ids to the filter
+                    // We'll verify if we can store extra props or if we need to hack it.
+                    // The `allProviders` is used in the FilterBar. `FilterExpandable` takes `options`.
+                    // We can embed the IDs in the ID field? No, ID expects number.
+
+                    // Let's modify the filtering logic below first (Step 2).
+                    // For this step, we'll assign the Main ID but we need a way to track the others.
+                    // Let's add a `merged_ids` property.
+                    merged_ids: group.map(p => p.id)
+                } as any);
+            }
+        });
+
+        // Sort by count
+        finalProviders.sort((a, b) => b.count - a.count);
 
         if (hasNoProvider) {
-            result.push({ id: -1, name: 'Not Streaming', logo: '/ext-logo.png', count: 0 });
+            finalProviders.push({ id: -1, name: 'Not Streaming', logo: '/ext-logo.png', count: 0 });
         }
-        return result;
+        return finalProviders;
     }, [library, region]);
 
 
@@ -210,7 +293,7 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
             if (seriesStatusFilter === 'Ongoing' && isFinished) return false;
         }
 
-        // 3. Provider Filter
+        // 3. Provider Filter (Updated for Smart Merging)
         if (filterProvider) {
             const providerData = media['watch/providers']?.results?.[region];
             if (!providerData) return filterProvider === -1;
@@ -224,7 +307,18 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
             if (filterProvider === -1) {
                 return available.length === 0;
             }
-            return available.some((p: any) => p.provider_id === filterProvider);
+
+            // Find the selected provider object from our smart list
+            // We use 'allProviders' here which is defined above.
+            const selectedProviderObj = allProviders.find((p: any) => p.id === filterProvider) as any;
+
+            if (selectedProviderObj && selectedProviderObj.merged_ids) {
+                // If it's a merged group, match ANY of the IDs
+                return available.some((p: any) => selectedProviderObj.merged_ids.includes(p.provider_id));
+            } else {
+                // Std match
+                return available.some((p: any) => p.provider_id === filterProvider);
+            }
         }
 
         return true;
