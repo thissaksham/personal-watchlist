@@ -281,7 +281,7 @@ export const tmdb = {
 
     getDetails: async (id: number, type: 'movie' | 'tv', region: string = 'IN') => {
         const data = await fetchTMDB(`/${type}/${id}`, {
-            append_to_response: 'watch/providers,credits,external_ids,videos'
+            append_to_response: 'watch/providers,external_ids,videos'
         }, region);
 
         // Check if TMDB has provider data for the user's region
