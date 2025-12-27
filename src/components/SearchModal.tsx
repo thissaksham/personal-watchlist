@@ -18,7 +18,7 @@ export const SearchModal = ({ isOpen, onClose, type: initialType, onSuccess, ini
     const [query, setQuery] = useState(initialQuery);
     const [searchType, setSearchType] = useState<'multi' | 'movie' | 'tv'>(initialType);
     const [results, setResults] = useState<TMDBMedia[]>([]);
-    const [trending, setTrending] = useState<TMDBMedia[]>([]);
+
     const [loading, setLoading] = useState(false);
 
     const { addToWatchlist, isInWatchlist } = useWatchlist();
@@ -35,24 +35,16 @@ export const SearchModal = ({ isOpen, onClose, type: initialType, onSuccess, ini
         }
     }, [isOpen, initialType, initialQuery]);
 
-    // Fetch trending on mount or when open
+    // Trending removed as per user request
     useEffect(() => {
         if (isOpen) {
-            setLoading(true);
-            const tmdbType = searchType === 'multi' ? 'all' : (searchType === 'tv' ? 'tv' : 'movie');
-            tmdb.getTrending(tmdbType as any, 'week', region)
-                .then(data => {
-                    setTrending(data.results || []);
-                })
-                .finally(() => setLoading(false));
-
             // Lock body scroll
             document.body.style.overflow = 'hidden';
         } else {
             document.body.style.overflow = '';
         }
         return () => { document.body.style.overflow = ''; };
-    }, [isOpen, searchType, region]);
+    }, [isOpen]);
 
     // Search Logic with Instant Tab Switching
     const prevSearchType = useRef(searchType);
@@ -99,7 +91,7 @@ export const SearchModal = ({ isOpen, onClose, type: initialType, onSuccess, ini
 
     if (!isOpen) return null;
 
-    const displayResults = query.trim() ? results : trending;
+    const displayResults = query.trim() ? results : [];
     const itemsToShow = displayResults.filter(item => {
         // Relaxed Filter: Allow items without a date or poster
         // DiscoveryCard handles missing posters with a placeholder.
@@ -155,9 +147,7 @@ export const SearchModal = ({ isOpen, onClose, type: initialType, onSuccess, ini
 
                     <div className="search-results-grid no-scrollbar">
                         <div className="grid-header">
-                            <h3 className="text-xl font-bold text-white mb-6">
-                                {query.trim() ? '' : 'Trending Now'}
-                            </h3>
+                            {/* 'Trending Now' removed */}
                         </div>
 
                         {itemsToShow.length === 0 && !loading ? (

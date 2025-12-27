@@ -249,11 +249,33 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
         });
     }, [filteredLibrary, sortOption]);
 
+    // Total Count Calculation for Debugging (User Request: "10/11")
+    const totalCount = useMemo(() => {
+        return watchlist.filter(item => {
+            if (item.type !== watchlistType) return false;
+            if (item.status === 'show_dropped' || item.status === 'movie_dropped') return false;
+
+            // Strict Status Matching to match ViewMode
+            if (tmdbType === 'tv') {
+                return getShowStatus(item) === viewMode;
+            } else {
+                if (viewMode === 'Unwatched') return item.status === 'movie_unwatched';
+                if (viewMode === 'Watched') return item.status === 'movie_watched';
+            }
+            return false;
+        }).length;
+    }, [watchlist, watchlistType, tmdbType, viewMode]);
+
     return (
         <div>
             <div className="page-header flex justify-between items-end mb-6">
                 <div>
-                    <h1 className="page-title text-3xl font-bold">{title}</h1>
+                    <h1 className="page-title text-3xl font-bold flex items-baseline">
+                        {title}
+                        <span style={{ fontSize: '0.9rem', opacity: 0.2, fontWeight: 'normal', marginLeft: '10px' }} className="select-none">
+                            showing {sortedLibrary.length}/{totalCount} results
+                        </span>
+                    </h1>
                     <p className="subtitle text-gray-400 mt-1">{subtitle}</p>
                 </div>
 

@@ -57,6 +57,16 @@ export const DroppedPage = () => {
         }).sort((a, b) => b.id.localeCompare(a.id));
     }, [watchlist, selectedType, searchTerm]);
 
+    // Total Count Debug
+    const totalCount = useMemo(() => {
+        return watchlist.filter(item => {
+            const isDropped = item.status === 'show_dropped' || item.status === 'movie_dropped';
+            if (!isDropped) return false;
+            if (item.type !== selectedType) return false;
+            return true;
+        }).length;
+    }, [watchlist, selectedType]);
+
     const handleRestore = async (item: any) => {
         if (window.confirm(`Restore ${item.title} to your library?`)) {
             await restoreFromDropped(Number(item.tmdb_id), item.type);
@@ -73,9 +83,12 @@ export const DroppedPage = () => {
         <div className="animate-fade-in pb-20 relative min-h-screen">
             <div className="page-header flex justify-between items-end mb-6">
                 <div>
-                    <h1 className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-400 via-white to-red-400/50 tracking-tight flex items-center gap-3">
-                        <Archive className="text-red-400" size={36} />
+                    <h1 className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-400 via-white to-red-400/50 tracking-tight flex items-baseline">
+                        <Archive className="text-red-400 mr-3" size={36} />
                         Dropped
+                        <span style={{ fontSize: '1rem', opacity: 0.2, fontWeight: 'normal', marginLeft: '12px', color: 'white', WebkitTextFillColor: 'initial' }} className="select-none">
+                            showing {droppedItems.length}/{totalCount} results
+                        </span>
                     </h1>
                     <p className="subtitle text-gray-400 mt-1 font-medium">
                         Shows and movies you've stopped watching.

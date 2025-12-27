@@ -225,6 +225,26 @@ export const Upcoming = () => {
         });
     }, [watchlist, viewMode, region]);
 
+    // Total Count for Debugging
+    const totalCount = useMemo(() => {
+        return watchlist.filter(item => {
+            const excludedStatuses = [
+                'movie_dropped', 'show_dropped', 'show_finished', 'show_watched'
+            ]; // Simplified exclusion for coarse count
+            if (excludedStatuses.includes(item.status)) return false;
+
+            // Approximate matching for ViewMode
+            if (viewMode === 'On OTT') {
+                // Check if it's potentially an OTT item (show or movie_on_ott)
+                return item.status === 'movie_on_ott' || item.type === 'show';
+            }
+            if (viewMode === 'Coming Soon') {
+                return item.status === 'movie_coming_soon';
+            }
+            return false;
+        }).length;
+    }, [watchlist, viewMode]);
+
     // Auto-refresh metadata for items in Upcoming to catch official OTT dates/platforms
     useEffect(() => {
         const itemsToProcess = upcomingItems; // Use the value from useMemo
@@ -311,8 +331,11 @@ export const Upcoming = () => {
         <div className="animate-fade-in pb-20 relative min-h-screen">
             <div className="page-header flex justify-between items-end mb-10 pt-4">
                 <div>
-                    <h1 className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-white to-white/50 tracking-tight">
+                    <h1 className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-white to-white/50 tracking-tight flex items-baseline">
                         Upcoming
+                        <span style={{ fontSize: '1rem', opacity: 0.2, fontWeight: 'normal', marginLeft: '12px', color: 'white', WebkitTextFillColor: 'initial' }} className="select-none">
+                            showing {upcomingItems.length}/{totalCount} results
+                        </span>
                     </h1>
                     <p className="text-lg text-gray-400 mt-2 font-medium">
                         Your personalized release calendar.

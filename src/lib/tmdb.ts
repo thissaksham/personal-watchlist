@@ -274,7 +274,29 @@ export const tmdb = {
                 console.error('[TMDB] Search Request Failed:', res.status, errBody);
                 throw new Error(`TMDB Search Error: ${res.status}`);
             }
-            return res.json();
+            const data = await res.json();
+
+            // Smart Filter (User Request)
+            // 1. Unreleased (Future) -> Keep
+            // 2. Released (Past/Null) -> Filter if (No Poster AND No Votes)
+            if (data.results && Array.isArray(data.results)) {
+                const today = new Date();
+                data.results = data.results.filter((item: any) => {
+                    // Check date
+                    const releaseDate = item.release_date || item.first_air_date;
+                    const isFuture = releaseDate ? new Date(releaseDate) > today : false;
+
+                    if (isFuture) return true; // Keep all upcoming
+
+                    // For passed/unknown dates, filter out "junk"
+                    const hasPoster = !!item.poster_path;
+                    const hasVotes = item.vote_count > 0;
+
+                    // Keep if it has at least one indicator of quality
+                    return hasPoster || hasVotes;
+                });
+            }
+            return data;
         } catch (error) {
             console.error('[TMDB] Search Network Error:', error);
             throw error;
