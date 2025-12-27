@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { calculateMediaRuntime, type TMDBMedia } from '../lib/tmdb';
 import { useWatchlist } from '../context/WatchlistContext';
 import { usePreferences } from '../context/PreferencesContext';
@@ -19,15 +20,47 @@ interface LibraryPageProps {
     watchlistType: 'movie' | 'show';
     tmdbType: 'movie' | 'tv';
     emptyMessage: string;
+    basePath?: string; // Enable URL-sync mode
 }
 
-export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMessage }: LibraryPageProps) => {
+export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMessage, basePath }: LibraryPageProps) => {
     const { watchlist, removeFromWatchlist, markAsDropped, markAsWatched, markAsUnwatched, restoreToUpcoming } = useWatchlist();
     const { region } = usePreferences();
+    const navigate = useNavigate();
+    const params = useParams();
+
     const [selectedMedia, setSelectedMedia] = useState<TMDBMedia | null>(null);
     const [filterProvider, setFilterProvider] = useState<number | null>(null);
     const [seriesStatusFilter, setSeriesStatusFilter] = useState<string>('Finished');
-    const [viewMode, setViewMode] = useState<string>('Unwatched'); // Changed to string for flexibility
+
+    // Initialize viewMode from URL if basePath is set, else default
+    const getInitialViewMode = () => {
+        if (basePath && params.status) {
+            // Capitalize: 'unwatched' -> 'Unwatched'
+            return params.status.charAt(0).toUpperCase() + params.status.slice(1);
+        }
+        return 'Unwatched';
+    };
+
+    const [viewMode, setViewMode] = useState<string>(getInitialViewMode());
+
+    // Sync URL changes to State
+    useEffect(() => {
+        if (basePath && params.status) {
+            const mode = params.status.charAt(0).toUpperCase() + params.status.slice(1);
+            if (mode !== viewMode) setViewMode(mode);
+        }
+    }, [basePath, params.status]);
+
+    const handleViewModeChange = (opt: string) => {
+        if (basePath) {
+            const slug = opt.toLowerCase();
+            navigate(`${basePath}/${slug}`);
+        } else {
+            setViewMode(opt);
+        }
+    };
+
     const [sortOption, setSortOption] = useState<'date_added' | 'rating' | 'release_date' | 'runtime'>('date_added'); // New Sort State
     const [isSortOpen, setIsSortOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -242,7 +275,7 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
                     <SlidingToggle
                         options={tmdbType === 'tv' ? ['Unwatched', 'Watching', 'Watched'] : ['Unwatched', 'Watched']}
                         activeOption={viewMode}
-                        onToggle={(opt) => setViewMode(opt)}
+                        onToggle={handleViewModeChange}
                     />
 
                     {/* Sort Dropdown */}

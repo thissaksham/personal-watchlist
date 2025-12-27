@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useWatchlist } from '../context/WatchlistContext';
 import { UpcomingCard } from '../components/cards/UpcomingCard';
 import { calculateMediaRuntime, type TMDBMedia } from '../lib/tmdb';
@@ -24,8 +25,32 @@ const getDaysUntil = (dateStr: string) => {
 export const Upcoming = () => {
     const { watchlist, markAsWatched, dismissFromUpcoming, removeFromWatchlist, updateWatchlistItemMetadata, updateStatus, moveToLibrary, refreshMetadata, markAsDropped } = useWatchlist();
     const { region } = usePreferences();
+    const navigate = useNavigate();
+    const params = useParams();
+
     const [selectedMedia, setSelectedMedia] = useState<any | null>(null);
-    const [viewMode, setViewMode] = useState<string>('On OTT');
+
+    // Initialize View Mode from URL
+    const getInitialViewMode = () => {
+        if (params.status === 'comingSoon') return 'Coming Soon';
+        // Default or 'onOTT'
+        return 'On OTT';
+    };
+
+    const [viewMode, setViewMode] = useState<string>(getInitialViewMode());
+
+    // Sync URL -> State
+    useEffect(() => {
+        if (params.status) {
+            const mode = params.status === 'comingSoon' ? 'Coming Soon' : 'On OTT';
+            if (mode !== viewMode) setViewMode(mode);
+        }
+    }, [params.status]);
+
+    const handleViewModeChange = (opt: string) => {
+        const slug = opt === 'Coming Soon' ? 'comingSoon' : 'onOTT';
+        navigate(`/upcoming/${slug}`);
+    };
     const [showDatePicker, setShowDatePicker] = useState<any | null>(null);
     const [refreshedIds] = useState(new Set<number>());
 
@@ -283,7 +308,7 @@ export const Upcoming = () => {
                 <SlidingToggle
                     options={['On OTT', 'Coming Soon']}
                     activeOption={viewMode}
-                    onToggle={setViewMode}
+                    onToggle={handleViewModeChange}
                 />
             </div>
 

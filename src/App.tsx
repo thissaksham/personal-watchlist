@@ -80,11 +80,21 @@ function App() {
                   </ProtectedRoute>
                 }>
                   <Route index element={<Trending />} />
-                  <Route path="movies" element={<Movies />} />
-                  <Route path="shows" element={<Shows />} />
-                  <Route path="upcoming" element={<Upcoming />} />
+                  <Route index element={<Trending />} />
+
+                  {/* Movies Tab with URL State */}
+                  <Route path="movies" element={<Navigate to="/movies/unwatched" replace />} />
+                  <Route path="movies/:status" element={<Movies />} />
+
+                  <Route path="shows" element={<Navigate to="/shows/unwatched" replace />} />
+                  <Route path="shows/:status" element={<Shows />} />
+
+                  {/* Upcoming Tab with URL State */}
+                  <Route path="upcoming" element={<Navigate to="/upcoming/onOTT" replace />} />
+                  <Route path="upcoming/:status" element={<Upcoming />} />
                   <Route path="games" element={<Games />} />
-                  <Route path="dropped" element={<DroppedPage />} />
+                  <Route path="dropped" element={<Navigate to="/dropped/movies" replace />} />
+                  <Route path="dropped/:type" element={<DroppedPage />} />
                 </Route>
 
                 {/* 404 Catch-All -> Redirect to Home */}

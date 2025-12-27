@@ -9,6 +9,7 @@ export const Shows = () => {
             watchlistType="show"
             tmdbType="tv"
             emptyMessage="You haven't added any shows yet."
+            basePath="/shows"
         />
     );
 };

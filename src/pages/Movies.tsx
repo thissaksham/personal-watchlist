@@ -9,6 +9,7 @@ export const Movies = () => {
             watchlistType="movie"
             tmdbType="movie"
             emptyMessage="You haven't added any movies yet."
+            basePath="/movies"
         />
     );
 };

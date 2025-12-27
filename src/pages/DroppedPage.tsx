@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useWatchlist } from '../context/WatchlistContext';
 import { WatchlistCard } from '../components/cards/WatchlistCard';
 import { Search, Archive, Trash2, Undo2 } from 'lucide-react';
@@ -8,11 +9,27 @@ import { ShowModal } from '../components/modals/ShowModal';
 import { type TMDBMedia } from '../lib/tmdb';
 
 export const DroppedPage = () => {
+    const params = useParams();
+    const navigate = useNavigate();
     const { watchlist, removeFromWatchlist, restoreFromDropped } = useWatchlist();
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedMedia, setSelectedMedia] = useState<TMDBMedia | null>(null);
-    // Default to 'movie', following the 3-way toggle request (Movies, Shows, Games)
-    const [selectedType, setSelectedType] = useState<'movie' | 'show' | 'game'>('movie');
+
+    // Initialize type from URL
+    const getInitialType = () => {
+        if (params.type === 'shows') return 'show';
+        return 'movie';
+    };
+
+    const [selectedType, setSelectedType] = useState<'movie' | 'show' | 'game'>(getInitialType());
+
+    // Sync URL changes to State
+    useEffect(() => {
+        if (params.type) {
+            const newType = params.type === 'shows' ? 'show' : 'movie';
+            if (newType !== selectedType) setSelectedType(newType);
+        }
+    }, [params.type]);
 
     // Sync tab title
     useEffect(() => {
@@ -75,8 +92,8 @@ export const DroppedPage = () => {
                         options={['Movies', 'TV Shows']}
                         activeOption={selectedType === 'movie' ? 'Movies' : 'TV Shows'}
                         onToggle={(opt) => {
-                            if (opt === 'Movies') setSelectedType('movie');
-                            if (opt === 'TV Shows') setSelectedType('show');
+                            const newType = opt === 'TV Shows' ? 'shows' : 'movies';
+                            navigate(`/dropped/${newType}`);
                         }}
                     />
 
