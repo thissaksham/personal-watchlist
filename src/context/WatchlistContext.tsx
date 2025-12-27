@@ -35,7 +35,9 @@ interface WatchlistContextType {
     updateStatus: (tmdbId: number, type: 'movie' | 'show', newStatus: WatchlistItem['status']) => Promise<void>;
     refreshMetadata: (tmdbId: number, type: 'movie' | 'show', overrideMetadata?: any) => Promise<void>;
     markAsDropped: (tmdbId: number, type: 'movie' | 'show') => Promise<void>;
+
     restoreFromDropped: (tmdbId: number, type: 'movie' | 'show') => Promise<void>;
+    refreshAllMetadata: () => Promise<void>;
 }
 
 const WatchlistContext = createContext<WatchlistContextType | undefined>(undefined);
@@ -817,6 +819,30 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
+
+
+    const refreshAllMetadata = async () => {
+        setLoading(true);
+        try {
+            // Process sequentially to be nice to API limits (though we have a good rate limit handling in tmdb.ts)
+            // But let's do it in chunks or simple sequence to avoid blocking UI too hard.
+            console.log(`Starting global refresh for ${watchlist.length} items...`);
+            let count = 0;
+            for (const item of watchlist) {
+                // Skip if no TMDB ID (local/broken)
+                if (!item.tmdb_id) continue;
+                await refreshMetadata(item.tmdb_id, item.type, item.metadata);
+                count++;
+                // Small delay to breath? verify tmdb.ts handles it. tmdb.ts has no specific queue, so sequence is safer.
+            }
+            console.log(`Global refresh complete. Processed ${count} items.`);
+        } catch (error) {
+            console.error("Global Refresh Failed:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     // --- SYSTEMIC HEALTH CHECK (Auto-Repair) ---
     useEffect(() => {
         if (!loading && watchlist.length > 0) {
@@ -883,7 +909,8 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
             restoreToUpcoming,
             updateWatchlistItemMetadata,
             updateStatus,
-            refreshMetadata
+            refreshMetadata,
+            refreshAllMetadata
         }}>
             {children}
         </WatchlistContext.Provider>

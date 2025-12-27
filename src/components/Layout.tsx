@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LogOut, Clapperboard, MonitorPlay, Calendar, Gamepad2, Menu, X, Plus, Lock, Trash2 } from 'lucide-react';
+import { LogOut, Clapperboard, MonitorPlay, Calendar, Gamepad2, Menu, X, Plus, Lock, Trash2, RotateCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useWatchlist } from '../context/WatchlistContext';
 import { SearchModal } from './SearchModal';
 import { MovieModal } from './modals/MovieModal';
 import { ShowModal } from './modals/ShowModal';
@@ -15,6 +16,7 @@ let initialSplashShown = false;
 
 export default function Layout() {
     const { signOut, deleteAccount, user } = useAuth();
+    const { refreshAllMetadata, loading } = useWatchlist();
     const navigate = useNavigate();
 
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -169,6 +171,18 @@ export default function Layout() {
                                     <p className="dropdown-label">Account</p>
                                     <p className="dropdown-value" title={user?.email}>{user?.email}</p>
                                 </div>
+
+                                <button
+                                    onClick={() => {
+                                        setIsUserMenuOpen(false);
+                                        if (confirm("Refresh all metadata? This may take a moment.")) refreshAllMetadata();
+                                    }}
+                                    className="dropdown-btn"
+                                    disabled={loading}
+                                >
+                                    <RotateCw size={16} className={loading ? "animate-spin" : ""} />
+                                    {loading ? 'Syncing...' : 'Sync Library'}
+                                </button>
 
                                 <button
                                     onClick={() => { setIsUserMenuOpen(false); setShowPasswordModal(true); }}
