@@ -86,6 +86,9 @@ function App() {
                   <Route path="games" element={<Games />} />
                   <Route path="dropped" element={<DroppedPage />} />
                 </Route>
+
+                {/* 404 Catch-All -> Redirect to Home */}
+                <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </GlobalSearchProvider>
           </WatchlistProvider>
