@@ -10,6 +10,8 @@ import { ChangePasswordModal } from './modals/ChangePasswordModal';
 import { WelcomeSplash } from './WelcomeSplash';
 import type { TMDBMedia } from '../lib/tmdb';
 
+import { SyncOverlay } from './common/SyncOverlay';
+
 // This flag resets to false on every page refresh (full JS reload),
 // but stays true during in-app navigation.
 let initialSplashShown = false;
@@ -26,6 +28,7 @@ export default function Layout() {
     // Dropdown State
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
     const [showPasswordModal, setShowPasswordModal] = useState(false);
+    const [isSyncing, setIsSyncing] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
     // Welcome Splash Logic (Handles first-time, returning, and simple session entry)
@@ -173,15 +176,22 @@ export default function Layout() {
                                 </div>
 
                                 <button
-                                    onClick={() => {
+                                    onClick={async () => {
                                         setIsUserMenuOpen(false);
-                                        if (confirm("Refresh all metadata? This may take a moment.")) refreshAllMetadata();
+                                        if (confirm("Refresh all metadata? This may take a moment.")) {
+                                            setIsSyncing(true);
+                                            try {
+                                                await refreshAllMetadata();
+                                            } finally {
+                                                setIsSyncing(false);
+                                            }
+                                        }
                                     }}
                                     className="dropdown-btn"
-                                    disabled={loading}
+                                    disabled={loading || isSyncing}
                                 >
-                                    <RotateCw size={16} className={loading ? "animate-spin" : ""} />
-                                    {loading ? 'Syncing...' : 'Sync Library'}
+                                    <RotateCw size={16} className={loading || isSyncing ? "animate-spin" : ""} />
+                                    {loading || isSyncing ? 'Syncing...' : 'Sync Library'}
                                 </button>
 
                                 <button
@@ -274,6 +284,9 @@ export default function Layout() {
             )}
 
             {showPasswordModal && <ChangePasswordModal onClose={() => setShowPasswordModal(false)} />}
+
+            {/* Sync Overlay */}
+            {isSyncing && <SyncOverlay />}
         </div>
     );
 }
