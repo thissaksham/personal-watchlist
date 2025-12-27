@@ -249,9 +249,16 @@ export const UpcomingCard = ({
         }
 
         const isInTheatres = isReleased(dateStr); // <= Today
-        label = isInTheatres ? 'In Theatres' : 'Coming Soon';
-        labelColor = isInTheatres ? 'text-amber-400 border-amber-500/30' : 'text-blue-400 border-blue-500/30';
-        contextLabel = 'New Movie';
+        // UI Clean-up Request: Remove "In Theatres" pill, remove Duration pill, remove "New Movie".
+        // Keep ONLY "Coming Soon" above title.
+
+        // Disable the pill stack label (e.g. "In Theatres")
+        label = '';
+        labelColor = '';
+
+        // Set the Context Label (Above Title) to "Coming Soon" ONLY if unreleased
+        // User requested: "coming soon is for unreleased movies only, not all"
+        contextLabel = isInTheatres ? '' : 'Coming Soon';
     }
 
     if (!isTV && !isMovieOTT && !isMovieComingSoon) return null;
@@ -289,7 +296,7 @@ export const UpcomingCard = ({
                             </span>
                         </div>
                     )}
-                    {duration && (
+                    {duration && !isMovieComingSoon && (
                         <div className="media-pill pill-duration"><span>{duration}</span></div>
                     )}
                     {label && (

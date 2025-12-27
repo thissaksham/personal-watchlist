@@ -163,12 +163,27 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
                 theatricalDate = inDates.theatrical;
             }
 
-            // Global Theatrical Fallback (Only for Coming Soon UI)
+            // Global Theatrical Fallback (Find EARLIEST Date)
+            // If no local date, find the earliest release (Premiere, Limited, or Theatrical) anywhere in the world.
+            // This prevents showing a 2026 date for a movie premiering in 2025 just because a random country list was checked last.
             if (!theatricalDate && results.length > 0) {
+                let earliestDate = null;
                 for (const res of results) {
-                    const d = extractDates(res.iso_3166_1);
-                    if (d?.theatrical) { theatricalDate = d.theatrical; break; }
+                    if (!res.release_dates || !Array.isArray(res.release_dates)) continue;
+
+                    for (const d of res.release_dates) {
+                        // Check for Limited (2), Theatrical (3), or Digital (4)
+                        // Exclude Premiere (1) as requested by user (Festival dates vs Wide Release)
+                        if (d.type === 2 || d.type === 3 || d.type === 4) {
+                            if (d.release_date) {
+                                if (!earliestDate || d.release_date < earliestDate) {
+                                    earliestDate = d.release_date;
+                                }
+                            }
+                        }
+                    }
                 }
+                if (earliestDate) theatricalDate = earliestDate;
             }
         }
 
@@ -214,7 +229,12 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
              *      - If currentStatus == 'movie_coming_soon' -> Upgrade to OTT.
              *      - If currentStatus == 'movie_unwatched' -> Stay in Library.
              */
-            const releaseDateStr = details.release_date;
+            // If we found a theatrical/premiere date earlier than the main release_date, use that.
+            // This ensures a 2025 Premiere is respected even if the "Release Date" is set to 2026.
+            let releaseDateStr = details.release_date;
+            if (theatricalDate && (!releaseDateStr || theatricalDate < releaseDateStr)) {
+                releaseDateStr = theatricalDate;
+            }
             const releaseDateObj = releaseDateStr ? new Date(releaseDateStr) : null;
             const hasProvidersIN = allStreamingOrRental.length > 0;
             const hasFutureIndianDigitalDate = indianDigitalDate && new Date(indianDigitalDate) > today;

@@ -261,7 +261,8 @@ export const tmdb = {
         // Explicitly constructing URL as requested by user:
         // https://api.themoviedb.org/3/search/tv?query={user_entry}&api_key={api_key}
         // Proxy handles Key
-        const url = `${BASE_URL}/search/${type}?query=${encodeURIComponent(query)}&region=${region}`;
+        // Removing region param to avoid localized release date filtering which causes incorrect years (e.g. 1987 vs 2013)
+        const url = `${BASE_URL}/search/${type}?query=${encodeURIComponent(query)}`;
         const safeUrl = url.replace(/api_key=[^&]*&?/i, 'api_key=HIDDEN&');
 
         console.log(`[TMDB] Fetching explicitly: ${safeUrl}`);
