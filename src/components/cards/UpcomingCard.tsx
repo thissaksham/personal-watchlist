@@ -222,10 +222,15 @@ export const UpcomingCard = ({
         }
     } else if (isMovieOTT) {
         // Prioritize Digital Date (Streaming Date) over Theatrical Release Date for OTT items
-        const dateStr = media.manual_date_override
-            ? media.digital_release_date
-            : (media.digital_release_date || media.release_date);
-        formattedDate = getFormattedDate(dateStr);
+        // Priority: API Digital Date -> Manual Date -> General/Theatrical Date
+
+        const manualDate = media.manual_release_date ? media.manual_release_date : null;
+
+        let dateToUse = media.digital_release_date; // 1. API Digital
+        if (!dateToUse && manualDate) dateToUse = manualDate; // 2. Manual
+        if (!dateToUse) dateToUse = media.release_date; // 3. General
+
+        formattedDate = getFormattedDate(dateToUse);
 
         const providers = media['watch/providers']?.results?.[region];
         providerName = media.manual_ott_name || // Priority 1: Manual Name
@@ -234,10 +239,11 @@ export const UpcomingCard = ({
             providers?.free?.[0]?.provider_name || 'OTT';
         contextLabel = 'New Movie';
     } else if (isMovieComingSoon) {
-        const dateStr = media.manual_date_override ? media.digital_release_date : (media.theatrical_release_date || media.release_date);
+        // For Coming Soon: Theatrical -> General (Manual date usually irrelevant unless OTT mode)
+        const dateStr = media.theatrical_release_date || media.release_date;
         formattedDate = getFormattedDate(dateStr);
 
-        // If manual override exists, show that provider even in 'Coming Soon'
+        // If manual override exists (switched from OTT?), show that provider even in 'Coming Soon'
         if (media.manual_date_override && media.manual_ott_name) {
             providerName = media.manual_ott_name;
         }

@@ -120,31 +120,44 @@ export const Upcoming = () => {
 
                 if (item.status === 'movie_on_ott' || item.status === 'movie_coming_soon') {
                     category = item.status === 'movie_on_ott' ? 'ott' : 'theatrical';
-                    const primaryDate = meta.manual_date_override ? dDate : (item.status === 'movie_on_ott' ? (dDate || rDate) : (tDate || rDate));
 
-                    if (primaryDate) {
-                        targetDate = primaryDate;
-                        if (item.status === 'movie_on_ott' || (meta.manual_date_override && meta.digital_release_date)) {
-                            if (targetDate > today) {
-                                const ottName = meta.manual_ott_name || meta.digital_release_note;
-                                seasonInfo = ottName ? `Coming to ${ottName}` : 'Coming to OTT';
-                            } else {
-                                seasonInfo = 'Streaming Now';
-                            }
+                    if (item.status === 'movie_on_ott' && category === 'ott') {
+                        // Priority: Digital (API) -> Manual -> General
+                        // Note: digitalDateStr (dDate) comes from 'digital_release_date' which we now TREAT as API-only (since we store manual in 'manual_release_date')
+                        // However, older data might still have manual dates in digital_release_date. We can't easily fix that retroactively without migration,
+                        // but new logic will respect the split.
+
+                        const manualDate = meta.manual_release_date ? new Date(meta.manual_release_date) : null;
+
+                        if (dDate) {
+                            targetDate = dDate;
+                            seasonInfo = (targetDate > today) ? 'Coming to OTT' : 'Streaming Now';
+                        } else if (manualDate) {
+                            targetDate = manualDate;
+                            const ottName = meta.manual_ott_name || meta.digital_release_note;
+                            seasonInfo = ottName ? `Coming to ${ottName}` : 'Coming to OTT';
                         } else {
-                            seasonInfo = targetDate > today ? 'Releasing in Theatres' : 'Released';
+                            targetDate = rDate || tDate; // Fallback to general/theatrical
+                            seasonInfo = 'Date Pending';
                         }
                     } else {
-                        // NO specific date found (primaryDate is null)
+                        // Coming Soon (Theatrical Priority)
+                        // Priority: Theatrical -> General
+                        targetDate = tDate || rDate;
+                        if (targetDate) {
+                            seasonInfo = targetDate > today ? 'Releasing in Theatres' : 'Released';
+                        }
+                    }
+
+                    // Common logic to ensure we have a valid targetDate before falling back to placeholders
+                    if (!targetDate) {
+                        // NO specific date found
                         const fallbackYearMatch = releaseDateStr?.match(/^\d{4}/);
                         if (fallbackYearMatch) {
-                            // Extract year and set to end of that year for sorting
                             targetDate = new Date(`${fallbackYearMatch[0]}-12-31`);
                         } else {
-                            // No date/year at all -> Push to far future so it appears last
                             targetDate = new Date('2099-12-31');
                         }
-                        category = 'theatrical';
                     }
                 } else {
                     // Legacy fallback or unknown: use digital/theatrical dates
@@ -263,7 +276,7 @@ export const Upcoming = () => {
 
         const newMeta = {
             ...(item.metadata || {}),
-            digital_release_date: date,
+            manual_release_date: date,
             manual_ott_name: ottName,
             manual_date_override: true
         };
@@ -284,7 +297,7 @@ export const Upcoming = () => {
 
         const newMeta = {
             ...(item.metadata || {}),
-            digital_release_date: null,
+            manual_release_date: null,
             manual_ott_name: null,
             manual_date_override: false
         };

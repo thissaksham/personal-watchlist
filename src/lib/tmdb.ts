@@ -146,6 +146,7 @@ export interface TMDBMedia {
     theatrical_release_date?: string;
     // App-Specific Overrides
     manual_date_override?: boolean;
+    manual_release_date?: string | null; // New priority field
     manual_ott_name?: string;
     moved_to_library?: boolean;
     dismissed_from_upcoming?: boolean;
