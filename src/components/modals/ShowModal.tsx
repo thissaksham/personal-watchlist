@@ -120,6 +120,27 @@ export const ShowModal = ({ media, onClose }: ShowModalProps) => {
                 <div className="modal-body">
                     <div className="modal-col-main">
                         {/* Seasons Grid (Interactive if Added) */}
+                        {/* SKELETON LOADER - Shows instantly while fetching details */}
+                        {!details && (
+                            <div className="seasons-section mb-8 animate-pulse">
+                                <div className="section-label mb-3">Seasons</div>
+                                <div className="seasons-grid">
+                                    {[1, 2, 3].map((_, i) => (
+                                        <div key={i} className="season-item">
+                                            <div className="season-bubble" style={{
+                                                width: '50px',
+                                                height: '50px',
+                                                background: 'rgba(255,255,255,0.05)',
+                                                border: '1px solid rgba(255,255,255,0.1)',
+                                                borderRadius: '50%'
+                                            }} />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Real Data */}
                         {(details?.seasons || media.seasons) && (
                             <div className="seasons-section mb-8">
                                 <div className="section-label">Seasons</div>
