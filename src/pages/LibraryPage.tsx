@@ -103,7 +103,7 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
         }
     };
 
-    const [sortOption, setSortOption] = useState<'date_added' | 'rating' | 'release_date' | 'runtime'>('date_added'); // New Sort State
+    const [sortOption, setSortOption] = useState<'date_added' | 'rating' | 'release_date' | 'runtime' | 'random'>('date_added'); // New Sort State
     const [isSortOpen, setIsSortOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const sortRef = useRef<HTMLDivElement>(null);
@@ -378,12 +378,32 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
                     return dateB - dateA; // Newest first
                 case 'runtime':
                     return calculateMediaRuntime(a) - calculateMediaRuntime(b); // Shortest first
+                case 'random':
+                    // Fisher-Yates Shuffle is not a comparator, handling separately below
+                    return 0;
                 case 'date_added':
                 default:
-                    return 0; // Default order (usually date added if array order matches watchlist push)
+                    return 0; // Default order
             }
         });
     }, [filteredLibrary, sortOption]);
+
+    // Apply Random Shuffle if selected
+    // Note: We use a separate memo or effect if we want to avoid re-shuffling on every render, 
+    // but putting it in the useMemo above is safer for consistency, except sort() expects a comparator.
+    // Better approach: Transform the array fully.
+
+    const finalDisplayLibrary = useMemo(() => {
+        let result = [...sortedLibrary];
+        if (sortOption === 'random') {
+            // Fisher-Yates Shuffle
+            for (let i = result.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [result[i], result[j]] = [result[j], result[i]];
+            }
+        }
+        return result;
+    }, [sortedLibrary, sortOption]);
 
     // Total Count Calculation for Debugging (User Request: "10/11")
     const totalCount = useMemo(() => {
@@ -393,14 +413,26 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
 
             // Strict Status Matching to match ViewMode
             if (tmdbType === 'tv') {
-                return getShowStatus(item) === viewMode;
+                const visibleStatus = getShowStatus(item);
+                if (visibleStatus !== viewMode) return false;
+
+                // Extra check for Unwatched (Finished vs Ongoing filter)
+                if (viewMode === 'Unwatched') {
+                    const metadata = (item.metadata || {}) as any;
+                    const tStatus = metadata.status || ''; // TMDB status
+                    const isFinished = tStatus === 'Ended' || tStatus === 'Canceled';
+
+                    if (seriesStatusFilter === 'Finished' && !isFinished) return false;
+                    if (seriesStatusFilter === 'Ongoing' && isFinished) return false;
+                }
+                return true;
             } else {
                 if (viewMode === 'Unwatched') return item.status === 'movie_unwatched';
                 if (viewMode === 'Watched') return item.status === 'movie_watched';
             }
             return false;
         }).length;
-    }, [watchlist, watchlistType, tmdbType, viewMode]);
+    }, [watchlist, watchlistType, tmdbType, viewMode, seriesStatusFilter]);
 
     return (
         <div>
@@ -476,7 +508,8 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
                                         { id: 'date_added', label: 'Date Added' },
                                         { id: 'rating', label: 'Highest Rated' },
                                         { id: 'release_date', label: 'Newest Release' },
-                                        { id: 'runtime', label: 'Shortest Runtime' }
+                                        { id: 'runtime', label: 'Shortest Runtime' },
+                                        { id: 'random', label: 'Random Shuffle' }
                                     ].map(opt => (
                                         <button
                                             key={opt.id}
@@ -569,7 +602,7 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
                     </div>
                 ) : (
                     <div className="media-grid">
-                        {sortedLibrary.map((media) => (
+                        {finalDisplayLibrary.map((media) => (
                             <div key={media.id}>
                                 {viewMode === 'Watched' ? (
                                     <HistoryCard
