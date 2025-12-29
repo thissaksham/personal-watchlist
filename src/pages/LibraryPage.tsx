@@ -12,6 +12,7 @@ import { FilterBar, FilterExpandable } from '../components/FilterBar';
 
 import { HistoryCard } from '../components/cards/HistoryCard';
 import { SlidingToggle } from '../components/common/SlidingToggle';
+import { SmartPillButton } from '../components/common/SmartPillButton';
 import { Search, ListFilter } from 'lucide-react';
 
 interface LibraryPageProps {
@@ -31,33 +32,74 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
 
     const [selectedMedia, setSelectedMedia] = useState<TMDBMedia | null>(null);
     const [filterProvider, setFilterProvider] = useState<number | null>(null);
-    const [seriesStatusFilter, setSeriesStatusFilter] = useState<string>('Finished');
 
     // Initialize viewMode from URL if basePath is set, else default
     const getInitialViewMode = () => {
         if (basePath && params.status) {
-            // Capitalize: 'unwatched' -> 'Unwatched'
-            return params.status.charAt(0).toUpperCase() + params.status.slice(1);
+            const s = params.status.toLowerCase();
+            if (s === 'finished' || s === 'ongoing') return 'Unwatched';
+            return s.charAt(0).toUpperCase() + s.slice(1);
         }
         return 'Unwatched';
     };
 
     const [viewMode, setViewMode] = useState<string>(getInitialViewMode());
 
+    // Initialize seriesStatus from URL
+    const [seriesStatusFilter, setSeriesStatusFilter] = useState<string>(() => {
+        if (basePath && params.status) {
+            const s = params.status.toLowerCase();
+            if (s === 'finished') return 'Finished';
+            if (s === 'ongoing') return 'Ongoing';
+        }
+        return 'Finished';
+    });
+
     // Sync URL changes to State
     useEffect(() => {
-        if (basePath && params.status) {
-            const mode = params.status.charAt(0).toUpperCase() + params.status.slice(1);
-            if (mode !== viewMode) setViewMode(mode);
+        if (basePath) {
+            // Redirect Logic for TV Shows: Root or 'unwatched' -> 'finished'
+            if (tmdbType === 'tv') {
+                if (!params.status || params.status.toLowerCase() === 'unwatched') {
+                    navigate(`${basePath}/finished`, { replace: true });
+                    return;
+                }
+            }
+
+            if (params.status) {
+                const s = params.status.toLowerCase();
+                if (s === 'finished') {
+                    setViewMode('Unwatched');
+                    setSeriesStatusFilter('Finished');
+                } else if (s === 'ongoing') {
+                    setViewMode('Unwatched');
+                    setSeriesStatusFilter('Ongoing');
+                } else {
+                    const mode = s.charAt(0).toUpperCase() + s.slice(1);
+                    if (mode !== viewMode) setViewMode(mode);
+                }
+            }
         }
-    }, [basePath, params.status]);
+    }, [basePath, params.status, tmdbType, navigate]); // Added dependencies
 
     const handleViewModeChange = (opt: string) => {
         if (basePath) {
-            const slug = opt.toLowerCase();
-            navigate(`${basePath}/${slug}`);
+            // For TV Shows, if switching to Unwatched, go to specific status
+            if (tmdbType === 'tv' && opt === 'Unwatched') {
+                navigate(`${basePath}/${seriesStatusFilter.toLowerCase()}`);
+            } else {
+                navigate(`${basePath}/${opt.toLowerCase()}`);
+            }
         } else {
             setViewMode(opt);
+        }
+    };
+
+    const handleSeriesStatusChange = (status: string) => {
+        if (basePath) {
+            navigate(`${basePath}/${status.toLowerCase()}`);
+        } else {
+            setSeriesStatusFilter(status);
         }
     };
 
@@ -378,21 +420,21 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
                     style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '24px' }} // Increased gap and restored flex
                 >
                     {/* Series Status Toggle (Finished vs Ongoing) - Shows Only */}
-                    {tmdbType === 'tv' && (
+                    {tmdbType === 'tv' ? (
+                        <SmartPillButton
+                            viewMode={viewMode}
+                            seriesStatus={seriesStatusFilter}
+                            onViewModeChange={handleViewModeChange}
+                            onSeriesStatusChange={handleSeriesStatusChange}
+                        />
+                    ) : (
+                        /* View Mode Toggle (Movies) */
                         <SlidingToggle
-                            options={['Finished', 'Ongoing']}
-                            activeOption={seriesStatusFilter}
-                            onToggle={(opt) => setSeriesStatusFilter(opt)}
-                            disabled={viewMode !== 'Unwatched'}
+                            options={['Unwatched', 'Watched']}
+                            activeOption={viewMode}
+                            onToggle={handleViewModeChange}
                         />
                     )}
-
-                    {/* View Mode Toggle (Custom Sliding) */}
-                    <SlidingToggle
-                        options={tmdbType === 'tv' ? ['Unwatched', 'Watching', 'Watched'] : ['Unwatched', 'Watched']}
-                        activeOption={viewMode}
-                        onToggle={handleViewModeChange}
-                    />
 
                     {/* Sort Dropdown */}
                     <div className="relative z-50" ref={sortRef} style={{ position: 'relative', marginRight: '8px' }}>
