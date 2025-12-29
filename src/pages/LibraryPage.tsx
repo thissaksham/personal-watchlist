@@ -13,7 +13,7 @@ import { FilterBar, FilterExpandable } from '../components/FilterBar';
 import { HistoryCard } from '../components/cards/HistoryCard';
 import { SlidingToggle } from '../components/common/SlidingToggle';
 import { SmartPillButton } from '../components/common/SmartPillButton';
-import { Search, ListFilter } from 'lucide-react';
+import { Search, ListFilter, Undo2 } from 'lucide-react';
 
 interface LibraryPageProps {
     title: string;
@@ -25,7 +25,7 @@ interface LibraryPageProps {
 }
 
 export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMessage, basePath }: LibraryPageProps) => {
-    const { watchlist, removeFromWatchlist, markAsDropped, markAsWatched, markAsUnwatched, restoreToUpcoming } = useWatchlist();
+    const { watchlist, removeFromWatchlist, markAsDropped, markAsWatched, markAsUnwatched, restoreFromDropped, restoreToUpcoming } = useWatchlist();
     const { region } = usePreferences();
     const navigate = useNavigate();
     const params = useParams();
@@ -38,6 +38,7 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
         if (basePath && params.status) {
             const s = params.status.toLowerCase();
             if (s === 'finished' || s === 'ongoing') return 'Unwatched';
+            if (s === 'dropped') return 'Dropped';
             return s.charAt(0).toUpperCase() + s.slice(1);
         }
         return 'Unwatched';
@@ -74,6 +75,8 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
                 } else if (s === 'ongoing') {
                     setViewMode('Unwatched');
                     setSeriesStatusFilter('Ongoing');
+                } else if (s === 'dropped') {
+                    setViewMode('Dropped');
                 } else {
                     const mode = s.charAt(0).toUpperCase() + s.slice(1);
                     if (mode !== viewMode) setViewMode(mode);
@@ -145,7 +148,15 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
     const library = watchlist
         .filter(item => {
             if (item.type !== watchlistType) return false;
-            if (item.status === 'show_dropped' || item.status === 'movie_dropped') return false;
+
+            // Handle Dropped View explicitly first
+            if (viewMode === 'Dropped') {
+                if (tmdbType === 'tv') return (item as any).status === 'show_dropped';
+                return (item as any).status === 'movie_dropped';
+            }
+
+            // For all other views, explicitly EXCLUDE dropped items
+            if ((item as any).status === 'show_dropped' || (item as any).status === 'movie_dropped') return false;
 
             // Logic for Shows (Derived)
             if (tmdbType === 'tv') {
@@ -409,7 +420,15 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
     const totalCount = useMemo(() => {
         return watchlist.filter(item => {
             if (item.type !== watchlistType) return false;
-            if (item.status === 'show_dropped' || item.status === 'movie_dropped') return false;
+
+            // Handle Dropped View explicitly first
+            if (viewMode === 'Dropped') {
+                if (tmdbType === 'tv') return (item as any).status === 'show_dropped';
+                return (item as any).status === 'movie_dropped';
+            }
+
+            // For all other views, explicitly EXCLUDE dropped items
+            if ((item as any).status === 'show_dropped' || (item as any).status === 'movie_dropped') return false;
 
             // Strict Status Matching to match ViewMode
             if (tmdbType === 'tv') {
@@ -462,7 +481,7 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
                     ) : (
                         /* View Mode Toggle (Movies) */
                         <SlidingToggle
-                            options={['Unwatched', 'Watched']}
+                            options={['Unwatched', 'Watched', 'Dropped']}
                             activeOption={viewMode}
                             onToggle={handleViewModeChange}
                         />
@@ -623,16 +642,41 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
                                     <WatchlistCard
                                         media={media}
                                         type={tmdbType}
+                                        isDropped={viewMode === 'Dropped'}
+                                        actionLabel={viewMode === 'Dropped' ? "Restore to Library" : "Mark as Watched"}
+                                        actionIcon={viewMode === 'Dropped' ? <Undo2 size={16} /> : undefined}
                                         onRemove={(m) => {
                                             const displayTitle = m.title || m.name;
-                                            if (window.confirm(`Drop "${displayTitle}"? It will be moved to the Dropped section.`)) {
-                                                markAsDropped(Number(m.id), watchlistType);
+                                            if (viewMode === 'Dropped') {
+                                                // Permanent Delete
+                                                if (window.confirm(`PERMANENTLY DELETE "${displayTitle}"? This cannot be undone.`)) {
+                                                    removeFromWatchlist(Number(m.id), watchlistType);
+                                                }
+                                            } else {
+                                                // Drop (Move to Dropped)
+                                                if (window.confirm(`Drop "${displayTitle}"? It will be moved to the Dropped section.`)) {
+                                                    markAsDropped(Number(m.id), watchlistType);
+                                                }
                                             }
                                         }}
-                                        removeLabel="Drop (Move to Dropped)"
+                                        removeLabel={viewMode === 'Dropped' ? "Delete Permanently" : "Drop (Move to Dropped)"}
                                         // Optional: customize icon logic here if desired, but default X is fine for Drop.
                                         onMarkWatched={(m) => {
-                                            markAsWatched(Number(m.id), watchlistType);
+                                            // Restoration logic if dropped, or just mark watched
+                                            if (viewMode === 'Dropped') {
+                                                const displayTitle = m.title || m.name;
+                                                if (window.confirm(`Restore ${displayTitle} to your library?`)) {
+                                                    // Re-using restore logic or just mark unwatched/watched? User usually wants restore.
+                                                    // Let's assume restore = markAsUnwatched (or upcoming logic).
+                                                    // But the prompt in dropped page was 'restoreFromDropped'. 
+                                                    // useWatchlist hook has restoreFromDropped.
+                                                    // Let's use that if available or just markAsUnwatched.
+                                                    // Check context file? Assume markAsUnwatched works for now or check usage.
+                                                    restoreFromDropped(Number(m.id), watchlistType);
+                                                }
+                                            } else {
+                                                markAsWatched(Number(m.id), watchlistType);
+                                            }
                                         }}
                                         onMarkUnwatched={viewMode === 'Watching' ? (m) => {
                                             markAsUnwatched(Number(m.id), watchlistType);

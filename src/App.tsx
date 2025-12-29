@@ -13,7 +13,7 @@ import { Shows } from './pages/Shows';
 import { Upcoming } from './pages/Upcoming';
 import { Games } from './pages/Placeholders';
 import VerifySuccess from './pages/VerifySuccess';
-import { DroppedPage } from './pages/DroppedPage';
+
 
 
 // Protected Route Wrapper
@@ -93,8 +93,6 @@ function App() {
                   <Route path="upcoming" element={<Navigate to="/upcoming/onOTT" replace />} />
                   <Route path="upcoming/:status" element={<Upcoming />} />
                   <Route path="games" element={<Games />} />
-                  <Route path="dropped" element={<Navigate to="/dropped/movies" replace />} />
-                  <Route path="dropped/:type" element={<DroppedPage />} />
                 </Route>
 
                 {/* 404 Catch-All -> Redirect to Home */}

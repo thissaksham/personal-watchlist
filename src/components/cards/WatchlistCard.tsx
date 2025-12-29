@@ -169,7 +169,7 @@ export const WatchlistCard = ({
                     src={imageUrl}
                     alt={title}
                     className={`poster-img ${isDropped ? 'group-hover:!grayscale-0 group-hover:!opacity-100 transition-all duration-300' : ''}`}
-                    style={isDropped ? { filter: 'grayscale(100%)', opacity: 0.6 } : {}}
+                    style={isDropped ? { filter: 'grayscale(100%) sepia(100%) hue-rotate(-50deg) saturate(600%) contrast(0.8)', opacity: 0.8 } : {}}
                     loading="lazy"
                 />
 
@@ -186,7 +186,7 @@ export const WatchlistCard = ({
                             <span>{year}</span>
                         </div>
                     )}
-                    {duration && (
+                    {(duration && !isDropped) && (
                         <div className="media-pill pill-duration">
                             <span>{duration}</span>
                         </div>

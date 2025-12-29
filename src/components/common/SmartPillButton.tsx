@@ -15,7 +15,7 @@ export const SmartPillButton = ({
     onSeriesStatusChange
 }: SmartPillButtonProps) => {
 
-    const slots = ['Unwatched', 'Watching', 'Watched'];
+    const slots = ['Unwatched', 'Watching', 'Watched', 'Dropped'];
 
     const [highlightStyle, setHighlightStyle] = useState<React.CSSProperties>({});
     const optionRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -108,6 +108,15 @@ export const SmartPillButton = ({
                 onClick={() => handleClick(2)}
             >
                 Watched
+            </div>
+
+            {/* Slot 3: Dropped */}
+            <div
+                ref={el => { optionRefs.current[3] = el; }}
+                className={`${styles['pill-button-selection']} ${viewMode === 'Dropped' ? styles['pill-button-selection_active'] : ''}`}
+                onClick={() => handleClick(3)}
+            >
+                Dropped
             </div>
 
             <div className={styles['pill-button-highlight']} style={highlightStyle}></div>

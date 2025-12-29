@@ -95,7 +95,6 @@ export default function Layout() {
         { name: 'Shows', path: '/shows', icon: MonitorPlay },
         { name: 'Upcoming', path: '/upcoming', icon: Calendar },
         { name: 'Games', path: '/games', icon: Gamepad2 },
-        { name: 'Dropped', path: '/dropped', icon: LogOut },
     ];
 
     return (
