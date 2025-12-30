@@ -33,16 +33,16 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
       fontFamily: "'Outfit', sans-serif"
     }}>
       <div style={{
-        padding: '1.5rem',
+        padding: '1rem',
         background: 'rgba(20, 184, 166, 0.1)',
-        borderRadius: '24px',
+        borderRadius: '32px',
         border: '1px solid rgba(20, 184, 166, 0.2)',
         animation: 'pulse 2s infinite ease-in-out'
       }}>
-        <Clapperboard size={48} color="#14b8a6" />
+        <Clapperboard size={32} color="#14b8a6" />
       </div>
-      <h1 style={{ color: 'white', fontSize: '1.5rem', fontWeight: 800, letterSpacing: '0.1em' }}>
-        CINETRACK
+      <h1 style={{ color: 'white', fontSize: '1.5rem', fontWeight: 900, letterSpacing: '0.2em', textTransform: 'uppercase' }}>
+        CineTrack
       </h1>
       <style>{`
         @keyframes pulse {
