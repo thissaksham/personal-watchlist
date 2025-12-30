@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { TMDBMedia } from '../lib/tmdb';
+import type { TMDBMedia } from '../../../lib/tmdb';
 
 export interface Provider {
     id: number;

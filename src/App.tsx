@@ -1,7 +1,9 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import { WatchlistProvider } from './context/WatchlistContext';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from './lib/react-query/client';
+import { AuthProvider, useAuth } from './features/auth/context/AuthContext';
+import { WatchlistProvider } from './features/watchlist/context/WatchlistContext';
 import { PreferencesProvider } from './context/PreferencesContext';
 import { GlobalSearchProvider } from './context/GlobalSearchContext';
 import Layout from './components/Layout';
@@ -13,7 +15,6 @@ import { Shows } from './pages/Shows';
 import { Upcoming } from './pages/Upcoming';
 import { Games } from './pages/Placeholders';
 import VerifySuccess from './pages/VerifySuccess';
-
 
 
 // Protected Route Wrapper
@@ -65,43 +66,44 @@ function App() {
   console.log("App component rendering...");
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <PreferencesProvider>
-          <WatchlistProvider>
-            <GlobalSearchProvider>
-              <Routes>
-                <Route path="/auth" element={<Login />} />
-                <Route path="/auth/verified" element={<VerifySuccess />} />
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <PreferencesProvider>
+            <WatchlistProvider>
+              <GlobalSearchProvider>
+                <Routes>
+                  <Route path="/auth" element={<Login />} />
+                  <Route path="/auth/verified" element={<VerifySuccess />} />
 
 
-                <Route path="/" element={
-                  <ProtectedRoute>
-                    <Layout />
-                  </ProtectedRoute>
-                }>
-                  <Route index element={<Trending />} />
-                  <Route index element={<Trending />} />
+                  <Route path="/" element={
+                    <ProtectedRoute>
+                      <Layout />
+                    </ProtectedRoute>
+                  }>
+                    <Route index element={<Trending />} />
 
-                  {/* Movies Tab with URL State */}
-                  <Route path="movies" element={<Navigate to="/movies/unwatched" replace />} />
-                  <Route path="movies/:status" element={<Movies />} />
+                    {/* Movies Tab with URL State */}
+                    <Route path="movies" element={<Navigate to="/movies/unwatched" replace />} />
+                    <Route path="movies/:status" element={<Movies />} />
 
-                  <Route path="shows" element={<Navigate to="/shows/unwatched" replace />} />
-                  <Route path="shows/:status" element={<Shows />} />
+                    <Route path="shows" element={<Navigate to="/shows/unwatched" replace />} />
+                    <Route path="shows/:status" element={<Shows />} />
 
-                  {/* Upcoming Tab with URL State */}
-                  <Route path="upcoming" element={<Navigate to="/upcoming/onOTT" replace />} />
-                  <Route path="upcoming/:status" element={<Upcoming />} />
-                  <Route path="games" element={<Games />} />
-                </Route>
+                    {/* Upcoming Tab with URL State */}
+                    <Route path="upcoming" element={<Navigate to="/upcoming/onOTT" replace />} />
+                    <Route path="upcoming/:status" element={<Upcoming />} />
+                    <Route path="games" element={<Games />} />
+                  </Route>
 
-                {/* 404 Catch-All -> Redirect to Home */}
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </GlobalSearchProvider>
-          </WatchlistProvider>
-        </PreferencesProvider>
-      </AuthProvider>
+                  {/* 404 Catch-All -> Redirect to Home */}
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </GlobalSearchProvider>
+            </WatchlistProvider>
+          </PreferencesProvider>
+        </AuthProvider>
+      </QueryClientProvider>
     </BrowserRouter>
   );
 }

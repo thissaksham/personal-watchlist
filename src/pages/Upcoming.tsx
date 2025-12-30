@@ -1,13 +1,13 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useWatchlist } from '../context/WatchlistContext';
-import { UpcomingCard } from '../components/cards/UpcomingCard';
+import { useWatchlist } from '../features/watchlist/context/WatchlistContext';
+import { UpcomingCard } from '../features/media/components/cards/UpcomingCard';
 import { calculateMediaRuntime, type TMDBMedia } from '../lib/tmdb';
-import { SlidingToggle } from '../components/common/SlidingToggle';
+import { SlidingToggle } from '../components/ui/SlidingToggle';
 import { usePreferences } from '../context/PreferencesContext';
-import { MovieModal } from '../components/modals/MovieModal';
-import { ShowModal } from '../components/modals/ShowModal';
-import { ManualDateModal } from '../components/modals/ManualDateModal';
+import { MovieModal } from '../features/media/components/modals/MovieModal';
+import { ShowModal } from '../features/media/components/modals/ShowModal';
+import { ManualDateModal } from '../features/media/components/modals/ManualDateModal';
 
 // ... (helper functions omitted for brevity, they are unchanged)
 

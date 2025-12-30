@@ -1,16 +1,16 @@
 import { useState, useRef, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { LogOut, Clapperboard, MonitorPlay, Calendar, Gamepad2, Menu, X, Plus, Lock, Trash2, RotateCw } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
-import { useWatchlist } from '../context/WatchlistContext';
-import { SearchModal } from './SearchModal';
-import { MovieModal } from './modals/MovieModal';
-import { ShowModal } from './modals/ShowModal';
-import { ChangePasswordModal } from './modals/ChangePasswordModal';
-import { WelcomeSplash } from './WelcomeSplash';
+import { useAuth } from '../features/auth/context/AuthContext';
+import { useWatchlist } from '../features/watchlist/context/WatchlistContext';
+import { SearchModal } from '../features/search/components/SearchModal';
+import { MovieModal } from '../features/media/components/modals/MovieModal';
+import { ShowModal } from '../features/media/components/modals/ShowModal';
+import { ChangePasswordModal } from '../features/auth/components/ChangePasswordModal';
+import { WelcomeSplash } from '../features/auth/components/WelcomeSplash';
 import type { TMDBMedia } from '../lib/tmdb';
 
-import { SyncOverlay } from './common/SyncOverlay';
+import { SyncOverlay } from './ui/SyncOverlay';
 
 // This flag resets to false on every page refresh (full JS reload),
 // but stays true during in-app navigation.

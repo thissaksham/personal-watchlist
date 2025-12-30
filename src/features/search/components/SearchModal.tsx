@@ -1,10 +1,12 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, X, LoaderCircle } from 'lucide-react';
-import { tmdb, type TMDBMedia } from '../lib/tmdb';
-import { useWatchlist } from '../context/WatchlistContext';
-import { SlidingToggle } from './common/SlidingToggle';
-import { DiscoveryCard } from './cards/DiscoveryCard';
-import { usePreferences } from '../context/PreferencesContext';
+import { useSearch } from '../../media/hooks/useTMDB';
+import { useDebounce } from '../hooks/useDebounce';
+import type { TMDBMedia } from '../../../lib/tmdb';
+import { useWatchlist } from '../../watchlist/context/WatchlistContext';
+import { SlidingToggle } from '../../../components/ui/SlidingToggle';
+import { DiscoveryCard } from '../../media/components/cards/DiscoveryCard';
+
 
 interface SearchModalProps {
     isOpen: boolean;
@@ -17,67 +19,33 @@ interface SearchModalProps {
 export const SearchModal = ({ isOpen, onClose, type: initialType, onSuccess, initialQuery = '' }: SearchModalProps) => {
     const [query, setQuery] = useState(initialQuery);
     const [searchType, setSearchType] = useState<'multi' | 'movie' | 'tv'>(initialType);
-    const [results, setResults] = useState<TMDBMedia[]>([]);
 
-    const [loading, setLoading] = useState(false);
+    // Debounce query to prevent excessive API calls
+    const debouncedQuery = useDebounce(query, 500);
+
+    // React Query Hook
+    const { data, isLoading } = useSearch(debouncedQuery, searchType);
+    const results = (data?.results as TMDBMedia[]) || [];
 
     const { addToWatchlist, isInWatchlist } = useWatchlist();
-    const { region } = usePreferences();
-
-    // Removed useEffect for initialQuery as useState handles it now.
 
     // Reset state on open
     useEffect(() => {
         if (isOpen) {
             setQuery(initialQuery);
             setSearchType(initialType);
-            setResults([]);
         }
     }, [isOpen, initialType, initialQuery]);
 
-    // Trending removed as per user request
+    // Body scroll lock
     useEffect(() => {
         if (isOpen) {
-            // Lock body scroll
             document.body.style.overflow = 'hidden';
         } else {
             document.body.style.overflow = '';
         }
         return () => { document.body.style.overflow = ''; };
     }, [isOpen]);
-
-    // Search Logic with Instant Tab Switching
-    const prevSearchType = useRef(searchType);
-
-    useEffect(() => {
-        const performSearch = async () => {
-            if (!query.trim()) {
-                setResults([]);
-                return;
-            }
-
-            setLoading(true);
-            try {
-                const data = await tmdb.search(query, searchType, region);
-                setResults(data.results || []);
-            } catch (err) {
-                console.error(err);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        // If searchType changed but query is the same, fetch immediately
-        if (prevSearchType.current !== searchType && query.trim()) {
-            prevSearchType.current = searchType;
-            performSearch();
-            return;
-        }
-
-        prevSearchType.current = searchType;
-        const timer = setTimeout(() => performSearch(), 500);
-        return () => clearTimeout(timer);
-    }, [query, searchType, region]);
 
     const handleAdd = async (media: TMDBMedia) => {
         const mediaType = media.media_type || (searchType === 'tv' ? 'tv' : 'movie');
@@ -129,7 +97,7 @@ export const SearchModal = ({ isOpen, onClose, type: initialType, onSuccess, ini
                                 value={query}
                                 onChange={e => setQuery(e.target.value)}
                             />
-                            {loading && <LoaderCircle className="animate-spin text-teal-400" size={24} />}
+                            {isLoading && <LoaderCircle className="animate-spin text-teal-400" size={24} />}
                         </div>
 
                         <div className="search-filters">
@@ -150,12 +118,12 @@ export const SearchModal = ({ isOpen, onClose, type: initialType, onSuccess, ini
                             {/* 'Trending Now' removed */}
                         </div>
 
-                        {itemsToShow.length === 0 && !loading ? (
+                        {itemsToShow.length === 0 && !isLoading ? (
                             <div className="text-center py-20 text-gray-400">
                                 No discovery found. Try a different search!
                             </div>
                         ) : (
-                            <div className={`media-grid ${loading ? 'loading-state' : ''}`}>
+                            <div className={`media-grid ${isLoading ? 'loading-state' : ''}`}>
                                 {itemsToShow.map(media => {
                                     const mType = media.media_type || (searchType === 'tv' ? 'tv' : 'movie');
                                     const targetType = mType === 'tv' ? 'show' : 'movie';

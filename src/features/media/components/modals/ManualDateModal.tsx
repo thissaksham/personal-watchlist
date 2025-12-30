@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Calendar, Save, Tv } from 'lucide-react';
-import { type TMDBMedia } from '../../lib/tmdb';
+import { type TMDBMedia } from '../../../../lib/tmdb';
 
-import { getTodayIsoString } from '../../lib/dateUtils';
+import { getTodayIsoString } from '../../../../lib/dateUtils';
 
 interface ManualDateModalProps {
     media: TMDBMedia;

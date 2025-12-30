@@ -1,46 +1,20 @@
-import { useEffect, useState } from 'react';
-import { tmdb, type TMDBMedia } from '../lib/tmdb';
-import { DiscoveryCard } from '../components/cards/DiscoveryCard';
-import { useWatchlist } from '../context/WatchlistContext';
-import { usePreferences } from '../context/PreferencesContext';
+import { useEffect } from 'react';
+import { DiscoveryCard } from '../features/media/components/cards/DiscoveryCard';
+import { useWatchlist } from '../features/watchlist/context/WatchlistContext';
 import { Flame } from 'lucide-react';
+import { useTrending } from '../features/media/hooks/useTMDB';
+import type { TMDBMedia } from '../lib/tmdb';
 
 export const Trending = () => {
-    const [trending, setTrending] = useState<TMDBMedia[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { data, isLoading, error } = useTrending('all', 'week');
     const { addToWatchlist, isInWatchlist } = useWatchlist();
-    const { region } = usePreferences();
 
-    // Filters
-    // Removed activeTab and timeWindow
+    const trending = (data?.results as TMDBMedia[]) || [];
 
-    const [error, setError] = useState<string | null>(null);
-
+    // Effect for title only
     useEffect(() => {
-        const fetchTrending = async () => {
-            document.title = 'CineTrack | Trending';
-            // Quick check for API key
-            if (!import.meta.env.VITE_TMDB_API_KEY) {
-                setError("Missing API Key. Please add VITE_TMDB_API_KEY to your .env file.");
-                setLoading(false);
-                return;
-            }
-
-            setLoading(true); // Reset loading on filter change
-            try {
-                // Fetch trending based on active tab
-                // Note: getTrending(type, time)
-                const data = await tmdb.getTrending('all', 'week', region);
-                setTrending(data.results || []);
-            } catch (err: any) {
-                console.error("Failed to fetch trending", err);
-                setError(err.message || "Failed to load trending content.");
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchTrending();
-    }, [region]);
+        document.title = 'CineTrack | Trending';
+    }, []);
 
     const handleAdd = async (media: TMDBMedia) => {
         const type = media.media_type === 'tv' ? 'show' : 'movie';
@@ -61,7 +35,7 @@ export const Trending = () => {
                 {/* Filters Removed */}
             </div>
 
-            {loading ? (
+            {isLoading ? (
                 <div className="media-grid">
                     {[...Array(10)].map((_, i) => (
                         <div key={i} className="media-card" style={{ height: '300px', backgroundColor: '#2a2a2a' }} />
@@ -70,7 +44,7 @@ export const Trending = () => {
             ) : error ? (
                 <div className="text-center py-12">
                     <p className="text-red-400 text-lg mb-2">Error loading content</p>
-                    <p className="text-gray-400">{error}</p>
+                    <p className="text-gray-400">{(error as Error).message || "Failed to load trending content."}</p>
                 </div>
             ) : trending.length === 0 ? (
                 <div className="text-center py-12">

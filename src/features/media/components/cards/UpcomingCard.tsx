@@ -1,8 +1,8 @@
 import { X, Check, Calendar, ArrowUp, Pencil, Star } from 'lucide-react';
-import { type TMDBMedia } from '../../lib/tmdb';
-import { useWatchlist } from '../../context/WatchlistContext';
-import { usePreferences } from '../../context/PreferencesContext';
-import { formatDisplayDate, getTodayValues, isReleased, parseDate } from '../../lib/dateUtils';
+import { type TMDBMedia } from '../../../../lib/tmdb';
+import { useWatchlist } from '../../../watchlist/context/WatchlistContext';
+import { usePreferences } from '../../../../context/PreferencesContext';
+import { formatDisplayDate, getTodayValues, isReleased, parseDate } from '../../../../lib/dateUtils';
 
 interface UpcomingCardProps {
     media: TMDBMedia;

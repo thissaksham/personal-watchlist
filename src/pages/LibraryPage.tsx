@@ -1,18 +1,18 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { calculateMediaRuntime, type TMDBMedia } from '../lib/tmdb';
-import { useWatchlist } from '../context/WatchlistContext';
+import { useWatchlist } from '../features/watchlist/context/WatchlistContext';
 import { usePreferences } from '../context/PreferencesContext';
-import { WatchlistCard } from '../components/cards/WatchlistCard';
-import { MovieModal } from '../components/modals/MovieModal';
-import { ShowModal } from '../components/modals/ShowModal';
+import { WatchlistCard } from '../features/media/components/cards/WatchlistCard';
+import { MovieModal } from '../features/media/components/modals/MovieModal';
+import { ShowModal } from '../features/media/components/modals/ShowModal';
 
 import { FAB } from '../components/FAB';
 import { FilterBar, FilterExpandable } from '../components/FilterBar';
 
-import { HistoryCard } from '../components/cards/HistoryCard';
-import { SlidingToggle } from '../components/common/SlidingToggle';
-import { SmartPillButton } from '../components/common/SmartPillButton';
+import { HistoryCard } from '../features/media/components/cards/HistoryCard';
+import { SlidingToggle } from '../components/ui/SlidingToggle';
+import { SmartPillButton } from '../components/ui/SmartPillButton';
 import { Search, ListFilter, Undo2 } from 'lucide-react';
 
 interface LibraryPageProps {

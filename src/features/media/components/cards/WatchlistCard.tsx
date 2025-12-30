@@ -1,6 +1,6 @@
 import { Star, Check, X, Undo2, CalendarPlus } from 'lucide-react';
-import { type TMDBMedia } from '../../lib/tmdb';
-import { useWatchlist } from '../../context/WatchlistContext';
+import { type TMDBMedia } from '../../../../lib/tmdb';
+import { useWatchlist } from '../../../watchlist/context/WatchlistContext';
 
 interface WatchlistCardProps {
     media: TMDBMedia;

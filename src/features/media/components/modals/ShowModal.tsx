@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Calendar, Star, PlayCircle, Play, Layers, Hash, Hourglass } from 'lucide-react';
-import { tmdb, type TMDBMedia } from '../../lib/tmdb';
-import { useWatchlist } from '../../context/WatchlistContext';
-import { getMoctaleUrl, getTMDBUrl, TMDB_ICON_BASE64, MOCTALE_ICON_BASE64, JUSTWATCH_ICON_BASE64 } from '../../lib/urls';
-import { usePreferences } from '../../context/PreferencesContext';
-import { calculateShowStats, getWatchProviders, getWatchLink } from '../../utils/mediaUtils';
+import { type TMDBMedia } from '../../../../lib/tmdb';
+import { useMediaDetails } from '../../hooks/useTMDB';
+import { useWatchlist } from '../../../watchlist/context/WatchlistContext';
+import { getMoctaleUrl, getTMDBUrl, TMDB_ICON_BASE64, MOCTALE_ICON_BASE64, JUSTWATCH_ICON_BASE64 } from '../../../../lib/urls';
+import { usePreferences } from '../../../../context/PreferencesContext';
+import { calculateShowStats, getWatchProviders, getWatchLink } from '../../../../utils/mediaUtils';
 
 interface ShowModalProps {
     media: TMDBMedia;
@@ -15,24 +16,15 @@ interface ShowModalProps {
 export const ShowModal = ({ media, onClose }: ShowModalProps) => {
     const { watchlist, markSeasonWatched, markSeasonUnwatched } = useWatchlist();
     const { region } = usePreferences();
-    const [details, setDetails] = useState<any>(null);
+
+    // React Query Hook
+    const { data: details, isLoading } = useMediaDetails(media.id, 'tv');
+
     const [hoveredSeason, setHoveredSeason] = useState<number | null>(null);
     const [showTrailer, setShowTrailer] = useState(false);
 
     const watchlistItem = watchlist.find(i => i.tmdb_id === media.id && i.type === 'show');
     const isAdded = !!watchlistItem;
-
-    useEffect(() => {
-        const fetchDetails = async () => {
-            try {
-                const data = await tmdb.getDetails(media.id, 'tv', region);
-                setDetails(data);
-            } catch (err) {
-                console.error("Failed to fetch show details", err);
-            }
-        };
-        fetchDetails();
-    }, [media.id]);
 
     const title = media.title || media.name;
     const year = (media.release_date || media.first_air_date)?.substring(0, 4);
@@ -121,7 +113,7 @@ export const ShowModal = ({ media, onClose }: ShowModalProps) => {
                     <div className="modal-col-main">
                         {/* Seasons Grid (Interactive if Added) */}
                         {/* SKELETON LOADER - Shows instantly while fetching details */}
-                        {!details && (
+                        {isLoading && (
                             <div className="seasons-section mb-8 animate-pulse">
                                 <div className="section-label mb-3">Seasons</div>
                                 <div className="seasons-grid">

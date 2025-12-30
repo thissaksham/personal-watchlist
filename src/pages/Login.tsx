@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { Clapperboard, Mail, Lock, ArrowRight, Loader, User, Globe } from 'lucide-react';
 import { REGIONS } from '../lib/tmdb';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../features/auth/context/AuthContext';
 import { usePreferences } from '../context/PreferencesContext';
 
 export default function Login() {

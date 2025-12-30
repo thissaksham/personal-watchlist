@@ -1,11 +1,11 @@
 import { useEffect, useState, useMemo } from 'react';
-import { WatchlistCard } from '../components/cards/WatchlistCard';
-import { MovieModal } from '../components/modals/MovieModal';
-import { ShowModal } from '../components/modals/ShowModal';
-import { useWatchlist } from '../context/WatchlistContext';
+import { WatchlistCard } from '../features/media/components/cards/WatchlistCard';
+import { MovieModal } from '../features/media/components/modals/MovieModal';
+import { ShowModal } from '../features/media/components/modals/ShowModal';
+import { useWatchlist } from '../features/watchlist/context/WatchlistContext';
 import { type TMDBMedia } from '../lib/tmdb';
 import { FilterBar, FilterExpandable } from '../components/FilterBar';
-import { useMediaProviders } from '../hooks/useMediaProviders';
+import { useMediaProviders } from '../features/media/hooks/useMediaProviders';
 import { usePreferences } from '../context/PreferencesContext';
 
 export const Watchlist = () => {

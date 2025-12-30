@@ -1,6 +1,6 @@
 
 import { Star, Undo2, X, CalendarPlus } from 'lucide-react';
-import { type TMDBMedia } from '../../lib/tmdb';
+import { type TMDBMedia } from '../../../../lib/tmdb';
 
 interface HistoryCardProps {
     media: TMDBMedia;

@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Calendar, Clock, Star, PlayCircle, Play } from 'lucide-react';
-import { tmdb, type TMDBMedia } from '../../lib/tmdb';
-import { getMoctaleUrl, getTMDBUrl, TMDB_ICON_BASE64, MOCTALE_ICON_BASE64, JUSTWATCH_ICON_BASE64 } from '../../lib/urls';
-import { getWatchProviders, getWatchLink } from '../../utils/mediaUtils';
-import { usePreferences } from '../../context/PreferencesContext';
+import { type TMDBMedia } from '../../../../lib/tmdb';
+import { useMediaDetails } from '../../hooks/useTMDB';
+import { getMoctaleUrl, getTMDBUrl, TMDB_ICON_BASE64, MOCTALE_ICON_BASE64, JUSTWATCH_ICON_BASE64 } from '../../../../lib/urls';
+import { getWatchProviders, getWatchLink } from '../../../../utils/mediaUtils';
+import { usePreferences } from '../../../../context/PreferencesContext';
 
 interface MovieModalProps {
     media: TMDBMedia;
@@ -13,21 +14,11 @@ interface MovieModalProps {
 
 export const MovieModal = ({ media, onClose }: MovieModalProps) => {
     const { region } = usePreferences();
-    const [details, setDetails] = useState<any>(null);
+
+    // React Query Hook
+    const { data: details } = useMediaDetails(media.id, 'movie');
+
     const [showTrailer, setShowTrailer] = useState(false);
-
-
-    useEffect(() => {
-        const fetchDetails = async () => {
-            try {
-                const data = await tmdb.getDetails(media.id, 'movie', region);
-                setDetails(data);
-            } catch (err) {
-                console.error("Failed to fetch movie details", err);
-            }
-        };
-        fetchDetails();
-    }, [media.id]);
 
     const title = media.title || media.name;
     const year = (media.release_date || media.first_air_date)?.substring(0, 4);

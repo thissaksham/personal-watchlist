@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { X, LoaderCircle, Lock, Check } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../context/AuthContext';
 
 interface ChangePasswordModalProps {
     onClose: () => void;
