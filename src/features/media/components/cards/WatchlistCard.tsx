@@ -162,14 +162,29 @@ export const WatchlistCard = ({
     };
     const duration = getDuration();
 
+    const getFilterStyle = () => {
+        if (isDropped) {
+            // Redscale for Dropped
+            return { filter: 'grayscale(100%) sepia(100%) hue-rotate(-50deg) saturate(600%) contrast(0.8)', opacity: 0.8 };
+        }
+        if (media.status === 'movie_watched' || media.status === 'show_watched' || media.status === 'show_finished') {
+            // Grayscale for Watched/Finished
+            return { filter: 'grayscale(100%)', opacity: 0.8 };
+        }
+        return {};
+    };
+
+    const filterStyle = getFilterStyle();
+    const isFiltered = Object.keys(filterStyle).length > 0;
+
     return (
         <div className="media-card group" onClick={() => onClick(media)}>
             <div className="poster-wrapper">
                 <img
                     src={imageUrl}
                     alt={title}
-                    className={`poster-img ${isDropped ? 'group-hover:!grayscale-0 group-hover:!opacity-100 transition-all duration-300' : ''}`}
-                    style={isDropped ? { filter: 'grayscale(100%) sepia(100%) hue-rotate(-50deg) saturate(600%) contrast(0.8)', opacity: 0.8 } : {}}
+                    className={`poster-img ${isFiltered ? 'group-hover:!grayscale-0 group-hover:!filter-none group-hover:!opacity-100 transition-all duration-300' : ''}`}
+                    style={filterStyle}
                     loading="lazy"
                 />
 

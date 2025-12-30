@@ -149,6 +149,12 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
         .filter(item => {
             if (item.type !== watchlistType) return false;
 
+            // GLOBAL SEARCH OVERRIDE: 
+            // If searching, show EVERYTHING of this type that matches the term.
+            // visual filters (grayscale/redscale) will indicate status.
+            if (searchTerm) return true;
+
+            // Normal View Mode Logic (No Search)
             // Handle Dropped View explicitly first
             if (viewMode === 'Dropped') {
                 if (tmdbType === 'tv') return (item as any).status === 'show_dropped';
@@ -182,7 +188,8 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
             // WatchlistItem always stores 'title'.
             [tmdbType === 'movie' ? 'title' : 'name']: item.title,
             poster_path: item.poster_path,
-            vote_average: item.vote_average
+            vote_average: item.vote_average,
+            status: item.status // PASS STATUS FOR VISUAL FILTERS
         } as TMDBMedia));
 
     // Extract unique providers sorted by popularity
@@ -614,12 +621,12 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
                                     <WatchlistCard
                                         media={media}
                                         type={tmdbType}
-                                        isDropped={viewMode === 'Dropped'}
-                                        actionLabel={viewMode === 'Dropped' ? "Restore to Library" : "Mark as Watched"}
-                                        actionIcon={viewMode === 'Dropped' ? <Undo2 size={16} /> : undefined}
+                                        isDropped={media.status === 'movie_dropped' || media.status === 'show_dropped'} // Dynamic check for search results
+                                        actionLabel={(media.status === 'movie_dropped' || media.status === 'show_dropped') ? "Restore to Library" : "Mark as Watched"}
+                                        actionIcon={(media.status === 'movie_dropped' || media.status === 'show_dropped') ? <Undo2 size={16} /> : undefined}
                                         onRemove={(m) => {
                                             const displayTitle = m.title || m.name;
-                                            if (viewMode === 'Dropped') {
+                                            if (m.status === 'movie_dropped' || m.status === 'show_dropped') {
                                                 // Permanent Delete
                                                 if (window.confirm(`PERMANENTLY DELETE "${displayTitle}"? This cannot be undone.`)) {
                                                     removeFromWatchlist(Number(m.id), watchlistType);
@@ -631,11 +638,11 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
                                                 }
                                             }
                                         }}
-                                        removeLabel={viewMode === 'Dropped' ? "Delete Permanently" : "Drop (Move to Dropped)"}
+                                        removeLabel={(media.status === 'movie_dropped' || media.status === 'show_dropped') ? "Delete Permanently" : "Drop (Move to Dropped)"}
                                         // Optional: customize icon logic here if desired, but default X is fine for Drop.
                                         onMarkWatched={(m) => {
                                             // Restoration logic if dropped, or just mark watched
-                                            if (viewMode === 'Dropped') {
+                                            if (m.status === 'movie_dropped' || m.status === 'show_dropped') {
                                                 const displayTitle = m.title || m.name;
                                                 if (window.confirm(`Restore ${displayTitle} to your library?`)) {
                                                     // Re-using restore logic or just mark unwatched/watched? User usually wants restore.
@@ -650,7 +657,7 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
                                                 markAsWatched(Number(m.id), watchlistType);
                                             }
                                         }}
-                                        onMarkUnwatched={viewMode === 'Watching' ? (m) => {
+                                        onMarkUnwatched={media.status === 'show_watching' ? (m) => { // Only show unwatched/undo if actively watching? Or for everything?
                                             markAsUnwatched(Number(m.id), watchlistType);
                                         } : undefined}
                                         onRestoreToUpcoming={(m) => restoreToUpcoming(Number(m.id), watchlistType)}
