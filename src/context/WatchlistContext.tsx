@@ -363,13 +363,27 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
                 movedToLibrary = false;
             } else {
                 // Has aired content
-                const isEnded = details.status === 'Ended' || details.status === 'Canceled';
+                // const isEnded = details.status === 'Ended' || details.status === 'Canceled';
 
                 if (lastWatched === 0 && !currentStatus) {
                     // Not started
-                    if (isEnded) initialStatus = 'show_finished';
-                    else initialStatus = 'show_ongoing';
-                    movedToLibrary = true; // "To Watch" tab
+                    // Explicit Status Logic for Initial Add
+                    const status = details.status; // e.g. "Ended", "Returning Series"
+                    const type = details.type; // e.g. "Miniseries"
+
+                    const isFinished = status === 'Ended' || status === 'Canceled' || status === 'Miniseries' || type === 'Miniseries';
+                    const isNew = status === 'Planned' || status === 'In Production' || status === 'Pilot' || status === 'Rumored';
+
+                    if (isNew) initialStatus = 'show_new';
+                    else if (isFinished) initialStatus = 'show_finished';
+                    else initialStatus = 'show_ongoing'; // "Returning Series" falls here
+
+                    // Special case: If projected 'show_new' but has aired episodes? 
+                    // Usually 'In Production' won't have aired eps, but 'Pilot' might.
+                    // Access rules say: show_new (Upcoming)
+                    if (initialStatus === 'show_new') movedToLibrary = false;
+                    else movedToLibrary = true; // "To Watch" tab
+
                 } else {
                     // Started or Refreshing
                     // logic handled by recalculateShowStatus usually, but for initial/enrich:
@@ -380,9 +394,23 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
                         movedToLibrary = true;
                     } else {
                         // Default to show_ongoing logic if lastWatched is 0
-                        if (isEnded) initialStatus = 'show_finished';
-                        else initialStatus = 'show_ongoing';
-                        movedToLibrary = true;
+                        const status = details.status;
+                        const type = details.type;
+                        const isFinished = status === 'Ended' || status === 'Canceled' || status === 'Miniseries' || type === 'Miniseries';
+                        const isNew = status === 'Planned' || status === 'In Production' || status === 'Pilot' || status === 'Rumored';
+
+                        if (isNew) {
+                            initialStatus = 'show_new';
+                            movedToLibrary = false;
+                        }
+                        else if (isFinished) {
+                            initialStatus = 'show_finished';
+                            movedToLibrary = true;
+                        }
+                        else {
+                            initialStatus = 'show_ongoing';
+                            movedToLibrary = true;
+                        }
                     }
                 }
             }
@@ -579,8 +607,13 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
         } else if (lastWatchedSeason === 0) {
             // Not Started
             // Check implicit status from TMDB
-            const isEnded = meta?.status === 'Ended' || meta?.status === 'Canceled';
-            newStatus = isEnded ? 'show_finished' : 'show_ongoing';
+            const status = meta?.status;
+            const type = meta?.type;
+            const isFinished = status === 'Ended' || status === 'Canceled' || status === 'Miniseries' || type === 'Miniseries';
+            const isNew = status === 'Planned' || status === 'In Production' || status === 'Pilot' || status === 'Rumored';
+
+            if (isNew) newStatus = 'show_new';
+            else newStatus = isFinished ? 'show_finished' : 'show_ongoing';
         } else {
             // Started Watching
             if (lastWatchedSeason < totalReleased) {

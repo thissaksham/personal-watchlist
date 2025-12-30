@@ -226,24 +226,8 @@ export const Upcoming = () => {
     }, [watchlist, viewMode, region]);
 
     // Total Count for Debugging
-    const totalCount = useMemo(() => {
-        return watchlist.filter(item => {
-            const excludedStatuses = [
-                'movie_dropped', 'show_dropped', 'show_finished', 'show_watched'
-            ]; // Simplified exclusion for coarse count
-            if (excludedStatuses.includes(item.status)) return false;
-
-            // Approximate matching for ViewMode
-            if (viewMode === 'On OTT') {
-                // Check if it's potentially an OTT item (show or movie_on_ott)
-                return item.status === 'movie_on_ott' || item.type === 'show';
-            }
-            if (viewMode === 'Coming Soon') {
-                return item.status === 'movie_coming_soon';
-            }
-            return false;
-        }).length;
-    }, [watchlist, viewMode]);
+    // Total Count - Should match the actual displayed items in this context
+    const totalCount = upcomingItems.length;
 
     // Auto-refresh metadata for items in Upcoming to catch official OTT dates/platforms
     useEffect(() => {
