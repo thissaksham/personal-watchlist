@@ -210,15 +210,15 @@ export const UpcomingCard = ({
         if (seasonNumber === 1 && episodeNumber === 1) {
             contextLabel = 'New Show';
         } else if (isLastSeason && isEnded) {
-            if (episodeNumber === 1) contextLabel = 'Final Season';
-            else if (isLastEpisodeOfSeason) contextLabel = 'Final Episode';
-            else contextLabel = 'Next Episode';
+            if (episodeNumber === 1) contextLabel = `Final Season (S${seasonNumber})`;
+            else if (isLastEpisodeOfSeason) contextLabel = `Series Finale (S${seasonNumber}E${episodeNumber})`;
+            else contextLabel = `Next Episode (S${seasonNumber}E${episodeNumber})`;
         } else if (episodeNumber === 1) {
-            contextLabel = 'New Season';
+            contextLabel = `New Season (S${seasonNumber})`;
         } else if (isLastEpisodeOfSeason) {
-            contextLabel = 'Last Episode';
+            contextLabel = `Season Finale (S${seasonNumber}E${episodeNumber})`;
         } else {
-            contextLabel = 'Next Episode';
+            contextLabel = `Next Episode (S${seasonNumber}E${episodeNumber})`;
         }
     } else if (isMovieOTT) {
         // Prioritize Digital Date (Streaming Date) over Theatrical Release Date for OTT items
