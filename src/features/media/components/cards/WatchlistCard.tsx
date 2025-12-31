@@ -167,7 +167,7 @@ export const WatchlistCard = ({
             // Redscale for Dropped
             return { filter: 'grayscale(100%) sepia(100%) hue-rotate(-50deg) saturate(600%) contrast(0.8)', opacity: 0.8 };
         }
-        if (media.status === 'movie_watched' || media.status === 'show_watched' || media.status === 'show_finished') {
+        if (media.status === 'movie_watched' || media.status === 'show_watched') {
             // Grayscale for Watched/Finished
             return { filter: 'grayscale(100%)', opacity: 0.8 };
         }
