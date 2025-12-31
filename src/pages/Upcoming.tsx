@@ -69,14 +69,26 @@ export const Upcoming = () => {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const meta = (item.metadata || {}) as any;
 
-            // Exclude: watched, unwatched, show_finished, show_ongoing, show_watched, show_dropped
-            // Exception: 'show_watching' is allowed only if there is a known future episode (Next Ep tracking)
+            // Exclude: watched, unwatched, show_finished, show_watched, show_dropped
+            // 'show_ongoing' is now conditionally allowed (see below)
             const excludedStatuses = [
                 'movie_watched', 'movie_unwatched', 'movie_dropped',
-                'show_finished', 'show_ongoing', 'show_watched', 'show_dropped'
+                'show_finished', 'show_watched', 'show_dropped'
             ];
 
-            if (excludedStatuses.includes(item.status)) return null;
+            if (excludedStatuses.includes(item.status)) {
+                return null;
+            }
+
+            // Special handling for 'show_ongoing':
+            // Generally we hide it (as it implies not actively 'watching'), 
+            // BUT we want to show it if it's a new Premiere for an unwatched show.
+            if (item.status === 'show_ongoing') {
+                const isUnwatched = !item.last_watched_season || item.last_watched_season === 0;
+                // If user has watched some seasons but status is 'show_ongoing' (not 'show_watching'),
+                // keep it hidden (maintain legacy behavior).
+                if (!isUnwatched) return null;
+            }
 
             // Special Check for Waiting/Watching
             if (item.status === 'show_watching') {
@@ -84,6 +96,30 @@ export const Upcoming = () => {
                 const nextDate = nextEp?.air_date ? new Date(nextEp.air_date) : null;
                 // Only show in Upcoming if the next episode is in the future (or today)
                 if (!nextDate || nextDate < today) return null;
+            }
+
+            // FILTER: If show has NO watched seasons (last_watched_season == 0 or undefined), 
+            // ONLY show if it's a Season Premiere (Episode 1).
+            // This prevents "Episode 2, 3..." clutter for shows the user hasn't even started.
+            // FILTER: IF SHOW IS UNWATCHED (No marked seasons):
+            // 1. If it has a Next Episode, ONLY show if it is Episode 1 (Premiere).
+            // 2. If it has NO Next Episode, HIDE IT (avoids "Sundefined" errors or "Streaming Now" clutter),
+            //    UNLESS it is strictly 'show_new' or 'show_coming_soon' (relying on first_air_date).
+            if (item.type === 'show' && (!item.last_watched_season || item.last_watched_season === 0)) {
+                const nextEp = meta.next_episode_to_air;
+
+                if (nextEp) {
+                    if (nextEp.episode_number > 1) {
+                        return null;
+                    }
+                } else {
+                    // No upcoming episode info
+                    // If status is ongoing/returning, and we have no specific next episode, hide it.
+                    // We don't want generic "Streaming Now" cards for randomly added ongoing shows.
+                    if (['show_ongoing', 'show_returning', 'show_watching'].includes(item.status)) {
+                        return null;
+                    }
+                }
             }
 
             // ... (metadata extraction) ...

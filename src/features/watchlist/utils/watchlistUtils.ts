@@ -245,6 +245,16 @@ export const getEnrichedMetadata = async (tmdbId: number, type: 'movie' | 'show'
         }
     }
 
+    const oldSeasonsCount = existingMetadata?.number_of_seasons || 0;
+    const newSeasonsCount = details.number_of_seasons || 0;
+
+    // Auto-Restore Logic: If a new season is added, un-dismiss the show
+    let isDismissed = existingMetadata?.dismissed_from_upcoming;
+    if (isDismissed && newSeasonsCount > oldSeasonsCount) {
+        console.log(`[Auto-Restore] New season detected for ${details.name || details.title}. Restoring to Upcoming.`);
+        isDismissed = false;
+    }
+
     const { credits, production_companies, images, videos, reviews, ...leanDetails } = details as any;
     const finalMetadata = {
         ...(existingMetadata || {}),
@@ -254,7 +264,8 @@ export const getEnrichedMetadata = async (tmdbId: number, type: 'movie' | 'show'
         digital_release_note: indianDigitalDate ? indianDigitalNote : (existingMetadata?.manual_date_override ? (existingMetadata.digital_release_note) : null),
         theatrical_release_date: theatricalDate || existingMetadata?.theatrical_release_date,
         manual_date_override: indianDigitalDate ? false : !!existingMetadata?.manual_date_override,
-        moved_to_library: movedToLibrary
+        moved_to_library: movedToLibrary,
+        dismissed_from_upcoming: isDismissed
     };
 
     return { initialStatus, finalMetadata, movedToLibrary };
