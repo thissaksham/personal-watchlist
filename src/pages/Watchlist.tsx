@@ -61,11 +61,10 @@ export const Watchlist = () => {
     const filteredList = useMemo(() => {
         return enrichedWatchlist.filter(media => {
             if (filterProvider) {
-                // @ts-ignore
                 const providerData = media['watch/providers']?.results?.[region];
                 const flatrate = providerData?.flatrate || [];
                 if (filterProvider === -1) return flatrate.length === 0;
-                return flatrate.some((p: any) => p.provider_id === filterProvider);
+                return flatrate.some((p: { provider_id: number }) => p.provider_id === filterProvider);
             }
             return true;
         });
@@ -91,7 +90,7 @@ export const Watchlist = () => {
                 <FilterExpandable
                     label="OTT"
                     value={filterProvider}
-                    onChange={(val: any) => setFilterProvider(val)}
+                    onChange={(val: number | null) => setFilterProvider(val)}
                     options={allProviders.map(p => ({
                         id: p.id,
                         label: p.name,

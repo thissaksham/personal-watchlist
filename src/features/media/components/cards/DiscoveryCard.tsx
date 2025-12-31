@@ -39,7 +39,7 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
 
         // Use seasons list from metadata if available
         let totalSeasons = meta.number_of_seasons || 0;
-        let seasonsList = meta.seasons || [];
+        const seasonsList = meta.seasons || [];
 
         if (seasonsList.length > 0) {
             const today = new Date();

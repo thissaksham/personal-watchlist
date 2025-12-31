@@ -11,6 +11,21 @@ import { ManualDateModal } from '../features/media/components/modals/ManualDateM
 
 // ... (helper functions omitted for brevity, they are unchanged)
 
+// Helper Interface for Upcoming Items
+interface UpcomingItem extends TMDBMedia {
+    supabaseId: string;
+    date: string;
+    tmdbMediaType: 'movie' | 'tv';
+    totalHours?: number | null;
+    seasonInfo: string;
+    providerLogo?: string | null;
+    tabCategory: 'ott' | 'theatrical' | 'other';
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    metadata?: any;
+    last_updated_at?: number;
+    countdown?: number;
+}
+
 const getDaysUntil = (dateStr: string) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -28,30 +43,16 @@ export const Upcoming = () => {
     const navigate = useNavigate();
     const params = useParams();
 
-    const [selectedMedia, setSelectedMedia] = useState<any | null>(null);
+    const [selectedMedia, setSelectedMedia] = useState<TMDBMedia | UpcomingItem | null>(null);
 
-    // Initialize View Mode from URL
-    const getInitialViewMode = () => {
-        if (params.status === 'comingSoon') return 'Coming Soon';
-        // Default or 'onOTT'
-        return 'On OTT';
-    };
-
-    const [viewMode, setViewMode] = useState<string>(getInitialViewMode());
-
-    // Sync URL -> State
-    useEffect(() => {
-        if (params.status) {
-            const mode = params.status === 'comingSoon' ? 'Coming Soon' : 'On OTT';
-            if (mode !== viewMode) setViewMode(mode);
-        }
-    }, [params.status]);
+    // Initialize View Mode directly from URL (Derived State)
+    const viewMode = (params.status === 'comingSoon' ? 'Coming Soon' : 'On OTT');
 
     const handleViewModeChange = (opt: string) => {
         const slug = opt === 'Coming Soon' ? 'comingSoon' : 'onOTT';
         navigate(`/upcoming/${slug}`);
     };
-    const [showDatePicker, setShowDatePicker] = useState<any | null>(null);
+    const [showDatePicker, setShowDatePicker] = useState<UpcomingItem | null>(null);
     const [refreshedIds] = useState(new Set<number>());
 
     // Sync tab title
@@ -65,6 +66,7 @@ export const Upcoming = () => {
         today.setHours(0, 0, 0, 0);
 
         const items = watchlist.map(item => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const meta = (item.metadata || {}) as any;
 
             // Exclude: watched, unwatched, show_finished, show_ongoing, show_watched, show_dropped
@@ -204,13 +206,13 @@ export const Upcoming = () => {
                 seasonInfo,
                 providerLogo,
                 tabCategory: category
-            };
-        }).filter((item): item is NonNullable<typeof item> => item !== null)
+            } as UpcomingItem;
+        }).filter((item): item is UpcomingItem => item !== null)
             .sort((a, b) => {
                 const dateA = new Date(a.date).getTime();
                 const dateB = new Date(b.date).getTime();
                 if (dateA !== dateB) return dateA - dateB;
-                return a.title.localeCompare(b.title);
+                return (a.title || '').localeCompare(b.title || '');
             });
 
         // Strict Status-Based Filtering
@@ -236,6 +238,7 @@ export const Upcoming = () => {
             if (refreshedIds.has(item.id)) return false;
 
             // API Throttle: Only auto-refresh if older than 12 hours
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const lastUpdated = item.last_updated_at || (item as any).metadata?.last_updated_at;
             if (lastUpdated) {
                 const diff = Date.now() - new Date(lastUpdated).getTime();
@@ -263,8 +266,9 @@ export const Upcoming = () => {
         }
     }, [upcomingItems, refreshMetadata, refreshedIds]);
 
-    const handleMoveToLibrary = async (media: any) => {
-        await moveToLibrary(Number(media.id), media.tmdbMediaType === 'movie' ? 'movie' : 'show');
+    const handleMoveToLibrary = async (media: TMDBMedia) => {
+        const type = media.media_type === 'movie' ? 'movie' : 'show';
+        await moveToLibrary(Number(media.id), type);
     };
 
     const handleSaveManualDate = async (date: string, ottName: string) => {
@@ -296,7 +300,7 @@ export const Upcoming = () => {
 
     const handleReset = async () => {
         if (!showDatePicker) return;
-        const item = watchlist.find(i => i.id === (showDatePicker as any).supabaseId);
+        const item = watchlist.find(i => i.id === showDatePicker.supabaseId);
         if (!item) return;
 
         const newMeta = {
@@ -344,7 +348,7 @@ export const Upcoming = () => {
                 </div>
             ) : (
                 <div className="media-grid">
-                    {upcomingItems.map((show: any) => (
+                    {upcomingItems.map((show: UpcomingItem) => (
                         <div key={show.id} className="relative group/upcoming">
                             <UpcomingCard
                                 media={{
@@ -382,7 +386,7 @@ export const Upcoming = () => {
                                     markAsWatched(Number(show.id), show.tmdbMediaType === 'movie' ? 'movie' : 'show');
                                 }}
                                 onSetDate={(media: TMDBMedia) => {
-                                    setShowDatePicker(media);
+                                    setShowDatePicker(media as UpcomingItem);
                                 }}
                                 onMoveToLibrary={handleMoveToLibrary}
                                 showDateOverride={viewMode === 'Coming Soon'}

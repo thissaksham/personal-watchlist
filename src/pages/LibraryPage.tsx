@@ -242,7 +242,7 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
             }
         });
 
-        let result = Array.from(providers.values());
+        const result = Array.from(providers.values());
 
         // SMART MERGE LOGIC (Generic)
         // 1. Group providers by a "Normalized Name"
@@ -384,7 +384,7 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
     // Better approach: Transform the array fully.
 
     const finalDisplayLibrary = useMemo(() => {
-        let result = [...sortedLibrary];
+        const result = [...sortedLibrary];
         if (sortOption === 'random') {
             // Fisher-Yates Shuffle
             for (let i = result.length - 1; i > 0; i--) {

@@ -80,7 +80,7 @@ export const getEnrichedMetadata = async (tmdbId: number, type: 'movie' | 'show'
                 hasData: !!(theatrical || digital)
             };
         };
-        let inDates = extractDates(region);
+        const inDates = extractDates(region);
         if (inDates?.digital) {
             indianDigitalDate = inDates.digital;
             indianDigitalNote = inDates.digitalNote;
