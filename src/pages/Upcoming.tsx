@@ -276,7 +276,7 @@ export const Upcoming = () => {
             console.error("Manual Date Save: Item not found in watchlist", showDatePicker);
             return;
         }
-        console.log("Manual Date Save: Found item", item.title);
+
 
         const newMeta = {
             ...(item.metadata || {}),

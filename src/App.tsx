@@ -62,8 +62,8 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+// App core logic
 function App() {
-  console.log("App component rendering...");
   return (
     <BrowserRouter>
       <QueryClientProvider client={queryClient}>
