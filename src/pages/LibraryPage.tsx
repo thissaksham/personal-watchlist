@@ -189,7 +189,8 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
             [tmdbType === 'movie' ? 'title' : 'name']: item.title,
             poster_path: item.poster_path,
             vote_average: item.vote_average,
-            status: item.status // PASS STATUS FOR VISUAL FILTERS
+            status: item.status, // PASS STATUS FOR VISUAL FILTERS
+            tmdb_status: (item.metadata as any)?.status // Preserve TMDB status for logic
         } as TMDBMedia));
 
     // Extract unique providers sorted by popularity
@@ -200,7 +201,7 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
         // Context-Aware Filter: Valid providers should only come from items VISIBLE in the current tab context
         const contextLibrary = library.filter(media => {
             if (tmdbType === 'tv' && viewMode === 'Unwatched') {
-                const status = media.status || ''; // TMDB status from metadata
+                const status = media.tmdb_status || media.status || ''; // TMDB status (use preserved one first)
                 const isFinished = status === 'Ended' || status === 'Canceled';
 
                 if (seriesStatusFilter === 'Finished' && !isFinished) return false;
@@ -318,7 +319,7 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
         // 'Ended' or 'Canceled' -> Finished
         // 'Returning Series' -> Ongoing
         if (tmdbType === 'tv' && viewMode === 'Unwatched') {
-            const status = media.status || '';
+            const status = media.tmdb_status || media.status || '';
             const isFinished = status === 'Ended' || status === 'Canceled';
 
             if (seriesStatusFilter === 'Finished' && !isFinished) return false;

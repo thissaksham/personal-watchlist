@@ -139,6 +139,7 @@ export interface TMDBMedia {
     };
     tvmaze_runtime?: number;
     status?: string;
+    tmdb_status?: string; // Original TMDB status (e.g., 'Ended', 'Returning Series') for logic when status is overwritten by Supabase status
     'watch/providers'?: any;
     seasons?: any[];
     countdown?: number; // UI propery for upcoming
