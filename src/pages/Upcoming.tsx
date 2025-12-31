@@ -251,7 +251,7 @@ export const Upcoming = () => {
                 return item.status === 'movie_coming_soon' || item.status === 'movie_on_ott';
             }
             if (item.tmdbMediaType === 'tv') {
-                return ['show_returning', 'show_coming_soon', 'show_ongoing', 'show_finished', 'show_watched'].includes(item.status);
+                return !!item.status && ['show_returning', 'show_coming_soon', 'show_ongoing', 'show_finished', 'show_watched'].includes(item.status);
             }
             return false;
         });
