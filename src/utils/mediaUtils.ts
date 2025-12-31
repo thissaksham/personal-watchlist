@@ -42,8 +42,37 @@ export const calculateShowStats = (media: TMDBMedia | null, details: any | null)
     }
 
 
-    const episodes = details?.number_of_episodes || media?.number_of_episodes || 0;
-    const seasons = details?.number_of_seasons || media?.number_of_seasons || 0;
+    let episodes = details?.number_of_episodes || media?.number_of_episodes || 0;
+    let seasons = details?.number_of_seasons || media?.number_of_seasons || 0;
+
+    // Recalculate stats to exclude future/announced seasons
+    if (details?.seasons && Array.isArray(details.seasons)) {
+        let validSeasons = 0;
+        let validEpisodes = 0;
+        const todayStr = new Date().toISOString().split('T')[0];
+
+        details.seasons.forEach((season: any) => {
+            if (season.season_number === 0) return; // Usually specials are not counted in "Seasons" count
+
+            let isFuture = false;
+            if (season.air_date) {
+                if (season.air_date > todayStr) isFuture = true;
+            } else if (season.episode_count === 0 || (details.status !== 'Ended' && details.status !== 'Canceled')) {
+                isFuture = true;
+            }
+
+            if (!isFuture) {
+                validSeasons++;
+                validEpisodes += season.episode_count;
+            }
+        });
+
+        // Only override if we found valid data structure
+        if (details.seasons.length > 0) {
+            seasons = validSeasons;
+            episodes = validEpisodes;
+        }
+    }
 
     let bingeTime = '';
     if (avgRuntime && episodes) {

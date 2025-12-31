@@ -151,6 +151,9 @@ export const ShowModal = ({ media, onClose }: ShowModalProps) => {
                                                 const airDate = new Date(season.air_date);
                                                 airDateLabel = airDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                                             }
+                                        } else if (season.episode_count === 0 || (details?.status !== 'Ended' && details?.status !== 'Canceled')) {
+                                            // Assume future if no air date AND (no episodes OR show is still active)
+                                            isFuture = true;
                                         }
 
                                         let isPreview = false;
