@@ -113,7 +113,7 @@ export const ShowModal = ({ media, onClose }: ShowModalProps) => {
                     <div className="modal-col-main">
                         {/* Seasons Grid (Interactive if Added) */}
                         {/* SKELETON LOADER - Only show if loading AND no data available yet */}
-                        {isLoading && !(media as any).seasons && !details?.seasons && (
+                        {isLoading && !(media as any).seasons && !(details as any)?.seasons && (
                             <div className="seasons-section mb-8 animate-pulse">
                                 <div className="section-label mb-3">Seasons</div>
                                 <div className="seasons-grid">
