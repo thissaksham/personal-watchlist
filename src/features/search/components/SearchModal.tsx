@@ -18,14 +18,16 @@ interface SearchModalProps {
 
 export const SearchModal = ({ isOpen, onClose, type: initialType, onSuccess, initialQuery = '' }: SearchModalProps) => {
     const [query, setQuery] = useState(initialQuery);
-    const [searchType, setSearchType] = useState<'multi' | 'movie' | 'tv'>(initialType);
+    const [searchType, setSearchType] = useState<'multi' | 'movie' | 'tv' | 'game'>(initialType === 'multi' ? 'movie' : initialType);
 
     // Debounce query to prevent excessive API calls
     const debouncedQuery = useDebounce(query, 500);
 
-    // React Query Hook
-    const { data, isLoading } = useSearch(debouncedQuery, searchType);
-    const results = (data?.results as TMDBMedia[]) || [];
+    // React Query Hook - Only search if not 'game'
+    const { data, isLoading } = useSearch(debouncedQuery, searchType === 'game' ? 'multi' : searchType as 'multi' | 'movie' | 'tv');
+
+    // If game, force results empty for now
+    const results = searchType === 'game' ? [] : ((data?.results as TMDBMedia[]) || []);
 
     const { addToWatchlist, isInWatchlist } = useWatchlist();
 
@@ -33,7 +35,8 @@ export const SearchModal = ({ isOpen, onClose, type: initialType, onSuccess, ini
     useEffect(() => {
         if (isOpen) {
             setQuery(initialQuery);
-            setSearchType(initialType);
+            // Default to Movie if 'multi' was passed, or stick to provided type
+            setSearchType(initialType === 'multi' ? 'movie' : initialType);
         }
     }, [isOpen, initialType, initialQuery]);
 
@@ -63,11 +66,9 @@ export const SearchModal = ({ isOpen, onClose, type: initialType, onSuccess, ini
     const itemsToShow = displayResults.filter(item => {
         // Relaxed Filter: Allow items without a date or poster
         // DiscoveryCard handles missing posters with a placeholder.
-        // const hasPoster = !!item.poster_path; // Removed entirely
-        // if (!hasPoster) return false; // Removed to show everything found by API
 
-        // Filter by media_type if searchType is not 'multi'
-        if (searchType !== 'multi') {
+        // Filter by media_type if searchType is not 'multi' (and not 'game')
+        if (searchType !== 'multi' && searchType !== 'game') {
             // If media_type is missing, assume it matches searchType for specific categories
             const itemMediaType = item.media_type || searchType;
             return itemMediaType === searchType;
@@ -92,22 +93,26 @@ export const SearchModal = ({ isOpen, onClose, type: initialType, onSuccess, ini
                             <input
                                 autoFocus
                                 type="text"
-                                placeholder="Search for movies, TV shows..."
+                                placeholder={searchType === 'game' ? "Search for games..." : "Search for movies, TV shows..."}
                                 className="search-hero-input"
                                 value={query}
                                 onChange={e => setQuery(e.target.value)}
                             />
-                            {isLoading && <LoaderCircle className="animate-spin text-teal-400" size={24} />}
+                            {isLoading && searchType !== 'game' && <LoaderCircle className="animate-spin text-teal-400" size={24} />}
                         </div>
 
                         <div className="search-filters">
                             <SlidingToggle
-                                options={['All', 'Movies', 'TV Shows']}
-                                activeOption={searchType === 'multi' ? 'All' : (searchType === 'movie' ? 'Movies' : 'TV Shows')}
+                                options={['Movies', 'TV Shows', 'Games']}
+                                activeOption={
+                                    searchType === 'movie' ? 'Movies' :
+                                        searchType === 'tv' ? 'TV Shows' :
+                                            searchType === 'game' ? 'Games' : 'Movies'
+                                }
                                 onToggle={(val) => {
-                                    if (val === 'All') setSearchType('multi');
-                                    else if (val === 'Movies') setSearchType('movie');
-                                    else setSearchType('tv');
+                                    if (val === 'Movies') setSearchType('movie');
+                                    else if (val === 'TV Shows') setSearchType('tv');
+                                    else if (val === 'Games') setSearchType('game');
                                 }}
                             />
                         </div>
@@ -118,26 +123,33 @@ export const SearchModal = ({ isOpen, onClose, type: initialType, onSuccess, ini
                             {/* 'Trending Now' removed */}
                         </div>
 
-                        {itemsToShow.length === 0 && !isLoading ? (
+                        {searchType === 'game' ? (
                             <div className="text-center py-20 text-gray-400">
-                                No discovery found. Try a different search!
+                                <h3 className="text-xl font-bold text-white mb-2">Games Coming Soon</h3>
+                                <p>Game tracking will be powered by a dedicated API.</p>
                             </div>
                         ) : (
-                            <div className={`media-grid ${isLoading ? 'loading-state' : ''}`}>
-                                {itemsToShow.map(media => {
-                                    const mType = media.media_type || (searchType === 'tv' ? 'tv' : 'movie');
-                                    const targetType = mType === 'tv' ? 'show' : 'movie';
+                            itemsToShow.length === 0 && !isLoading && query.trim() ? (
+                                <div className="text-center py-20 text-gray-400">
+                                    No discovery found. Try a different search!
+                                </div>
+                            ) : (
+                                <div className={`media-grid ${isLoading ? 'loading-state' : ''}`}>
+                                    {itemsToShow.map(media => {
+                                        const mType = media.media_type || (searchType === 'tv' ? 'tv' : 'movie');
+                                        const targetType = mType === 'tv' ? 'show' : 'movie';
 
-                                    return (
-                                        <DiscoveryCard
-                                            key={media.id}
-                                            media={media}
-                                            isAdded={isInWatchlist(media.id, targetType)}
-                                            onAdd={() => handleAdd(media)}
-                                        />
-                                    );
-                                })}
-                            </div>
+                                        return (
+                                            <DiscoveryCard
+                                                key={media.id}
+                                                media={media}
+                                                isAdded={isInWatchlist(media.id, targetType)}
+                                                onAdd={() => handleAdd(media)}
+                                            />
+                                        );
+                                    })}
+                                </div>
+                            )
                         )}
                     </div>
                 </div>
