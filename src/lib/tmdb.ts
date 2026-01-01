@@ -1,4 +1,5 @@
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY;
+import { fetchWatchmodeDetails } from './watchmode';
 const BASE_URL = '/api/tmdb';
 
 if (!TMDB_API_KEY) {
@@ -223,7 +224,23 @@ export const tmdb = {
         const hasProviders = tmdbProviders && (tmdbProviders.flatrate || tmdbProviders.rent || tmdbProviders.buy);
 
         if (!hasProviders) {
-            console.log(`[TMDB] No providers found for ${region}.`);
+            console.log(`[TMDB] No providers found for ${region}. Checking Watchmode...`);
+            try {
+                // Determine TYPE carefully (TMDB vs App Types)
+                // getDetails argument 'type' is 'movie' | 'tv' strictly
+                const fallback = await fetchWatchmodeDetails(id, type, region);
+
+                if (fallback) {
+                    if (!data['watch/providers']) data['watch/providers'] = { results: {} };
+                    if (!data['watch/providers'].results) data['watch/providers'].results = {};
+                    data['watch/providers'].results[region] = fallback;
+                    console.log(`[Watchmode] Fallback successful for ${region}`);
+                } else {
+                    console.log(`[Watchmode] No data found.`);
+                }
+            } catch (e) {
+                console.warn("[Watchmode] Fallback failed", e);
+            }
         }
 
         return data;
