@@ -140,7 +140,7 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
     };
 
     // Filter from watchlist based on type and status
-    const library = watchlist
+    const library = useMemo(() => watchlist
         .filter(item => {
             if (item.type !== watchlistType) return false;
 
@@ -186,7 +186,7 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
             vote_average: item.vote_average,
             status: item.status, // PASS STATUS FOR VISUAL FILTERS
             tmdb_status: (item.metadata as any)?.status // Preserve TMDB status for logic
-        } as TMDBMedia));
+        } as TMDBMedia)), [watchlist, watchlistType, tmdbType, searchTerm, viewMode]);
 
     // Extract unique providers sorted by popularity
     const allProviders = useMemo(() => {
@@ -302,7 +302,7 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
     }, [library, region, seriesStatusFilter, tmdbType, viewMode]);
 
 
-    const filteredLibrary = library.filter(media => {
+    const filteredLibrary = useMemo(() => library.filter(media => {
         // 1. Search Filter (Local)
         if (searchTerm) {
             const query = searchTerm.toLowerCase();
@@ -350,7 +350,7 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
         }
 
         return true;
-    });
+    }), [library, searchTerm, tmdbType, viewMode, seriesStatusFilter, filterProvider, region, allProviders]);
 
     // 4. Sort Filter
     const sortedLibrary = useMemo(() => {
