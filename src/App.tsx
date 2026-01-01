@@ -9,7 +9,7 @@ import { GlobalSearchProvider } from './context/GlobalSearchContext';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import { Clapperboard } from 'lucide-react';
-import { Trending } from './pages/Trending';
+
 import { Movies } from './pages/Movies';
 import { Shows } from './pages/Shows';
 import { Upcoming } from './pages/Upcoming';
@@ -81,13 +81,13 @@ function App() {
                       <Layout />
                     </ProtectedRoute>
                   }>
-                    <Route index element={<Trending />} />
+                    <Route index element={<Navigate to="/upcoming/onOTT" replace />} />
 
                     {/* Movies Tab with URL State */}
                     <Route path="movies" element={<Navigate to="/movies/unwatched" replace />} />
                     <Route path="movies/:status" element={<Movies />} />
 
-                    <Route path="shows" element={<Navigate to="/shows/unwatched" replace />} />
+                    <Route path="shows" element={<Navigate to="/shows/finished" replace />} />
                     <Route path="shows/:status" element={<Shows />} />
 
                     {/* Upcoming Tab with URL State */}

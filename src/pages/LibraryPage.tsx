@@ -60,12 +60,7 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
     useEffect(() => {
         if (basePath) {
             // Redirect Logic for TV Shows: Root or 'unwatched' -> 'finished'
-            if (tmdbType === 'tv') {
-                if (!params.status || params.status.toLowerCase() === 'unwatched') {
-                    navigate(`${basePath}/finished`, { replace: true });
-                    return;
-                }
-            }
+
 
             if (params.status) {
                 const s = params.status.toLowerCase();

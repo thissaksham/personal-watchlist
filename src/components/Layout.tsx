@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LogOut, Clapperboard, MonitorPlay, Calendar, Gamepad2, Menu, X, Plus, Lock, Trash2, RotateCw } from 'lucide-react';
+import { LogOut, Clapperboard, MonitorPlay, Gamepad2, Menu, X, Plus, Lock, Trash2, RotateCw } from 'lucide-react';
 import { useAuth } from '../features/auth/context/AuthContext';
 import { useWatchlist } from '../features/watchlist/context/WatchlistContext';
 import { SearchModal } from '../features/search/components/SearchModal';
@@ -93,7 +93,6 @@ export default function Layout() {
     const navItems = [
         { name: 'Movies', path: '/movies', icon: Clapperboard },
         { name: 'Shows', path: '/shows', icon: MonitorPlay },
-        { name: 'Upcoming', path: '/upcoming', icon: Calendar },
         { name: 'Games', path: '/games', icon: Gamepad2 },
     ];
 
