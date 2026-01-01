@@ -101,7 +101,7 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
         }
     };
 
-    const [sortOption, setSortOption] = useState<'date_added' | 'rating' | 'release_date' | 'runtime' | 'random'>('date_added'); // New Sort State
+    const [sortOption, setSortOption] = useState<'date_added' | 'rating' | 'release_date' | 'runtime' | 'random'>('random'); // Default Random Sort
     const [isSortOpen, setIsSortOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const sortRef = useRef<HTMLDivElement>(null);
