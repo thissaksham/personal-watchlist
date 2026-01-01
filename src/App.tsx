@@ -93,7 +93,9 @@ function App() {
                     {/* Upcoming Tab with URL State */}
                     <Route path="upcoming" element={<Navigate to="/upcoming/onOTT" replace />} />
                     <Route path="upcoming/:status" element={<Upcoming />} />
-                    <Route path="games" element={<Games />} />
+
+                    <Route path="games" element={<Navigate to="/games/unplayed" replace />} />
+                    <Route path="games/:status" element={<Games />} />
                   </Route>
 
                   {/* 404 Catch-All -> Redirect to Home */}
