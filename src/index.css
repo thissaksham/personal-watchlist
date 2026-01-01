@@ -2104,3 +2104,30 @@ h6,
     height: 100%;
     object-fit: contain;
 }
+
+/* Touch Device Support for Card Actions
+   Targeting:
+   - Devices that can't hover (phones)
+   - Devices with coarse pointers (touchscreens)
+   - Screens smaller than 1024px (tablets/mobiles)
+*/
+@media (hover: none),
+(pointer: coarse),
+(max-width: 1024px) {
+    .card-actions-stack {
+        opacity: 1 !important;
+        transform: translateY(0) !important;
+        pointer-events: auto !important;
+        /* Force Expand Stack */
+        height: auto !important;
+        padding-bottom: 0.2rem !important;
+        background-color: rgba(0, 0, 0, 0.8) !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    }
+
+    /* Force "active" look for posters (no grayscale) */
+    .poster-img {
+        filter: none !important;
+        opacity: 1 !important;
+    }
+}
