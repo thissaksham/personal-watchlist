@@ -157,98 +157,7 @@ export interface TMDBMedia {
     seasonInfo?: string;
 }
 
-// Map TMDB regions to RapidAPI regions
-const REGION_MAP: Record<string, string> = {
-    'IN': 'india',
-    'GB': 'uk',
-    'US': 'usa',
-    'AE': 'ae',
-    'AU': 'au',
-    'BG': 'bg',
-    'CA': 'ca',
-    'DK': 'dk',
-    'EG': 'eg',
-    'FI': 'fi',
-    'GR': 'gr',
-    'HU': 'hu',
-    'ID': 'id',
-    'IE': 'ie',
-    'IT': 'it',
-    'JP': 'jp',
-    'KR': 'kr',
-    'MY': 'my',
-    'NL': 'nl',
-    'NO': 'no',
-    'NZ': 'nz',
-    'PH': 'ph',
-    'PL': 'pl',
-    'PT': 'pt',
-    'RU': 'ru',
-    'SA': 'sa',
-    'SE': 'se',
-    'SG': 'sg',
-    'TH': 'th',
-    'TW': 'tw',
-    'ZA': 'za'
-};
 
-const slugify = (text: string) => {
-    return text
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, '') // API seems to want alphabets/numbers only based on "backtothefuture"
-        .trim();
-};
-
-async function fetchRapidOTT(title: string, regionCode: string, targetYear?: string) {
-    const region = REGION_MAP[regionCode] || regionCode.toLowerCase();
-    const slug = slugify(title);
-    const url = `/api/rapid/search/${region}/${slug}`;
-
-    console.log(`[RapidAPI] Fetching fallback OTT: ${url} (Target Year: ${targetYear})`);
-
-    try {
-        const res = await fetch(url);
-
-        if (!res.ok) throw new Error(`RapidAPI Error: ${res.status}`);
-        const data = await res.json();
-
-        let providers: any[] = [];
-        const results = Array.isArray(data) ? data : (data ? [data] : []);
-
-        if (results.length > 0) {
-            // Find precise match by year if data contains year info
-            const match = results.find(item => {
-                const itemYear = String(item.year || item.release_year || '');
-                return itemYear === targetYear;
-            });
-
-            if (match) {
-                console.log(`[RapidAPI] Exact year match found for ${title} (${targetYear})`);
-                providers = match.providers || match.platforms || (Array.isArray(match) ? match : []);
-            } else if (!results[0].year && !results[0].release_year) {
-                // If the response doesn't have year metadata, assume the slug was specific enough
-                // and the response is just an array of providers for that slug.
-                providers = results[0].providers || results[0].platforms || (Array.isArray(results[0]) ? results[0] : results);
-            } else {
-                console.warn(`[RapidAPI] No year match found for ${title}. Target: ${targetYear}, Available: ${results.map(r => r.year).join(', ')}`);
-            }
-        }
-
-        if (providers.length > 0) {
-            return {
-                flatrate: providers.map(p => ({
-                    provider_name: p.name || p.provider_name,
-                    logo_path: null,
-                    provider_id: 0
-                }))
-            };
-        }
-        return null;
-    } catch (err) {
-        console.error('[RapidAPI] Fallback failed:', err);
-        return null;
-    }
-}
 
 export const tmdb = {
     getTrending: async (type: 'movie' | 'tv' | 'all' = 'movie', timeWindow: 'day' | 'week' = 'week', region: string = 'IN') => {
@@ -314,20 +223,7 @@ export const tmdb = {
         const hasProviders = tmdbProviders && (tmdbProviders.flatrate || tmdbProviders.rent || tmdbProviders.buy);
 
         if (!hasProviders) {
-            console.warn(`[TMDB] No providers found for ${region}. Triggering RapidAPI fallback...`);
-
-            // Extract the year for precise matching
-            const releaseDate = data.release_date || data.first_air_date || '';
-            const year = releaseDate.split('-')[0];
-
-            const fallback = await fetchRapidOTT(data.title || data.name, region, year);
-            if (fallback) {
-                // Merge fallback into the response structure
-                if (!data['watch/providers']) data['watch/providers'] = { results: {} };
-                if (!data['watch/providers'].results) data['watch/providers'].results = {};
-                data['watch/providers'].results[region] = fallback;
-                console.log(`[TMDB] Fallback successful for ${region}`);
-            }
+            console.log(`[TMDB] No providers found for ${region}.`);
         }
 
         return data;
