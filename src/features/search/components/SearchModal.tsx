@@ -21,7 +21,7 @@ export const SearchModal = ({ isOpen, onClose, type: initialType, onSuccess, ini
     const [searchType, setSearchType] = useState<'multi' | 'movie' | 'tv' | 'game'>(initialType === 'multi' ? 'movie' : initialType);
 
     // Debounce query to prevent excessive API calls
-    const debouncedQuery = useDebounce(query, 500);
+    const debouncedQuery = useDebounce(query, 300);
 
     // React Query Hook - Only search if not 'game'
     const { data, isLoading } = useSearch(debouncedQuery, searchType === 'game' ? 'multi' : searchType as 'multi' | 'movie' | 'tv');

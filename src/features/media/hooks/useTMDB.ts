@@ -17,7 +17,7 @@ export function useSearch(query: string, type: 'movie' | 'tv' | 'multi' = 'multi
     return useQuery({
         queryKey: ['search', query, type, region],
         queryFn: () => tmdb.search(query, type, region),
-        enabled: !!query && query.length > 1,
+        enabled: !!query && query.length > 0,
         staleTime: 1000 * 60 * 10, // 10 minutes for searches
     });
 }
