@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useWatchlist } from '../features/watchlist/context/WatchlistContext';
 import { UpcomingCard } from '../features/media/components/cards/UpcomingCard';
 import { calculateMediaRuntime, type TMDBMedia } from '../lib/tmdb';
+import { parseDateLocal } from '../lib/dateUtils';
 import { SlidingToggle } from '../components/ui/SlidingToggle';
 import { usePreferences } from '../context/PreferencesContext';
 import { MovieModal } from '../features/media/components/modals/MovieModal';
@@ -152,9 +153,9 @@ export const Upcoming = () => {
                 const theatricalDateStr = meta.theatrical_release_date;
                 const releaseDateStr = meta.release_date;
 
-                const dDate = digitalDateStr ? new Date(digitalDateStr) : null;
-                const tDate = theatricalDateStr ? new Date(theatricalDateStr) : null;
-                const rDate = releaseDateStr ? new Date(releaseDateStr) : null;
+                const dDate = parseDateLocal(digitalDateStr);
+                const tDate = parseDateLocal(theatricalDateStr);
+                const rDate = parseDateLocal(releaseDateStr);
 
                 if (item.status === 'movie_on_ott' || item.status === 'movie_coming_soon') {
                     category = item.status === 'movie_on_ott' ? 'ott' : 'theatrical';
@@ -165,7 +166,7 @@ export const Upcoming = () => {
                         // However, older data might still have manual dates in digital_release_date. We can't easily fix that retroactively without migration,
                         // but new logic will respect the split.
 
-                        const manualDate = meta.manual_release_date ? new Date(meta.manual_release_date) : null;
+                        const manualDate = parseDateLocal(meta.manual_release_date);
 
                         if (dDate) {
                             targetDate = dDate;
@@ -209,13 +210,13 @@ export const Upcoming = () => {
                 const lastEp = meta.last_episode_to_air;
 
                 if (nextEp && nextEp.air_date) {
-                    targetDate = new Date(nextEp.air_date);
+                    targetDate = parseDateLocal(nextEp.air_date);
                     seasonInfo = 'New Episode';
                 } else if (lastEp && lastEp.air_date) {
-                    targetDate = new Date(lastEp.air_date);
+                    targetDate = parseDateLocal(lastEp.air_date);
                     seasonInfo = 'Latest Episode';
                 } else if (meta.first_air_date || meta.release_date) {
-                    targetDate = new Date(meta.first_air_date || meta.release_date);
+                    targetDate = parseDateLocal(meta.first_air_date || meta.release_date);
                     seasonInfo = item.status === 'show_new' ? 'Premiere' : 'Released';
                 } else {
                     targetDate = today;

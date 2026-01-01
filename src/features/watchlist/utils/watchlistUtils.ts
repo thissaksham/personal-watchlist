@@ -1,4 +1,5 @@
 import { tmdb } from '../../../lib/tmdb';
+import { parseDateLocal } from '../../../lib/dateUtils';
 import type { WatchStatus } from '../../../types';
 
 export const pruneMetadata = (meta: any, region: string) => {
@@ -140,9 +141,10 @@ export const getEnrichedMetadata = async (tmdbId: number, type: 'movie' | 'show'
         if (theatricalDate && (!releaseDateStr || theatricalDate < releaseDateStr)) {
             releaseDateStr = theatricalDate;
         }
-        const releaseDateObj = releaseDateStr ? new Date(releaseDateStr) : null;
+        const releaseDateObj = parseDateLocal(releaseDateStr);
         const hasProvidersIN = allStreamingOrRental.length > 0;
-        const hasFutureIndianDigitalDate = indianDigitalDate && new Date(indianDigitalDate) > today;
+        const indianDigDateObj = parseDateLocal(indianDigitalDate);
+        const hasFutureIndianDigitalDate = indianDigDateObj && indianDigDateObj > today;
         const hasManualOverride = (existingMetadata as any)?.manual_date_override;
 
         let isAvailableGlobally = false;

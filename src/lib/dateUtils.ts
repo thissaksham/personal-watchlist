@@ -14,12 +14,41 @@ export const getTodayValues = () => {
 /**
  * Safely parses a date string (YYYY-MM-DD) into a Date object.
  * Returns null if the string is invalid or empty.
+ * For "YYYY-MM-DD" style strings (even with time), it parses the date part as Local Midnight.
  */
 export const parseDate = (dateStr: string | null | undefined): Date | null => {
     if (!dateStr) return null;
+
+    // Check for YYYY-MM-DD at the start
+    if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+        return parseDateLocal(dateStr);
+    }
+
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return null;
     return d;
+};
+
+/**
+ * Parses YYYY-MM-DD string to Local Midnight Date object.
+ * Ignores time components if present (e.g. from ISO strings).
+ */
+export const parseDateLocal = (dateStr: string | null | undefined): Date | null => {
+    if (!dateStr) return null;
+    // Extract YYYY-MM-DD part
+    const datePart = dateStr.split('T')[0];
+    const parts = datePart.split('-');
+
+    if (parts.length === 3) {
+        const y = parseInt(parts[0]);
+        const m = parseInt(parts[1]);
+        const d = parseInt(parts[2]);
+        if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+            return new Date(y, m - 1, d);
+        }
+    }
+    const d = new Date(dateStr);
+    return isNaN(d.getTime()) ? null : d;
 };
 
 /**
