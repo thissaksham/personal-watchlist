@@ -13,7 +13,7 @@ import { Clapperboard } from 'lucide-react';
 import { Movies } from './pages/Movies';
 import { Shows } from './pages/Shows';
 import { Upcoming } from './pages/Upcoming';
-import { Games } from './pages/Placeholders';
+import { GamesPage } from './features/games/pages/GamesPage';
 import VerifySuccess from './pages/VerifySuccess';
 
 
@@ -94,8 +94,8 @@ function App() {
                     <Route path="upcoming" element={<Navigate to="/upcoming/onOTT" replace />} />
                     <Route path="upcoming/:status" element={<Upcoming />} />
 
-                    <Route path="games" element={<Navigate to="/games/unplayed" replace />} />
-                    <Route path="games/:status" element={<Games />} />
+
+                    <Route path="games" element={<GamesPage />} />
                   </Route>
 
                   {/* 404 Catch-All -> Redirect to Home */}
