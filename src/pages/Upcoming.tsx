@@ -108,6 +108,13 @@ export const Upcoming = () => {
                     if ((!item.last_watched_season || item.last_watched_season === 0) && !['show_new', 'show_coming_soon'].includes(item.status)) {
                         return null;
                     }
+                } else {
+                    // User Request: For shows with NO watched seasons (unwatched), ONLY show if it is a Season Premiere (Episode 1).
+                    // If it is Episode > 1, and we haven't started the show, hide it to avoid noise.
+                    const isUnwatched = !item.last_watched_season || item.last_watched_season === 0;
+                    if (isUnwatched && nextEp.episode_number !== 1) {
+                        return null;
+                    }
                 }
             }
 
