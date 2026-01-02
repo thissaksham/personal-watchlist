@@ -81,16 +81,6 @@ export const Upcoming = () => {
                 return null;
             }
 
-            // Special handling for 'show_ongoing':
-            // Generally we hide it (as it implies not actively 'watching'), 
-            // BUT we want to show it if it's a new Premiere for an unwatched show.
-            if (item.status === 'show_ongoing') {
-                const isUnwatched = !item.last_watched_season || item.last_watched_season === 0;
-                // If user has watched some seasons but status is 'show_ongoing' (not 'show_watching'),
-                // keep it hidden (maintain legacy behavior).
-                if (!isUnwatched) return null;
-            }
-
             // Special Check for Waiting/Watching
             if (item.status === 'show_watching') {
                 const nextEp = meta.next_episode_to_air;
@@ -99,25 +89,23 @@ export const Upcoming = () => {
                 if (!nextDate || nextDate < today) return null;
             }
 
-            // FILTER: If show has NO watched seasons (last_watched_season == 0 or undefined), 
-            // ONLY show if it's a Season Premiere (Episode 1).
-            // This prevents "Episode 2, 3..." clutter for shows the user hasn't even started.
-            // FILTER: IF SHOW IS UNWATCHED (No marked seasons):
-            // 1. If it has a Next Episode, ONLY show if it is Episode 1 (Premiere).
-            // 2. If it has NO Next Episode, HIDE IT (avoids "Sundefined" errors or "Streaming Now" clutter),
-            //    UNLESS it is strictly 'show_new' or 'show_coming_soon' (relying on first_air_date).
-            if (item.type === 'show' && (!item.last_watched_season || item.last_watched_season === 0)) {
+            // FILTER: IF SHOW HAS NO WATCHED SEASONS (or is ongoing backlog):
+            // We want to SHOW it if there is a valid upcoming episode (Season Premiere OR mid-season).
+            // We only HIDE it if there is NO upcoming episode information (to avoid dead cards).
+            if (item.type === 'show') {
+                // If status is ongoing/returning/watching, and we have no specific next episode, hide it.
                 const nextEp = meta.next_episode_to_air;
-
-                if (nextEp) {
-                    if (nextEp.episode_number > 1) {
+                if (!nextEp) {
+                    // Start checks for 'show_new' or 'show_coming_soon' which might rely on first_air_date are handled downstream?
+                    // actually logic below handles generic dates. 
+                    // But we specifically want to Avoid "Streaming Now" for old backlog shows.
+                    if (['show_ongoing', 'show_returning', 'show_watching'].includes(item.status)) {
+                        // Double check if it has a 'last_episode_to_air' that is very recent? 
+                        // For now, consistent behavior: No Next Ep = No Upcoming Card for backlog types.
                         return null;
                     }
-                } else {
-                    // No upcoming episode info
-                    // If status is ongoing/returning, and we have no specific next episode, hide it.
-                    // We don't want generic "Streaming Now" cards for randomly added ongoing shows.
-                    if (['show_ongoing', 'show_returning', 'show_watching'].includes(item.status)) {
+                    // Unwatched shows without next episode (and not 'new') should also probably be hidden?
+                    if ((!item.last_watched_season || item.last_watched_season === 0) && !['show_new', 'show_coming_soon'].includes(item.status)) {
                         return null;
                     }
                 }
