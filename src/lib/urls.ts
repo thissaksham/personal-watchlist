@@ -28,6 +28,18 @@ export const getMoctaleUrl = (media: TMDBMedia): string => {
 };
 
 /**
+ * Generates a JustWatch content URL with the format:
+ * Movie: https://www.justwatch.com/in/movie/{slugified-title}
+ * Show:  https://www.justwatch.com/in/tv-show/{slugified-title}
+ */
+export const getJustWatchUrl = (media: TMDBMedia, type: 'movie' | 'tv'): string => {
+    const title = media.title || media.name || 'unknown';
+    const slug = slugify(title);
+    const jwType = type === 'movie' ? 'movie' : 'tv-show';
+    return `https://www.justwatch.com/in/${jwType}/${slug}`;
+};
+
+/**
  * Generates a TMDB content URL.
  */
 export const getTMDBUrl = (id: number, type: 'movie' | 'tv'): string => {

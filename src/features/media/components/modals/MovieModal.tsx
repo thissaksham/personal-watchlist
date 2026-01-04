@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { X, Calendar, Clock, Star, PlayCircle, Play } from 'lucide-react';
 import { type TMDBMedia } from '../../../../lib/tmdb';
 import { useMediaDetails } from '../../hooks/useTMDB';
-import { getMoctaleUrl, getTMDBUrl, TMDB_ICON_BASE64, MOCTALE_ICON_BASE64, JUSTWATCH_ICON_BASE64 } from '../../../../lib/urls';
+import { getMoctaleUrl, getTMDBUrl, getJustWatchUrl, TMDB_ICON_BASE64, MOCTALE_ICON_BASE64, JUSTWATCH_ICON_BASE64 } from '../../../../lib/urls';
 import { getWatchProviders, getWatchLink } from '../../../../utils/mediaUtils';
 import { usePreferences } from '../../../../context/PreferencesContext';
 
@@ -89,7 +89,7 @@ export const MovieModal = ({ media, onClose }: MovieModalProps) => {
                                 <a href={getMoctaleUrl(media)} target="_blank" rel="noopener noreferrer" className="floating-link-btn moctale-btn" title="View on Moctale">
                                     <img src={MOCTALE_ICON_BASE64} alt="Moctale" />
                                 </a>
-                                <a href={`https://www.justwatch.com/in/search?content_type=movie&q=${encodeURIComponent(title || '')}`} target="_blank" rel="noopener noreferrer" className="floating-link-btn justwatch-btn" title="View on JustWatch">
+                                <a href={getJustWatchUrl(media, 'movie')} target="_blank" rel="noopener noreferrer" className="floating-link-btn justwatch-btn" title="View on JustWatch">
                                     <img src={JUSTWATCH_ICON_BASE64} alt="JustWatch" />
                                 </a>
                             </div>

@@ -4,7 +4,7 @@ import { X, Calendar, Star, PlayCircle, Play, Layers, Hash, Hourglass } from 'lu
 import { type TMDBMedia } from '../../../../lib/tmdb';
 import { useMediaDetails } from '../../hooks/useTMDB';
 import { useWatchlist } from '../../../watchlist/context/WatchlistContext';
-import { getMoctaleUrl, getTMDBUrl, TMDB_ICON_BASE64, MOCTALE_ICON_BASE64, JUSTWATCH_ICON_BASE64 } from '../../../../lib/urls';
+import { getMoctaleUrl, getTMDBUrl, getJustWatchUrl, TMDB_ICON_BASE64, MOCTALE_ICON_BASE64, JUSTWATCH_ICON_BASE64 } from '../../../../lib/urls';
 import { usePreferences } from '../../../../context/PreferencesContext';
 import { calculateShowStats, getWatchProviders, getWatchLink } from '../../../../utils/mediaUtils';
 
@@ -101,7 +101,7 @@ export const ShowModal = ({ media, onClose }: ShowModalProps) => {
                                 <a href={getMoctaleUrl(media)} target="_blank" rel="noopener noreferrer" className="floating-link-btn moctale-btn" title="View on Moctale">
                                     <img src={MOCTALE_ICON_BASE64} alt="Moctale" />
                                 </a>
-                                <a href={`https://www.justwatch.com/in/search?content_type=show&q=${encodeURIComponent(title || '')}`} target="_blank" rel="noopener noreferrer" className="floating-link-btn justwatch-btn" title="View on JustWatch">
+                                <a href={getJustWatchUrl(media, 'tv')} target="_blank" rel="noopener noreferrer" className="floating-link-btn justwatch-btn" title="View on JustWatch">
                                     <img src={JUSTWATCH_ICON_BASE64} alt="JustWatch" />
                                 </a>
                             </div>
