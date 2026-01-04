@@ -147,6 +147,14 @@ export const getEnrichedMetadata = async (tmdbId: number, type: 'movie' | 'show'
         const hasFutureIndianDigitalDate = indianDigDateObj && indianDigDateObj > today;
         const hasManualOverride = (existingMetadata as any)?.manual_date_override;
 
+        // Fix: Allow moving to OTT if:
+        // 1. It is currently in 'Coming Soon'
+        // 2. It is 'Released' (Theatrical/General date passed)
+        // 3. It has ANY valid digital date (even if past/today)
+        // 4. Note: If providers exist, logic at line 166 handles it. This covers cases with Date but No Providers.
+        const isReleased = !releaseDateObj || releaseDateObj <= today;
+        const hasValidDigitalTransition = currentStatus === 'movie_coming_soon' && isReleased && !!indianDigDateObj;
+
         let isAvailableGlobally = false;
         if (releaseDateObj) {
             const sixMonthsAgo = new Date();
@@ -174,7 +182,7 @@ export const getEnrichedMetadata = async (tmdbId: number, type: 'movie' | 'show'
                 movedToLibrary = true;
                 initialStatus = currentStatus === 'movie_watched' ? 'movie_watched' : 'movie_unwatched';
             }
-        } else if (hasProvidersIN || hasFutureIndianDigitalDate || hasManualOverride) {
+        } else if (hasProvidersIN || hasFutureIndianDigitalDate || hasValidDigitalTransition || hasManualOverride) {
             if (!currentStatus || currentStatus === 'movie_coming_soon' || hasManualOverride || hasProvidersIN) {
                 movedToLibrary = false;
                 initialStatus = 'movie_on_ott';

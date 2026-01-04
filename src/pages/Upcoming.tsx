@@ -299,7 +299,10 @@ export const Upcoming = () => {
     }, [upcomingItems, refreshMetadata, refreshedIds]);
 
     const handleMoveToLibrary = async (media: TMDBMedia) => {
-        const type = media.media_type === 'movie' ? 'movie' : 'show';
+        // Fix: Use tmdbMediaType if available (from UpcomingItem), otherwise fallback
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const typeRaw = (media as any).tmdbMediaType || media.media_type;
+        const type = (typeRaw === 'movie' || typeRaw === 'movie_coming_soon') ? 'movie' : 'show';
         await moveToLibrary(Number(media.id), type);
     };
 

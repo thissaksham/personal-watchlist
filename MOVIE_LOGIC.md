@@ -31,7 +31,7 @@ partition "2. Refresh Logic Check (Has currentStatus)" {
     else (No)
         #LightBlue:Stay (Library / Unwatched);
     endif
-  elseif (**Has Future Digital Date?**\n(OR Manual Date Override)) then (Yes)
+  elseif (**Has Future Digital Date?**\nOR (**Has Any Digital Date** AND Status is Coming Soon AND Released)\nOR Manual Date Override) then (Yes)
     if (Current Status is **movie_coming_soon**\nOR Manual Date Override) then (Yes)
         #Orange:Folder: movie_on_ott;
     else (No)
