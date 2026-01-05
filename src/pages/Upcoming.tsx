@@ -74,11 +74,19 @@ export const Upcoming = () => {
             // 'show_ongoing' is now conditionally allowed (see below)
             const excludedStatuses = [
                 'movie_watched', 'movie_unwatched', 'movie_dropped',
-                'show_finished', 'show_watched', 'show_dropped'
+                'show_finished', 'show_dropped'
             ];
 
             if (excludedStatuses.includes(item.status)) {
                 return null;
+            }
+
+            // Special handling for 'show_watched':
+            // If a show is marked as watched (caught up), ONLY show it if there is a confirmed future episode.
+            if (item.status === 'show_watched') {
+                const nextEp = meta.next_episode_to_air;
+                const nextDate = nextEp?.air_date ? new Date(nextEp.air_date) : null;
+                if (!nextDate || nextDate < today) return null;
             }
 
             // Special Check for Waiting/Watching
@@ -265,38 +273,57 @@ export const Upcoming = () => {
 
     // Auto-refresh metadata for items in Upcoming to catch official OTT dates/platforms
     useEffect(() => {
-        const itemsToProcess = upcomingItems; // Use the value from useMemo
-        const toRefresh = itemsToProcess.filter(item => {
-            if (refreshedIds.has(item.id)) return false;
+        // We scan the WHOLE watchlist for two types of items to refresh:
+        // 1. Items currently IN upcoming (to get latest OTT data)
+        // 2. "Stale" active items that SHOULD be in upcoming but fell off because next_episode_to_air is in the past.
+
+        const today = new Date();
+        const candidates = watchlist.filter(item => {
+            if (refreshedIds.has(Number(item.id))) return false;
 
             // API Throttle: Only auto-refresh if older than 12 hours
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const lastUpdated = item.last_updated_at || (item as any).metadata?.last_updated_at;
+            const meta = (item.metadata || {}) as any;
+            const lastUpdated = meta.last_updated_at;
             if (lastUpdated) {
                 const diff = Date.now() - new Date(lastUpdated).getTime();
                 const twelveHours = 12 * 60 * 60 * 1000;
                 if (diff < twelveHours) return false;
             }
 
-            // Only refresh movies in Upcoming statuses
-            if (item.tmdbMediaType === 'movie') {
-                return item.status === 'movie_coming_soon' || item.status === 'movie_on_ott';
+            // Group A: Visible Upcoming Items
+            // (We can crudely check if it matches the upcomingItems logic, 
+            // or just rely on status since we are filtering the whole list anyway)
+
+            // Check for Stale Shows: Status is active, but next_episode_to_air is < Today
+            if (item.type === 'show') {
+                if (['show_returning', 'show_watching', 'show_ongoing'].includes(item.status)) {
+                    const nextEp = meta.next_episode_to_air;
+                    if (nextEp && nextEp.air_date) {
+                        const epDate = new Date(nextEp.air_date);
+                        // If date is in past (yesterday/older), it's stale. Needs refresh to get NEXT ONE.
+                        if (epDate < today) return true;
+                    }
+                }
             }
-            if (item.tmdbMediaType === 'tv') {
-                return !!item.status && ['show_returning', 'show_coming_soon', 'show_ongoing', 'show_finished', 'show_watched'].includes(item.status);
-            }
+
+            // Refresh visible items logic (simplified from previous)
+            const isVisible = upcomingItems.some(i => i.id === item.tmdb_id);
+            if (isVisible) return true;
+
             return false;
         });
 
-        if (toRefresh.length > 0) {
-            // Standard Auto-Refresh for Visible Items
-            const batch = toRefresh.slice(0, 3);
+        if (candidates.length > 0) {
+            // Refresh up to 3 at a time to avoid rate limits
+            const batch = candidates.slice(0, 3);
             batch.forEach(item => {
-                refreshedIds.add(item.id);
-                refreshMetadata(item.id, item.tmdbMediaType === 'movie' ? 'movie' : 'show');
+                refreshedIds.add(Number(item.id));
+                refreshMetadata(item.tmdb_id, item.type);
+                console.log("Refreshing stale/upcoming item:", item.title);
             });
         }
-    }, [upcomingItems, refreshMetadata, refreshedIds]);
+    }, [watchlist, upcomingItems, refreshMetadata, refreshedIds]);
 
     const handleMoveToLibrary = async (media: TMDBMedia) => {
         // Fix: Use tmdbMediaType if available (from UpcomingItem), otherwise fallback

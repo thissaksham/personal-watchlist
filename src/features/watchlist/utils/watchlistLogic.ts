@@ -55,13 +55,23 @@ export function determineShowStatus(
 
     if (lastWatchedSeason === 0) {
         // Not Started
+
+        // 1. New Show Check (Highest Priority - S1 is going to air)
+        // If no seasons have released yet, or specifically if last_episode_to_air is missing
+        if (totalReleased === 0 || !metadata.last_episode_to_air) {
+            return 'show_new';
+        }
+
+        // 2. Finished Status Check
         const status = metadata.status;
         const type = metadata.type;
         const isFinished = status === 'Ended' || status === 'Canceled' || status === 'Miniseries' || type === 'Miniseries';
-        const isNew = status === 'Planned' || status === 'In Production' || status === 'Pilot' || status === 'Rumored';
+        
+        if (isFinished) {
+            return 'show_finished';
+        }
 
-        if (isNew) return 'show_new';
-        if (isFinished) return 'show_finished';
+        // 3. Ongoing (Default for released content that isn't finished)
         return 'show_ongoing';
     }
 
@@ -99,5 +109,14 @@ export function determineShowStatus(
     }
 
     // Truly caught up with no future content known
+    const status = metadata.status;
+    const isFinished = status === 'Ended' || status === 'Canceled' || status === 'Miniseries' || metadata.type === 'Miniseries';
+    
+    // If show is finished, then being caught up means "Watched".
+    if (isFinished) {
+        return 'show_watched';
+    }
+
+    // If show is still active (Returning Series, In Production), being caught up implies "Watched" (waiting for next season, no active episodes).
     return 'show_watched';
 }
