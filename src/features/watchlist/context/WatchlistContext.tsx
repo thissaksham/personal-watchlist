@@ -24,6 +24,7 @@ interface WatchlistContextType {
     markAsDropped: (tmdbId: number, type: 'movie' | 'show') => Promise<void>;
     restoreFromDropped: (tmdbId: number, type: 'movie' | 'show') => Promise<void>;
     refreshAllMetadata: () => Promise<void>;
+    updateProgress: (tmdbId: number, type: 'movie' | 'show', progress: number) => Promise<void>;
 }
 
 const WatchlistContext = createContext<WatchlistContextType | undefined>(undefined);
@@ -115,6 +116,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
             refreshMetadata: (tmdbId, type, overrideMetadata) => mutations.refreshMetadata({ tmdbId, type, overrideMetadata }),
             markAsDropped: (tmdbId, type) => mutations.markAsDropped({ tmdbId, type }),
             restoreFromDropped: (tmdbId, type) => mutations.restoreFromDropped({ tmdbId, type }),
+            updateProgress: (tmdbId, type, progress) => mutations.updateProgress({ tmdbId, type, progress }),
         }}>
             {children}
         </WatchlistContext.Provider>

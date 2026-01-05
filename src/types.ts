@@ -14,6 +14,7 @@ export interface WatchlistItem {
     status: WatchStatus;
     metadata?: TMDBMedia;
     last_watched_season?: number;
+    progress?: number;
     created_at?: string;
     updated_at?: string;
     user_id?: string;

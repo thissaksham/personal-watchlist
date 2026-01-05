@@ -304,6 +304,17 @@ export function useWatchlistMutations() {
         }
     });
 
+
+    const updateProgress = useMutation({
+        mutationFn: async ({ tmdbId, type, progress }: { tmdbId: number; type: 'movie' | 'show', progress: number }) => {
+
+            // Ensure progress is not set for movies (optional safety)
+            if (type === 'movie') return;
+            
+            await mutateItem(tmdbId, 'show', { progress }, (i) => ({ ...i, progress }));
+        }
+    });
+
     return {
         addToWatchlist: addToWatchlist.mutateAsync,
         removeFromWatchlist: removeFromWatchlist.mutateAsync,
@@ -318,6 +329,7 @@ export function useWatchlistMutations() {
         restoreFromDropped: restoreFromDropped.mutateAsync,
         dismissFromUpcoming: dismissFromUpcoming.mutateAsync,
         restoreToUpcoming: restoreToUpcoming.mutateAsync,
-        refreshMetadata: refreshMetadata.mutateAsync
+        refreshMetadata: refreshMetadata.mutateAsync,
+        updateProgress: updateProgress.mutateAsync
     };
 }

@@ -1897,9 +1897,87 @@ h6,
 .season-bubble.watched {
     background: radial-gradient(circle at center, #5eead4 0%, #0f766e 100%);
     border: none;
-    color: #000;
+    color: white;
+    /* Make text bright white */
     font-weight: 800;
+    /* Make text extra bold */
     box-shadow: 0 0 15px rgba(20, 184, 166, 0.4);
+    /* Glow effect */
+}
+
+/* Season Counter Styles */
+.season-wrapper {
+    position: relative;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.counter-btn {
+    position: absolute;
+    top: -20px;
+    /* Less float (was -24px) */
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 50;
+    /* No shadow, no border, no background default */
+    color: rgba(255, 255, 255, 0.4);
+    font-weight: 900;
+    font-size: 16px;
+    line-height: 1;
+    transition: all 0.2s;
+}
+
+.counter-btn:hover {
+    transform: scale(1.2);
+    color: white;
+}
+
+.counter-btn.minus {
+    left: -4px;
+    color: rgba(239, 68, 68, 0.7);
+    /* Red-400 opacity */
+}
+
+.counter-btn.minus:hover {
+    color: #ef4444;
+    /* Red-500 */
+    text-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+}
+
+.counter-btn.plus {
+    right: -4px;
+    color: rgba(52, 211, 153, 0.7);
+    /* Green-400 opacity */
+}
+
+.counter-btn.plus:hover {
+    color: #10b981;
+    /* Green-500 */
+    text-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+}
+
+.counter-badge {
+    position: absolute;
+    top: -21px;
+    /* Less float (was -25px) */
+    left: 50%;
+    transform: translateX(-50%);
+    color: #e5e7eb;
+    font-size: 11px;
+    font-weight: 800;
+    padding: 0;
+    white-space: nowrap;
+    z-index: 50;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+    pointer-events: none;
+    line-height: 20px;
+    /* Match button height */
 }
 
 .season-bubble.ongoing-watched {

@@ -14,7 +14,7 @@ interface ShowModalProps {
 }
 
 export const ShowModal = ({ media, onClose }: ShowModalProps) => {
-    const { watchlist, markSeasonWatched, markSeasonUnwatched } = useWatchlist();
+    const { watchlist, markSeasonWatched, markSeasonUnwatched, updateProgress } = useWatchlist();
     const { region } = usePreferences();
 
     // React Query Hook
@@ -164,26 +164,62 @@ export const ShowModal = ({ media, onClose }: ShowModalProps) => {
                                         const nextEp = (details?.next_episode_to_air || (media as any).next_episode_to_air);
                                         const isOngoing = nextEp?.season_number === seasonNum;
 
+                                        // Counter Logic: Show on first unwatched season
+                                        // First unwatched season is lastWatched + 1
+                                        const isCurrentSeason = seasonNum === (lastWatched + 1);
+                                        const currentProgress = watchlistItem?.progress || 0;
+
                                         return (
                                             <div key={season.id} className="season-item">
-                                                <button
-                                                    type="button"
-                                                    disabled={isFuture || !isAdded}
-                                                    onMouseEnter={() => !isFuture && isAdded && setHoveredSeason(seasonNum)}
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        if (!isAdded) return;
-                                                        if (seasonNum <= lastWatched) {
-                                                            markSeasonUnwatched(media.id, seasonNum);
-                                                        } else {
-                                                            markSeasonWatched(media.id, seasonNum);
-                                                        }
-                                                    }}
-                                                    className={`season-bubble ${isWatched ? 'watched' : ''} ${isPreview ? 'preview' : ''} ${isFuture ? 'future' : ''} ${isOngoing && isWatched ? 'ongoing-watched' : ''}`}
-                                                    title={isFuture ? `Available on ${airDateLabel}` : `${season.name} (${season.episode_count} Episodes)`}
-                                                >
-                                                    <span className="season-num">S{season.season_number}</span>
-                                                </button>
+                                                <div className="season-wrapper">
+                                                    <button
+                                                        type="button"
+                                                        disabled={isFuture || !isAdded}
+                                                        onMouseEnter={() => !isFuture && isAdded && setHoveredSeason(seasonNum)}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            if (!isAdded) return;
+                                                            if (seasonNum <= lastWatched) {
+                                                                markSeasonUnwatched(media.id, seasonNum);
+                                                            } else {
+                                                                markSeasonWatched(media.id, seasonNum);
+                                                            }
+                                                        }}
+                                                        className={`season-bubble ${isWatched ? 'watched' : ''} ${isPreview ? 'preview' : ''} ${isFuture ? 'future' : ''} ${isOngoing && isWatched ? 'ongoing-watched' : ''}`}
+                                                        title={isFuture ? `Available on ${airDateLabel}` : `${season.name} (${season.episode_count} Episodes)`}
+                                                    >
+                                                        <span className="season-num">S{season.season_number}</span>
+                                                    </button>
+
+                                                    {isCurrentSeason && isAdded && !isFuture && (
+                                                        <>
+                                                            <div
+                                                                className="counter-btn minus"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    const newProgress = Math.max(0, currentProgress - 1);
+                                                                    updateProgress(media.id, 'show', newProgress);
+                                                                }}
+                                                            >
+                                                                -
+                                                            </div>
+                                                            <div
+                                                                className="counter-btn plus"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    const newProgress = currentProgress + 1;
+                                                                    updateProgress(media.id, 'show', newProgress);
+                                                                }}
+                                                            >
+                                                                +
+                                                            </div>
+                                                            <div className="counter-badge">
+                                                                {currentProgress}/{season.episode_count || '?'}
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                </div>
+
                                                 {isFuture && <span className="season-label-small future">Upcoming {airDateLabel}</span>}
                                                 {isOngoing && !isFuture && <span className="season-label-small ongoing">Ongoing</span>}
                                             </div>
