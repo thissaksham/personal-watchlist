@@ -9,8 +9,18 @@
             "destination": "/api/rapid_proxy?path=$1"
         },
         {
+            "source": "/api/refresh",
+            "destination": "/api/refresh"
+        },
+        {
             "source": "/(.*)",
             "destination": "/index.html"
+        }
+    ],
+    "crons": [
+        {
+            "path": "/api/refresh",
+            "schedule": "0 0 * * *"
         }
     ]
 }
