@@ -143,14 +143,8 @@ export default async function handler(request: any, response: any) {
 
         if (fetchError) throw fetchError;
 
-        const results = [];
-
-        for (const item of (candidates || [])) {
-            const tmdbType = item.type === 'show' ? 'tv' : 'movie';
-            
-            // 3. Update from TMDB
-            const detailsRes = await fetch(`https://api.themoviedb.org/3/${tmdbType}/${item.tmdb_id}?api_key=${TMDB_API_KEY}&append_to_response=watch/providers,videos,external_ids,release_dates`);
         // 3. Process items in Parallel to beat the 10-second timeout
+
         const results = await Promise.all((candidates || []).map(async (item) => {
             try {
                 const tmdbType = item.type === 'show' ? 'tv' : 'movie';
