@@ -2,7 +2,7 @@ import { X, Check, Calendar, ArrowUp, Pencil, Star } from 'lucide-react';
 import { type TMDBMedia } from '../../../../lib/tmdb';
 import { useWatchlist } from '../../../watchlist/context/WatchlistContext';
 import { usePreferences } from '../../../../context/PreferencesContext';
-import { formatDisplayDate, getTodayValues, isReleased, parseDate } from '../../../../lib/dateUtils';
+import { formatDisplayDate, getTodayValues, isReleased, parseDate, parseDateLocal } from '../../../../lib/dateUtils';
 
 interface UpcomingCardProps {
     media: TMDBMedia;
@@ -209,18 +209,22 @@ export const UpcomingCard = ({
         const isLastEpisodeOfSeason = currentSeason && episodeNumber && episodeNumber === currentSeason.episode_count;
         const isLastSeason = seasonNumber && seasonNumber === lastSeasonNumber;
 
+        const nextDateObj = parseDateLocal(nextEpDate);
+        const isReleasedToday = nextDateObj && nextDateObj.toDateString() === new Date().toDateString();
+        const isReleasedPast = nextDateObj && nextDateObj < getTodayValues();
+
         if (seasonNumber === 1 && episodeNumber === 1) {
-            contextLabel = 'New Show';
+            contextLabel = isReleasedPast ? 'New Show (Aired)' : (isReleasedToday ? 'New Show (Today)' : 'New Show');
         } else if (isLastSeason && isEnded) {
             if (episodeNumber === 1) contextLabel = `Final Season (S${seasonNumber})`;
             else if (isLastEpisodeOfSeason) contextLabel = `Series Finale (S${seasonNumber}E${episodeNumber})`;
             else contextLabel = `Next Episode (S${seasonNumber}E${episodeNumber})`;
         } else if (episodeNumber === 1) {
-            contextLabel = `New Season (S${seasonNumber})`;
+            contextLabel = isReleasedPast ? `New Season Aired (S${seasonNumber})` : (isReleasedToday ? `New Season Today (S${seasonNumber})` : `New Season (S${seasonNumber})`);
         } else if (isLastEpisodeOfSeason) {
-            contextLabel = `Season Finale (S${seasonNumber}E${episodeNumber})`;
+            contextLabel = isReleasedPast ? `Season Finale Aired (S${seasonNumber}E${episodeNumber})` : (isReleasedToday ? `Season Finale Today (S${seasonNumber}E${episodeNumber})` : `Season Finale (S${seasonNumber}E${episodeNumber})`);
         } else {
-            contextLabel = `Next Episode (S${seasonNumber}E${episodeNumber})`;
+            contextLabel = isReleasedPast ? `Aired (S${seasonNumber}E${episodeNumber})` : (isReleasedToday ? `Airs Today (S${seasonNumber}E${episodeNumber})` : `Next Episode (S${seasonNumber}E${episodeNumber})`);
         }
     } else if (isMovieOTT) {
         // Prioritize Digital Date (Streaming Date) over Theatrical Release Date for OTT items

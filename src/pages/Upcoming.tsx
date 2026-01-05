@@ -86,15 +86,17 @@ export const Upcoming = () => {
             if (item.status === 'show_watched') {
                 const nextEp = meta.next_episode_to_air;
                 const nextDate = parseDateLocal(nextEp?.air_date);
-                if (!nextDate || nextDate < today) return null;
+                if (!nextDate) return null; // Still hide if NO next episode date
+                // Removed: nextDate < today check to keep it "sticky"
             }
 
             // Special Check for Waiting/Watching
             if (item.status === 'show_watching') {
                 const nextEp = meta.next_episode_to_air;
                 const nextDate = parseDateLocal(nextEp?.air_date);
-                // Only show in Upcoming if the next episode is in the future (or today)
-                if (!nextDate || nextDate < today) return null;
+                // Only show in Upcoming if there is a next episode date
+                if (!nextDate) return null;
+                // Removed: nextDate < today check to keep it "sticky"
             }
 
             // FILTER: IF SHOW HAS NO WATCHED SEASONS (or is ongoing backlog):
@@ -214,7 +216,13 @@ export const Upcoming = () => {
 
                 if (nextEp && nextEp.air_date) {
                     targetDate = parseDateLocal(nextEp.air_date);
-                    seasonInfo = 'New Episode';
+                    if (targetDate && targetDate < today) {
+                        seasonInfo = 'Streaming Now';
+                    } else if (targetDate && targetDate.getTime() === today.getTime()) {
+                        seasonInfo = 'Airs Today';
+                    } else {
+                        seasonInfo = 'New Episode';
+                    }
                 } else if (lastEp && lastEp.air_date) {
                     targetDate = parseDateLocal(lastEp.air_date);
                     seasonInfo = 'Latest Episode';
