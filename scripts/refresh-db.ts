@@ -29,6 +29,8 @@ interface ShowMetadata {
 
 // --- Helper Functions ---
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 const parseDateLocal = (dateStr: string | null | undefined): Date | null => {
     if (!dateStr) return null;
     const datePart = dateStr.split('T')[0];
@@ -172,8 +174,7 @@ async function runRefresh() {
             .from('watchlist')
             .select('*')
             .in('status', ['movie_coming_soon', 'movie_on_ott', 'show_returning', 'show_ongoing', 'show_watching', 'show_new'])
-            .order('updated_at', { ascending: true })
-            .limit(50);
+            .order('created_at', { ascending: true }); // No limit, fetch all
 
         if (fetchError) throw fetchError;
         if (!candidates || candidates.length === 0) {
@@ -183,69 +184,72 @@ async function runRefresh() {
 
         console.log(`Found ${candidates.length} items to process.`);
 
-        const results = await Promise.all(candidates.map(async (item) => {
-            try {
-                const tmdbType = item.type === 'show' ? 'tv' : 'movie';
-                console.log(`[Processing] ${item.type.toUpperCase()}: ${item.title} (ID: ${item.tmdb_id})`);
-                
-                // Fetch from TMDB
-                const detailsRes = await fetch(`https://api.themoviedb.org/3/${tmdbType}/${item.tmdb_id}?api_key=${TMDB_API_KEY}&append_to_response=watch/providers,videos,external_ids,release_dates`);
-                if (!detailsRes.ok) throw new Error(`TMDB Fetch Failed for ${item.title}`);
-                
-                const details = await detailsRes.json();
+        const BATCH_SIZE = 10;
+        const DELAY_MS = 60000; // 1 minute between batches
+        let processedCount = 0;
+        let successCount = 0;
 
-                // Calculate Logic
-                let newStatus = item.status;
-                if (item.type === 'show') {
-                    newStatus = determineShowStatus(details, item.last_watched_season || 0, item.progress || 0);
-                } else {
-                    let providers = details['watch/providers']?.results?.[region];
-                    let hasProviders = (providers?.flatrate?.length > 0) || (providers?.ads?.length > 0);
+        for (let i = 0; i < candidates.length; i += BATCH_SIZE) {
+            const batch = candidates.slice(i, i + BATCH_SIZE);
+            console.log(`\n--- Processing Batch ${Math.floor(i / BATCH_SIZE) + 1} (${batch.length} items) ---`);
+
+            const batchResults = await Promise.all(batch.map(async (item) => {
+                try {
+                    const tmdbType = item.type === 'show' ? 'tv' : 'movie';
+                    console.log(`[Processing] ${item.type.toUpperCase()}: ${item.title}`);
                     
-                    // Watchmode Fallback if no providers found on TMDB
-                    if (!hasProviders && WATCHMODE_API_KEY) {
-                        console.log(`[Watchmode Fallback] Checking ${item.title}...`);
-                        const wmProviders = await fetchWatchmodeFallback(item.tmdb_id, item.type as any, region, WATCHMODE_API_KEY);
-                        if (wmProviders) {
-                            details['watch/providers'] = { results: { [region]: wmProviders } };
-                            hasProviders = (wmProviders.flatrate.length > 0) || (wmProviders.free?.length > 0);
+                    const detailsRes = await fetch(`https://api.themoviedb.org/3/${tmdbType}/${item.tmdb_id}?api_key=${TMDB_API_KEY}&append_to_response=watch/providers,videos,external_ids,release_dates`);
+                    if (!detailsRes.ok) throw new Error(`TMDB Fetch Failed`);
+                    
+                    const details = await detailsRes.json();
+
+                    let newStatus = item.status;
+                    if (item.type === 'show') {
+                        newStatus = determineShowStatus(details, item.last_watched_season || 0, item.progress || 0);
+                    } else {
+                        let providers = details['watch/providers']?.results?.[region];
+                        let hasProviders = (providers?.flatrate?.length > 0) || (providers?.ads?.length > 0);
+                        
+                        if (!hasProviders && WATCHMODE_API_KEY) {
+                            const wmProviders = await fetchWatchmodeFallback(item.tmdb_id, item.type as any, region, WATCHMODE_API_KEY);
+                            if (wmProviders) {
+                                details['watch/providers'] = { results: { [region]: wmProviders } };
+                                hasProviders = (wmProviders.flatrate.length > 0) || (wmProviders.free?.length > 0);
+                            }
+                        }
+
+                        if (hasProviders && item.status === 'movie_coming_soon') {
+                            newStatus = 'movie_on_ott';
                         }
                     }
 
-                    if (hasProviders && item.status === 'movie_coming_soon') {
-                        newStatus = 'movie_on_ott';
-                    }
+                    const updatedMeta = { ...(item.metadata || {}), ...details, last_updated_at: Date.now() };
+                    const pruned = pruneMetadata(updatedMeta, region);
+
+                    const { error: updateError } = await supabase
+                        .from('watchlist')
+                        .update({ metadata: pruned, status: newStatus })
+                        .eq('id', item.id);
+
+                    if (updateError) throw updateError;
+                    console.log(`[Success] ${item.title}: ${item.status} -> ${newStatus}`);
+                    return true;
+                } catch (err: any) {
+                    console.error(`[Error] Failed to process ${item.title}:`, err.message);
+                    return false;
                 }
+            }));
 
-                const updatedMeta = {
-                    ...(item.metadata || {}),
-                    ...details,
-                    last_updated_at: Date.now()
-                };
-                const pruned = pruneMetadata(updatedMeta, region);
+            successCount += batchResults.filter(r => r).length;
+            processedCount += batch.length;
 
-                // Save back to Supabase
-                const { error: updateError } = await supabase
-                    .from('watchlist')
-                    .update({ 
-                        metadata: pruned, 
-                        status: newStatus,
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('id', item.id);
-
-                if (updateError) throw updateError;
-
-                console.log(`[Success] ${item.title}: ${item.status} -> ${newStatus}`);
-                return { title: item.title, success: true };
-            } catch (err: any) {
-                console.error(`[Error] Failed to process ${item.title}:`, err.message);
-                return { title: item.title, success: false, error: err.message };
+            if (i + BATCH_SIZE < candidates.length) {
+                console.log(`Waiting ${DELAY_MS / 1000} seconds before next batch...`);
+                await sleep(DELAY_MS);
             }
-        }));
+        }
 
-        const successCount = results.filter(r => r.success).length;
-        console.log(`--- Refresh Job Complete: ${successCount}/${results.length} successful ---`);
+        console.log(`\n--- Refresh Job Complete: ${successCount}/${processedCount} successful ---`);
 
     } catch (err: any) {
         console.error('CRITICAL: Refresh Job Failed:', err);

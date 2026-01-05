@@ -1,11 +1,11 @@
-name: Nightly Database Refresh
+name: Database Refresh
 
 on:
   schedule:
-    # Runs at 00:00 UTC every day (approx 5:30 AM IST)
-    - cron: '0 0 * * *'
+    # Runs every hour
+    - cron: '0 * * * *'
   workflow_dispatch:
-    # Allows manual triggering from the Actions tab
+    # Allows manual triggering
 
 jobs:
   refresh:
