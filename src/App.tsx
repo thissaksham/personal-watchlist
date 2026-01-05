@@ -87,7 +87,7 @@ function App() {
                     <Route path="movies" element={<Navigate to="/movies/unwatched" replace />} />
                     <Route path="movies/:status" element={<Movies />} />
 
-                    <Route path="shows" element={<Navigate to="/shows/finished" replace />} />
+                    <Route path="shows" element={<Navigate to="/shows/watching" replace />} />
                     <Route path="shows/:status" element={<Shows />} />
 
                     {/* Upcoming Tab with URL State */}
