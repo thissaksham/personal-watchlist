@@ -99,7 +99,9 @@ export const UpcomingCard = ({
             }
         }
 
-        remainingEpisodes = Math.max(0, remainingEpisodes);
+        const progress = watchlistItem?.progress || 0;
+        remainingEpisodes = Math.max(0, remainingEpisodes - progress);
+
         return { remainingSeasons, remainingEpisodes };
     };
 

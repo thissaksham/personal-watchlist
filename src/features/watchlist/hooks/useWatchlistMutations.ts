@@ -54,8 +54,8 @@ export function useWatchlistMutations() {
     };
 
     // --- RECALCULATE STATUS LOGIC ---
-    const recalculateShowStatus = async (tmdbId: number, lastWatchedSeason: number, currentMeta: any) => {
-        const newStatus = determineShowStatus(currentMeta, lastWatchedSeason);
+    const recalculateShowStatus = async (tmdbId: number, lastWatchedSeason: number, currentMeta: any, progress: number = 0) => {
+        const newStatus = determineShowStatus(currentMeta, lastWatchedSeason, progress);
         await mutateItem(tmdbId, 'show', { status: newStatus }, (item) => ({ ...item, status: newStatus }));
     };
 
@@ -179,10 +179,10 @@ export function useWatchlistMutations() {
                 const pruned = pruneMetadata(newMeta, region);
 
                 // Update Metadata & Last Watched Season combined
-                await mutateItem(tmdbId, 'show', { last_watched_season: maxSeason, metadata: pruned }, (i) => ({ ...i, last_watched_season: maxSeason, metadata: pruned }));
+                await mutateItem(tmdbId, 'show', { last_watched_season: maxSeason, progress: 0, metadata: pruned }, (i) => ({ ...i, last_watched_season: maxSeason, progress: 0, metadata: pruned }));
 
                 // Recalculate Logic
-                await recalculateShowStatus(tmdbId, maxSeason, pruned);
+                await recalculateShowStatus(tmdbId, maxSeason, pruned, 0);
 
             } else {
                 await mutateItem(tmdbId, 'movie', { status: 'movie_watched' }, (i) => ({ ...i, status: 'movie_watched' }));
@@ -200,7 +200,7 @@ export function useWatchlistMutations() {
                 const pruned = pruneMetadata(newMeta, region);
 
                 await mutateItem(tmdbId, 'show', { last_watched_season: 0, metadata: pruned }, (i) => ({ ...i, last_watched_season: 0, metadata: pruned }));
-                await recalculateShowStatus(tmdbId, 0, pruned);
+                await recalculateShowStatus(tmdbId, 0, pruned, 0);
             } else {
                 await mutateItem(tmdbId, 'movie', { status: 'movie_unwatched' }, (i) => ({ ...i, status: 'movie_unwatched' }));
             }
@@ -211,11 +211,12 @@ export function useWatchlistMutations() {
         mutationFn: async ({ tmdbId, seasonNumber }: { tmdbId: number; seasonNumber: number }) => {
             const list = getList();
             const item = list.find(i => i.tmdb_id === tmdbId && i.type === 'show');
+            
             const newMeta = { ...(item?.metadata || {}), last_watched_season: seasonNumber };
             const pruned = pruneMetadata(newMeta, region);
 
-            await mutateItem(tmdbId, 'show', { last_watched_season: seasonNumber, metadata: pruned }, (i) => ({ ...i, last_watched_season: seasonNumber, metadata: pruned }));
-            await recalculateShowStatus(tmdbId, seasonNumber, pruned);
+            await mutateItem(tmdbId, 'show', { last_watched_season: seasonNumber, progress: 0, metadata: pruned }, (i) => ({ ...i, last_watched_season: seasonNumber, progress: 0, metadata: pruned }));
+            await recalculateShowStatus(tmdbId, seasonNumber, pruned, 0);
         }
     });
 
@@ -228,7 +229,7 @@ export function useWatchlistMutations() {
             const pruned = pruneMetadata(newMeta, region);
 
             await mutateItem(tmdbId, 'show', { last_watched_season: newLastWatched, metadata: pruned }, (i) => ({ ...i, last_watched_season: newLastWatched, metadata: pruned }));
-            await recalculateShowStatus(tmdbId, newLastWatched, pruned);
+            await recalculateShowStatus(tmdbId, newLastWatched, pruned, 0);
         }
     });
 
@@ -259,7 +260,8 @@ export function useWatchlistMutations() {
                 const list = getList();
                 const item = list.find(i => i.tmdb_id === tmdbId && i.type === 'show');
                 const lastWatched = item?.last_watched_season || 0;
-                await recalculateShowStatus(tmdbId, lastWatched, item?.metadata);
+                const progress = item?.progress || 0;
+                await recalculateShowStatus(tmdbId, lastWatched, item?.metadata, progress);
             }
         }
     });
@@ -310,8 +312,31 @@ export function useWatchlistMutations() {
 
             // Ensure progress is not set for movies (optional safety)
             if (type === 'movie') return;
+
+            // Optional: Cap progress based on metadata if available
+            const list = getList();
+            const item = list.find(i => i.tmdb_id === tmdbId && i.type === 'show');
+            if (item?.metadata) {
+                const currentSeasonNum = (item.last_watched_season || 0) + 1;
+                const seasons = item.metadata.seasons || [];
+                const currentSeason = seasons.find((s: any) => s.season_number === currentSeasonNum);
+                
+                if (currentSeason && currentSeason.episode_count) {
+                    if (progress >= currentSeason.episode_count) {
+                        // Auto-complete season
+                        const newLastWatched = currentSeasonNum;
+                        await mutateItem(tmdbId, 'show', { last_watched_season: newLastWatched, progress: 0 }, (i) => ({ ...i, last_watched_season: newLastWatched, progress: 0 }));
+                        await recalculateShowStatus(tmdbId, newLastWatched, item.metadata, 0);
+                        return;
+                    }
+                    progress = Math.min(progress, currentSeason.episode_count);
+                }
+            }
             
             await mutateItem(tmdbId, 'show', { progress }, (i) => ({ ...i, progress }));
+
+            // Recalculate status when progress changes
+            await recalculateShowStatus(tmdbId, item?.last_watched_season || 0, item?.metadata, progress);
         }
     });
 

@@ -1888,6 +1888,10 @@ h6,
     overflow: hidden;
 }
 
+.season-bubble:disabled {
+    cursor: default;
+}
+
 .season-bubble:hover:not(:disabled) {
     border-color: var(--primary);
     color: white;
@@ -1933,9 +1937,15 @@ h6,
     transition: all 0.2s;
 }
 
-.counter-btn:hover {
+.counter-btn:hover:not(.disabled) {
     transform: scale(1.2);
     color: white;
+}
+
+.counter-btn.disabled {
+    opacity: 0.2;
+    cursor: default;
+    pointer-events: none;
 }
 
 .counter-btn.minus {

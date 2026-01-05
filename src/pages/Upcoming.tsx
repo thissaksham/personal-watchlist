@@ -85,14 +85,14 @@ export const Upcoming = () => {
             // If a show is marked as watched (caught up), ONLY show it if there is a confirmed future episode.
             if (item.status === 'show_watched') {
                 const nextEp = meta.next_episode_to_air;
-                const nextDate = nextEp?.air_date ? new Date(nextEp.air_date) : null;
+                const nextDate = parseDateLocal(nextEp?.air_date);
                 if (!nextDate || nextDate < today) return null;
             }
 
             // Special Check for Waiting/Watching
             if (item.status === 'show_watching') {
                 const nextEp = meta.next_episode_to_air;
-                const nextDate = nextEp?.air_date ? new Date(nextEp.air_date) : null;
+                const nextDate = parseDateLocal(nextEp?.air_date);
                 // Only show in Upcoming if the next episode is in the future (or today)
                 if (!nextDate || nextDate < today) return null;
             }
@@ -119,7 +119,7 @@ export const Upcoming = () => {
                 } else {
                     // User Request: For shows with NO watched seasons (unwatched), ONLY show if it is a Season Premiere (Episode 1).
                     // If it is Episode > 1, and we haven't started the show, hide it to avoid noise.
-                    const isUnwatched = !item.last_watched_season || item.last_watched_season === 0;
+                    const isUnwatched = (!item.last_watched_season || item.last_watched_season === 0) && (!item.progress || item.progress === 0);
                     if (isUnwatched && nextEp.episode_number !== 1) {
                         return null;
                     }

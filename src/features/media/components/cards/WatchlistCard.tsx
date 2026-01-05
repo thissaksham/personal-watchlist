@@ -98,14 +98,12 @@ export const WatchlistCard = ({
                             count = lastEp; // Cap at last aired episode
                         }
                     } else if (media.next_episode_to_air) {
-                        // Fallback: If we know next episode is S2E2, then we have 1 aired episode.
                         const nextSeason = media.next_episode_to_air.season_number;
                         const nextEpNum = media.next_episode_to_air.episode_number;
 
                         if (season.season_number > nextSeason) {
                             count = 0;
                         } else if (season.season_number === nextSeason) {
-                            // If next is Ep 2, then released is 1. If next is Ep 1, released is 0.
                             count = Math.max(0, nextEpNum - 1);
                         }
                     }
@@ -122,7 +120,8 @@ export const WatchlistCard = ({
             }
         }
 
-        remainingEpisodes = Math.max(0, remainingEpisodes);
+        const progress = watchlistItem?.progress || 0;
+        remainingEpisodes = Math.max(0, remainingEpisodes - progress);
 
         return { remainingSeasons, remainingEpisodes };
     };

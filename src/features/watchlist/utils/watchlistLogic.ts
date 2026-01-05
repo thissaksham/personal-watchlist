@@ -31,8 +31,14 @@ interface ShowMetadata {
  */
 export function determineShowStatus(
     metadata: ShowMetadata,
-    lastWatchedSeason: number
+    lastWatchedSeason: number,
+    progress: number = 0
 ): WatchStatus {
+
+    // 0. Quick Exit: If any progress or seasons watched, it's definitely being watched/caught up
+    if (lastWatchedSeason === 0 && progress > 0) {
+        return 'show_watching';
+    }
 
     // 1. Data Validation: Ensure seasons exist
     const seasons = metadata.seasons || [];

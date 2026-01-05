@@ -139,7 +139,6 @@ export const ShowModal = ({ media, onClose }: ShowModalProps) => {
                                 <div className="seasons-grid" onMouseLeave={() => setHoveredSeason(null)}>
                                     {(details?.seasons || media.seasons).filter((s: any) => s.season_number > 0).map((season: any) => {
                                         const seasonNum = Number(season.season_number);
-                                        const isWatched = isAdded && seasonNum <= lastWatched;
 
                                         // Future Season Logic
                                         let isFuture = false;
@@ -156,26 +155,33 @@ export const ShowModal = ({ media, onClose }: ShowModalProps) => {
                                             isFuture = true;
                                         }
 
+                                        const nextEp = (details?.next_episode_to_air || (media as any).next_episode_to_air);
+                                        const lastEp = (details?.last_episode_to_air || (media as any).last_episode_to_air);
+
+                                        // A season is "Ongoing" if it's the next to air, OR if it's the last to air and show isn't finished
+                                        // Prioritize next aired for the label to avoid multiple "ONGOING" tags
+                                        const isOngoing = nextEp
+                                            ? nextEp.season_number === seasonNum
+                                            : lastEp?.season_number === seasonNum && details?.status !== 'Ended' && details?.status !== 'Canceled';
+
+                                        const isWatched = isAdded && seasonNum <= lastWatched;
+                                        const currentProgress = watchlistItem?.progress || 0;
+
                                         let isPreview = false;
                                         if (hoveredSeason !== null && isAdded && !isWatched && seasonNum <= hoveredSeason) {
                                             isPreview = true;
                                         }
 
-                                        const nextEp = (details?.next_episode_to_air || (media as any).next_episode_to_air);
-                                        const isOngoing = nextEp?.season_number === seasonNum;
-
-                                        // Counter Logic: Show on first unwatched season
-                                        // First unwatched season is lastWatched + 1
+                                        // Counter Logic: Only show on the FIRST uncompleted season
                                         const isCurrentSeason = seasonNum === (lastWatched + 1);
-                                        const currentProgress = watchlistItem?.progress || 0;
 
                                         return (
                                             <div key={season.id} className="season-item">
                                                 <div className="season-wrapper">
                                                     <button
                                                         type="button"
-                                                        disabled={isFuture || !isAdded}
-                                                        onMouseEnter={() => !isFuture && isAdded && setHoveredSeason(seasonNum)}
+                                                        disabled={isFuture || !isAdded || isOngoing}
+                                                        onMouseEnter={() => !isFuture && isAdded && !isOngoing && setHoveredSeason(seasonNum)}
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             if (!isAdded) return;
@@ -185,7 +191,7 @@ export const ShowModal = ({ media, onClose }: ShowModalProps) => {
                                                                 markSeasonWatched(media.id, seasonNum);
                                                             }
                                                         }}
-                                                        className={`season-bubble ${isWatched ? 'watched' : ''} ${isPreview ? 'preview' : ''} ${isFuture ? 'future' : ''} ${isOngoing && isWatched ? 'ongoing-watched' : ''}`}
+                                                        className={`season-bubble ${isWatched ? 'watched' : ''} ${isPreview ? 'preview' : ''} ${isFuture ? 'future' : ''}`}
                                                         title={isFuture ? `Available on ${airDateLabel}` : `${season.name} (${season.episode_count} Episodes)`}
                                                     >
                                                         <span className="season-num">S{season.season_number}</span>
@@ -204,9 +210,11 @@ export const ShowModal = ({ media, onClose }: ShowModalProps) => {
                                                                 -
                                                             </div>
                                                             <div
-                                                                className="counter-btn plus"
+                                                                className={`counter-btn plus ${currentProgress >= (season.episode_count || 0) ? 'disabled' : ''}`}
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
+                                                                    const maxEps = season.episode_count || 0;
+                                                                    if (currentProgress >= maxEps) return;
                                                                     const newProgress = currentProgress + 1;
                                                                     updateProgress(media.id, 'show', newProgress);
                                                                 }}
