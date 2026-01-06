@@ -1,7 +1,7 @@
 import { 
     SteamIcon, EpicGamesIcon, GOGIcon, XboxIcon, PlayStationIcon, 
     NintendoSwitchIcon, BattleNetIcon, UbisoftIcon, EAIcon, 
-    RockstarGamesIcon, AmazonIcon 
+    RockstarGamesIcon, AmazonIcon, MicrosoftStoreIcon
 } from '../components/PlatformIcons';
 
 export const PLATFORMS_DATA = [
@@ -14,6 +14,7 @@ export const PLATFORMS_DATA = [
     { id: 'Battle.net', label: 'Battle.net', icon: BattleNetIcon, color: '#148EFF' }, // Battle.net Blue
     { id: 'Ubisoft', label: 'Ubisoft Connect', icon: UbisoftIcon, color: '#0091DA' }, // Ubisoft Blue
     { id: 'EA', label: 'EA App', icon: EAIcon, color: '#FF4747' }, // EA Red
+    { id: 'MicrosoftStore', label: 'Microsoft Store', icon: MicrosoftStoreIcon, color: '#00A4EF' }, // Microsoft Blue
     { id: 'Rockstar', label: 'Rockstar Games', icon: RockstarGamesIcon, color: '#FCAF17' }, // Rockstar Gold
     { id: 'Amazon', label: 'Amazon Games', icon: AmazonIcon, color: '#FF9900' } // Amazon Orange
 ];

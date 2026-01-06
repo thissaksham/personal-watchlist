@@ -70,8 +70,16 @@ export const RockstarGamesIcon: React.FC<IconProps> = ({ size, color, className 
     </svg>
 );
 
+
 export const AmazonIcon: React.FC<IconProps> = ({ size, color, className }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill={color} className={className} xmlns="http://www.w3.org/2000/svg">
         <path d="M13.8 14.1c-1.3-.2-2.4-.2-2.4-.2s-1.4 1-1.3 2.1c0 1.9 2.5 2.1 3.3.4.1-.1.3-.3.4-.4.8-1.2-.4-1.7-2.1-1.4zm6.6-4.5c-.3 0-1.2-.2-1.9 0-.2 0-.2.6-.2.6-.3 3-1.6 3.4-1.6 3.4s-1.8.4-2.1-.2c-.3-.4.2-2.9.2-2.9s.2-2.4-2.1-2.4c-2.3 0-2.9 2.4-2.9 2.4s-.2 1.4-1.2 1.3c-.6 0-1.1-.3-1.4-.4 0 .6.3 1.2.6 1.5.3.3.8.3 1.4.3.1.2.1.3.1.5-.1 1.2-1 2.3-2.5 2.2-.6-.1-1.2-.5-1.5-.7-.4-.3-.8-.8-1-1.3 3.1 3.5 7.6 4.3 11.2 2.7.2-.1.5-.2.7-.3.1.6 0 1.2-.2 1.8-.2.5-.5.9-.6.9-1.4 1.2-3.1 1.7-4.7 1.7-3.4 0-5.8-2.3-5.8-6.1C8.2 8.7 11.3 5.3 15 5.3c1.4 0 2.5.4 3.4 1.1.2 0 .4-.1.6-.2.8-.4 1.2.7 1.4 1.3.4 1.2 0 2.1 0 2.1zm-3.5 1.5c.5-1.9-1-2.9-2.3-2.9-1.3-.1-2.3 1-2.3 2.8 0 1.6.9 2.7 2.2 2.7 1.3 0 2.4-1 2.4-2.6z" />
     </svg>
 );
+
+export const MicrosoftStoreIcon: React.FC<IconProps> = ({ size, color, className }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={color} className={className} xmlns="http://www.w3.org/2000/svg">
+        <path d="M11.4 0H0v11.4h11.4V0zM24 0H12.6v11.4H24V0zM11.4 12.6H0V24h11.4V12.6zM24 12.6H12.6V24H24V12.6z" />
+    </svg>
+);
+
