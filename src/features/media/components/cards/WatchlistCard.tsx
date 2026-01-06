@@ -1,6 +1,8 @@
 import { Star, Check, X, Undo2, CalendarPlus } from 'lucide-react';
 import { type TMDBMedia } from '../../../../lib/tmdb';
 import { useWatchlist } from '../../../watchlist/context/WatchlistContext';
+import { usePreferences } from '../../../../context/PreferencesContext';
+import { getTodayValues, parseDate, parseDateLocal, formatDisplayDate, isReleased } from '../../../../lib/dateUtils';
 
 interface WatchlistCardProps {
     media: TMDBMedia;
@@ -14,7 +16,7 @@ interface WatchlistCardProps {
     removeLabel?: string;
     actionIcon?: React.ReactNode;
     actionLabel?: string;
-    isDropped?: boolean; // New prop
+    isDropped?: boolean;
 }
 
 export const WatchlistCard = ({
@@ -29,9 +31,10 @@ export const WatchlistCard = ({
     removeLabel,
     actionIcon,
     actionLabel,
-    isDropped = false // Default false
+    isDropped = false
 }: WatchlistCardProps) => {
     const { watchlist } = useWatchlist();
+    const { region } = usePreferences();
 
     const title = media.title || media.name || 'Unknown';
     const imageUrl = media.poster_path
@@ -40,6 +43,86 @@ export const WatchlistCard = ({
 
     const year = (media.release_date || media.first_air_date)?.split('-')[0] || '';
 
+    // Date Formatting Helper
+    const getFormattedDate = (dateStr: string | undefined): string => {
+        let display = formatDisplayDate(dateStr);
+        const currentYear = new Date().getFullYear().toString();
+
+        if (display.endsWith(` ${currentYear}`)) {
+            return display.replace(` ${currentYear}`, '');
+        }
+
+        const yearMatch = display.match(/ (\d{4})$/);
+        if (yearMatch) {
+            const yearWrapper = yearMatch[0];
+            const shortYear = yearMatch[1].slice(2);
+            display = display.replace(yearWrapper, `'${shortYear}`);
+        }
+
+        return display;
+    };
+
+    // Provider Logic
+    const providers = media['watch/providers']?.results?.[region];
+    const providerName = providers?.flatrate?.[0]?.provider_name ||
+        providers?.ads?.[0]?.provider_name ||
+        providers?.free?.[0]?.provider_name || 'OTT';
+    const showProvider = media.status === 'movie_on_ott' || (type === 'tv' && media.status !== 'show_finished' && media.status !== 'show_dropped');
+
+    // Stats & Context Logic
+    let contextLabel = '';
+    let formattedDate = '';
+
+    if (type === 'tv') {
+        const nextEp = media.next_episode_to_air;
+        let nextEpDate = nextEp?.air_date;
+        let seasonNumber = nextEp?.season_number;
+        let episodeNumber = nextEp?.episode_number;
+
+        // Fallback search
+        if (!nextEpDate && media.seasons && Array.isArray(media.seasons)) {
+            const today = getTodayValues();
+            const futureSeason = media.seasons.find((s: any) => s.air_date && parseDate(s.air_date)! >= today);
+            if (futureSeason) {
+                nextEpDate = futureSeason.air_date;
+                seasonNumber = futureSeason.season_number;
+                episodeNumber = 1;
+            }
+        }
+
+        const dateStr = nextEpDate || media.first_air_date || media.release_date;
+        formattedDate = getFormattedDate(dateStr);
+
+        const isEnded = media.status === 'Ended' || media.status === 'Canceled';
+        const lastSeasonNumber = media.number_of_seasons || 0;
+        const currentSeason = media.seasons?.find((s: any) => s.season_number === seasonNumber);
+        const isLastEpisodeOfSeason = currentSeason && episodeNumber && episodeNumber === currentSeason.episode_count;
+        const isLastSeason = seasonNumber && seasonNumber === lastSeasonNumber;
+
+        const nextDateObj = parseDateLocal(nextEpDate);
+        const isReleasedToday = nextDateObj && nextDateObj.toDateString() === new Date().toDateString();
+        const isReleasedPast = nextDateObj && nextDateObj < getTodayValues();
+
+        if (seasonNumber === 1 && episodeNumber === 1) {
+            contextLabel = isReleasedPast ? 'New Show (Aired)' : (isReleasedToday ? 'New Show (Today)' : 'New Show');
+        } else if (isLastSeason && isEnded) {
+            if (episodeNumber === 1) contextLabel = `Final Season (S${seasonNumber})`;
+            else if (isLastEpisodeOfSeason) contextLabel = `Series Finale (S${seasonNumber}E${episodeNumber})`;
+            else contextLabel = `Next Episode (S${seasonNumber}E${episodeNumber})`;
+        } else if (episodeNumber === 1) {
+            contextLabel = isReleasedPast ? `New Season Aired (S${seasonNumber})` : (isReleasedToday ? `New Season Today (S${seasonNumber})` : `New Season (S${seasonNumber})`);
+        } else if (isLastEpisodeOfSeason) {
+            contextLabel = isReleasedPast ? `Season Finale Aired (S${seasonNumber}E${episodeNumber})` : (isReleasedToday ? `Season Finale Today (S${seasonNumber}E${episodeNumber})` : `Season Finale (S${seasonNumber}E${episodeNumber})`);
+        } else if (seasonNumber && episodeNumber) {
+            contextLabel = isReleasedPast ? `Aired (S${seasonNumber}E${episodeNumber})` : (isReleasedToday ? `Airs Today (S${seasonNumber}E${episodeNumber})` : `Next Episode (S${seasonNumber}E${episodeNumber})`);
+        } else if (media.last_episode_to_air) {
+            // Fallback to last aired if no next episode
+            const lastS = media.last_episode_to_air.season_number;
+            const lastE = media.last_episode_to_air.episode_number;
+            contextLabel = `Aired (S${lastS}E${lastE})`;
+        }
+    }
+
     // Calculate Remaining Stats
     const getStats = () => {
         if (type !== 'tv') return null;
@@ -47,18 +130,13 @@ export const WatchlistCard = ({
         let totalSeasons = media.number_of_seasons || 0;
         const totalEpisodes = media.number_of_episodes || 0;
 
-        // If we have detailed seasons, filter out future ones FIRST
+        // If we have detailed seasons, filter out future ones FIRST for "Remaining" logic
         if (media.seasons && Array.isArray(media.seasons)) {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-
             const releasedSeasons = media.seasons.filter((s: any) => {
                 if (s.season_number === 0) return false;
-                if (!s.air_date) return false; // Assume unreleased if no date
-                return new Date(s.air_date) <= today;
+                return isReleased(s.air_date);
             });
 
-            // Update totalSeasons to only reflect RELEASED seasons
             if (releasedSeasons.length > 0) {
                 totalSeasons = releasedSeasons.length;
             }
@@ -79,32 +157,27 @@ export const WatchlistCard = ({
                 if (season.season_number > 0 && season.season_number > lastWatched) {
                     let count = season.episode_count || 0;
 
-                    // Strict check for future seasons based on air_date
-                    if (season.air_date) {
-                        const seasonDate = new Date(season.air_date);
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        if (seasonDate > today) return acc;
-                    }
+                    if (isReleased(season.air_date) === false) return acc;
 
-                    // Strict cap based on last_episode_to_air
-                    if (media.last_episode_to_air) {
-                        const lastSeason = media.last_episode_to_air.season_number;
-                        const lastEp = media.last_episode_to_air.episode_number;
-
-                        if (season.season_number > lastSeason) {
-                            count = 0; // Future season not started yet
-                        } else if (season.season_number === lastSeason) {
-                            count = lastEp; // Cap at last aired episode
-                        }
-                    } else if (media.next_episode_to_air) {
+                    if (media.next_episode_to_air) {
                         const nextSeason = media.next_episode_to_air.season_number;
                         const nextEpNum = media.next_episode_to_air.episode_number;
 
                         if (season.season_number > nextSeason) {
                             count = 0;
                         } else if (season.season_number === nextSeason) {
-                            count = Math.max(0, nextEpNum - 1);
+                            const todayStr = new Date().toISOString().split('T')[0];
+                            const isAvailable = media.next_episode_to_air.air_date && media.next_episode_to_air.air_date <= todayStr;
+                            count = Math.max(0, nextEpNum - (isAvailable ? 0 : 1));
+                        }
+                    } else if (media.last_episode_to_air) {
+                        const lastSeason = media.last_episode_to_air.season_number;
+                        const lastEp = media.last_episode_to_air.episode_number;
+
+                        if (season.season_number > lastSeason) {
+                            count = 0;
+                        } else if (season.season_number === lastSeason) {
+                            count = lastEp;
                         }
                     }
                     return acc + count;
@@ -146,12 +219,12 @@ export const WatchlistCard = ({
 
         if (stats) {
             const totalMinutes = stats.remainingEpisodes * avgRuntime;
+            if (totalMinutes === 0) return null; // Logic gap fix: fail fast if no episodes
             if (totalMinutes >= 24 * 60) {
                 const days = Math.floor(totalMinutes / (24 * 60));
                 const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
                 return `${days}d ${hours}h`;
             }
-            if (totalMinutes === 0) return null;
             const h = Math.floor(totalMinutes / 60);
             const m = totalMinutes % 60;
             if (h > 0) return `${h}h ${m}m`;
@@ -163,11 +236,9 @@ export const WatchlistCard = ({
 
     const getFilterStyle = () => {
         if (isDropped) {
-            // Redscale for Dropped
             return { filter: 'grayscale(100%) sepia(100%) hue-rotate(-50deg) saturate(600%) contrast(0.8)', opacity: 0.8 };
         }
-        if (media.status === 'movie_watched' || media.status === 'show_watched') {
-            // Grayscale for Watched/Finished
+        if (media.status === 'movie_watched' || media.status === 'show_watched' || media.status === 'finished') {
             return { filter: 'grayscale(100%)', opacity: 0.8 };
         }
         return {};
@@ -189,17 +260,33 @@ export const WatchlistCard = ({
 
                 {/* Top-Left Pills Container */}
                 <div className="pill-stack">
+                    {/* Provider Pill */}
+                    {showProvider && providerName && providerName !== 'OTT' && (
+                        <div className="media-pill" style={{ backgroundColor: 'rgba(20, 20, 20, 0.8)', border: '1px solid rgba(255, 255, 255, 0.2)' }}>
+                            <span className="text-gray-300">{providerName}</span>
+                        </div>
+                    )}
+
+                    {/* Date Pill (New) - Priority over Year if available */}
+                    {formattedDate ? (
+                        <div className="media-pill font-bold px-2 py-0.5 text-[10px] uppercase tracking-wider" style={{ backgroundColor: 'rgba(20, 20, 20, 0.9)', color: 'white', border: '1px solid rgba(255, 255, 255, 0.3)' }}>
+                            {formattedDate}
+                        </div>
+                    ) : (
+                        year && (
+                            <div className="media-pill pill-year">
+                                <span>{year}</span>
+                            </div>
+                        )
+                    )}
+
                     {media.vote_average > 0 && (
                         <div className="media-pill pill-rating">
                             <Star size={10} fill="#fbbf24" strokeWidth={0} />
                             <span>{media.vote_average.toFixed(1)}</span>
                         </div>
                     )}
-                    {year && (
-                        <div className="media-pill pill-year">
-                            <span>{year}</span>
-                        </div>
-                    )}
+
                     {(duration && !isDropped) && (
                         <div className="media-pill pill-duration">
                             <span>{duration}</span>
@@ -207,11 +294,12 @@ export const WatchlistCard = ({
                     )}
                     {(type === 'tv' && stats && stats.remainingEpisodes > 0) && (
                         <div className="media-pill pill-seasons">
-                            {stats.remainingSeasons === 1 ? (
-                                <span>{stats.remainingEpisodes} Eps</span>
-                            ) : (
-                                <span>{stats.remainingSeasons}S {stats.remainingEpisodes}E</span>
-                            )}
+                            <span>
+                                {stats.remainingSeasons > 0
+                                    ? (stats.remainingSeasons > 1 ? `${stats.remainingSeasons}S ` : '') + `${stats.remainingEpisodes}E`
+                                    : `${stats.remainingEpisodes}E`
+                                }
+                            </span>
                         </div>
                     )}
                 </div>
@@ -253,8 +341,13 @@ export const WatchlistCard = ({
                     </button>
                 </div>
 
-                {/* Bottom Info Stack: Title */}
+                {/* Bottom Info Stack */}
                 <div className="discovery-info-stack">
+                    {contextLabel && (
+                        <div className="media-pill" style={{ backgroundColor: 'rgba(20, 20, 20, 0.8)', border: '1px solid rgba(255, 255, 255, 0.2)', marginBottom: '4px', width: 'fit-content' }}>
+                            <span className="text-gray-300">{contextLabel}</span>
+                        </div>
+                    )}
                     <h4 className="discovery-title line-clamp-2">{title}</h4>
                 </div>
             </div>

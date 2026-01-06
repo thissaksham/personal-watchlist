@@ -111,6 +111,16 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
         document.title = `CineTrack | ${title}`;
     }, [title]);
 
+    const isSortDisabled = tmdbType === 'tv' && viewMode === 'Watching';
+
+    // Force "Release Date" sort when disabled (Watching Shows)
+    useEffect(() => {
+        if (isSortDisabled) {
+            setSortOption('release_date');
+            setIsSortOpen(false);
+        }
+    }, [isSortDisabled]);
+
     // Close sort menu when clicking outside
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -359,6 +369,16 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
                 case 'rating':
                     return (b.vote_average || 0) - (a.vote_average || 0);
                 case 'release_date':
+                    // Special Logic for 'Watching' TV Shows: Sort by Next Episode Date (Pill Date)
+                    if (tmdbType === 'tv' && viewMode === 'Watching') {
+                        const getDate = (m: any) => {
+                            if (m.next_episode_to_air?.air_date) return new Date(m.next_episode_to_air.air_date).getTime();
+                            if (m.last_episode_to_air?.air_date) return new Date(m.last_episode_to_air.air_date).getTime();
+                            return new Date(m.first_air_date || 0).getTime();
+                        };
+                        return getDate(a) - getDate(b); // Ascending (Earliest First: Yesterday -> Today -> Tomorrow)
+                    }
+
                     const dateA = new Date(a.release_date || a.first_air_date || 0).getTime();
                     const dateB = new Date(b.release_date || b.first_air_date || 0).getTime();
                     return dateB - dateA; // Newest first
@@ -465,9 +485,10 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
                     {/* Sort Dropdown */}
                     <div className="relative z-50" ref={sortRef} style={{ position: 'relative', marginRight: '8px' }}>
                         <button
-                            className={`pill filter-trigger gap-2 transition-colors ${isSortOpen ? 'bg-white/10 text-white active' : 'hover:bg-white/10'}`}
-                            onClick={() => setIsSortOpen(!isSortOpen)}
-                            style={{ whiteSpace: 'nowrap' }}
+                            className={`pill filter-trigger gap-2 transition-colors ${isSortOpen ? 'bg-white/10 text-white active' : 'hover:bg-white/10'} ${isSortDisabled ? 'opacity-50' : ''}`}
+                            onClick={() => !isSortDisabled && setIsSortOpen(!isSortOpen)}
+                            disabled={isSortDisabled}
+                            style={{ whiteSpace: 'nowrap', cursor: isSortDisabled ? 'default' : 'pointer' }}
                         >
                             <span className="text-sm font-medium">Sort</span>
                             <ListFilter size={16} />
