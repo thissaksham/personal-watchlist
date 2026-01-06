@@ -8,7 +8,10 @@ import { MovieModal } from '../features/media/components/modals/MovieModal';
 import { ShowModal } from '../features/media/components/modals/ShowModal';
 import { ChangePasswordModal } from '../features/auth/components/ChangePasswordModal';
 import { WelcomeSplash } from '../features/auth/components/WelcomeSplash';
+import { PlatformSelector } from '../features/games/components/PlatformSelector';
+import { useGameLibrary } from '../features/games/hooks/useGameLibrary';
 import type { TMDBMedia } from '../lib/tmdb';
+import type { Game } from '../types';
 
 import { SyncOverlay } from './ui/SyncOverlay';
 
@@ -19,21 +22,23 @@ let initialSplashShown = false;
 export default function Layout() {
     const { signOut, deleteAccount, user } = useAuth();
     const { refreshAllMetadata, loading } = useWatchlist();
+    const { addGame } = useGameLibrary();
     const navigate = useNavigate();
     const location = useLocation();
 
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [isAddOpen, setIsAddOpen] = useState(false);
-    const [initialSearchType, setInitialSearchType] = useState<'movie' | 'tv' | 'game' | 'multi'>('multi');
+    const getSearchType = (path: string) => {
+        if (path.startsWith('/movies')) return 'movie';
+        if (path.startsWith('/shows')) return 'tv';
+        if (path.startsWith('/games')) return 'game';
+        return 'multi';
+    };
 
-    useEffect(() => {
-        if (location.pathname.startsWith('/movies')) setInitialSearchType('movie');
-        else if (location.pathname.startsWith('/shows')) setInitialSearchType('tv');
-        else if (location.pathname.startsWith('/games')) setInitialSearchType('game');
-        else setInitialSearchType('multi');
-    }, [location.pathname]);
+    const initialSearchType = getSearchType(location.pathname);
 
     const [recentlyAddedMedia, setRecentlyAddedMedia] = useState<TMDBMedia | null>(null);
+    const [gameToSelectPlatform, setGameToSelectPlatform] = useState<Game | null>(null);
 
     // Dropdown State
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -105,6 +110,13 @@ export default function Layout() {
         { name: 'Shows', path: '/shows', icon: MonitorPlay },
         { name: 'Games', path: '/games', icon: Gamepad2 },
     ];
+
+    const handlePlatformConfirm = (platforms: string[]) => {
+        if (!gameToSelectPlatform) return;
+        const gameWithPlatforms = { ...gameToSelectPlatform, platform: platforms };
+        addGame(gameWithPlatforms);
+        setGameToSelectPlatform(null);
+    };
 
     return (
         <div className="app-container">
@@ -269,10 +281,16 @@ export default function Layout() {
                 isOpen={isAddOpen}
                 onClose={() => setIsAddOpen(false)}
                 type={initialSearchType}
-                onSuccess={(media: TMDBMedia | any) => {
-                    const isTV = media.media_type === 'tv' || !!(media as any).first_air_date;
-                    if (isTV) {
-                        setRecentlyAddedMedia(media);
+                onSuccess={(media: TMDBMedia | Game | any) => {
+                    // Check if it's a Game (has rawg_id)
+                    if ((media as Game).rawg_id) {
+                        setGameToSelectPlatform(media as Game);
+                    } else {
+                        // Standard Media Logic
+                        const isTV = media.media_type === 'tv' || !!(media as any).first_air_date;
+                        if (isTV) {
+                            setRecentlyAddedMedia(media);
+                        }
                     }
                 }}
             />
@@ -295,6 +313,14 @@ export default function Layout() {
 
             {/* Sync Overlay */}
             {isSyncing && <SyncOverlay />}
+
+            {/* Platform Selector */}
+            <PlatformSelector
+                isOpen={!!gameToSelectPlatform}
+                onClose={() => setGameToSelectPlatform(null)}
+                onConfirm={handlePlatformConfirm}
+                gameTitle={gameToSelectPlatform?.title || ''}
+            />
         </div>
     );
 }

@@ -1,15 +1,19 @@
-import { useState, useRef, useLayoutEffect, useEffect } from 'react';
+import { useState, useRef, useLayoutEffect, useEffect, useMemo } from 'react';
 import { Gamepad2, Search, ListFilter } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { GameCard } from '../components/GameCard';
 import { FranchiseCard } from '../components/FranchiseCard';
 import { FranchiseOverlay } from '../components/FranchiseOverlay';
+import { useGameLibrary } from '../hooks/useGameLibrary';
 import type { Franchise, Game } from '../../../types';
 import '../styles/GameCards.css';
 import styles from '../../../components/ui/SmartPillButton.module.css';
 
+import { PlatformSelector } from '../components/PlatformSelector';
+
 export const GamesPage = () => {
     const [selectedFranchise, setSelectedFranchise] = useState<Franchise | null>(null);
+    const [editingPlatformGame, setEditingPlatformGame] = useState<Game | null>(null);
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -83,26 +87,120 @@ export const GamesPage = () => {
         };
     }, [isSortOpen]);
 
-    const libraryGames: Game[] = [];
-    const libraryFranchises: Franchise[] = [];
-
-    // Filter Logic
-    const filteredGames = libraryGames.filter(game => {
-        // View Mode & Search Filter
-        if (searchTerm && !game.title.toLowerCase().includes(searchTerm.toLowerCase())) {
+    const { libraryGames, updateStatus, updatePlatform, removeGame } = useGameLibrary();
+    // -------------------------------------------------------------------------
+    // 4. DATA PROCESSING (Memoized)
+    // -------------------------------------------------------------------------
+    const { activeFranchises, activeGames } = useMemo(() => {
+        // Step 1: Filter by View Mode (Status)
+        // We do this FIRST so franchises are only formed from games in the current view.
+        const visibleLibraryGames = libraryGames.filter(game => {
+            const status = game.status || 'backlog';
+            if (viewMode === 'Unplayed') return ['backlog', 'wishlist'].includes(status);
+            if (viewMode === 'Played') return ['playing', 'finished', 'beaten'].includes(status);
+            if (viewMode === 'Dropped') return status === 'dropped';
             return false;
+        });
+
+        // Step 2: Grouping Algorithm
+        const franchises: Franchise[] = [];
+        const standaloneGames: Game[] = [];
+        const processedGameIds = new Set<string>();
+
+        // Sort by added date (or user sort) - for now just defined order
+        const sortedGames = [...visibleLibraryGames];
+
+        sortedGames.forEach(game => {
+            if (processedGameIds.has(game.id)) return;
+
+            // Check for series data
+            const seriesIds = new Set<number>();
+            if (game.franchise_data) {
+                game.franchise_data.forEach((s: any) => seriesIds.add(s.id));
+            }
+
+            // Find related games within the VISIBLE set only
+            const relatedGames = sortedGames.filter(otherGame => {
+                if (otherGame.id === game.id) return true;
+                if (processedGameIds.has(otherGame.id)) return false;
+
+                const otherId = otherGame.rawg_id;
+                if (seriesIds.has(otherId)) return true;
+                if (otherGame.franchise_data?.some((s: any) => s.id === game.rawg_id)) return true;
+                if (otherGame.franchise_data) {
+                    return otherGame.franchise_data.some((s: any) => seriesIds.has(s.id));
+                }
+                return false;
+            });
+
+            if (relatedGames.length > 1) {
+                relatedGames.forEach(g => processedGameIds.add(g.id));
+                const sortedByRelease = [...relatedGames].sort((a, b) => (a.release_date || '') > (b.release_date || '') ? 1 : -1);
+                const mainGame = sortedByRelease[0];
+
+                franchises.push({
+                    id: `frac-${mainGame.id}`, // Stable ID based on the "main" game (oldest)
+                    name: mainGame.title.split(':')[0],
+                    cover_url: mainGame.cover_url,
+                    games: relatedGames
+                });
+            } else {
+                standaloneGames.push(game);
+                processedGameIds.add(game.id);
+            }
+        });
+
+        // Step 3: Search Filtering
+        const filteredFranchises = franchises.filter(franchise => {
+            if (!searchTerm) return true;
+            const term = searchTerm.toLowerCase();
+            return franchise.name.toLowerCase().includes(term) || franchise.games.some(g => g.title.toLowerCase().includes(term));
+        });
+
+        const filteredStandalone = standaloneGames.filter(game => {
+            if (!searchTerm) return true;
+            return game.title.toLowerCase().includes(searchTerm.toLowerCase());
+        });
+
+        return { activeFranchises: filteredFranchises, activeGames: filteredStandalone };
+    }, [libraryGames, viewMode, searchTerm]);
+
+    // -------------------------------------------------------------------------
+    // 5. SYNC SELECTED FRANCHISE
+    // -------------------------------------------------------------------------
+    useEffect(() => {
+        if (!selectedFranchise) return;
+
+        // Try to find the same franchise in the new active list
+        // We match if the ID is the same OR if it contains the same games (heuristic)
+        const found = activeFranchises.find(f => f.id === selectedFranchise.id);
+
+        if (found) {
+            // Update reference to get new game statuses
+            if (found !== selectedFranchise) setSelectedFranchise(found);
+        } else {
+            // ID changed or dissolved? Check content overlap
+            const replacement = activeFranchises.find(f =>
+                f.games.some(g => selectedFranchise.games.some(sg => sg.id === g.id))
+            );
+
+            if (replacement) {
+                setSelectedFranchise(replacement);
+            } else {
+                // Dissolved or moved out of view -> Close Overlay
+                setSelectedFranchise(null);
+            }
         }
-        return true;
-    });
+    }, [activeFranchises]); // Only check when the grouping result changes
 
     return (
-        <div className="main-content">
+        <div>
             <header className="page-header flex justify-between items-end mb-6">
                 <div>
                     <h1 className="page-title text-3xl font-bold flex items-baseline">
                         Games Library
                         <span style={{ fontSize: '0.9rem', opacity: 0.2, fontWeight: 'normal', marginLeft: '10px' }} className="select-none">
-                            showing {filteredGames.length} results
+                            showing {activeGames.length + activeFranchises.length} results
                         </span>
                     </h1>
                     <p className="subtitle text-gray-400 mt-1">Manage your gaming collection and track progress.</p>
@@ -232,7 +330,7 @@ export const GamesPage = () => {
 
             <div className="games-grid">
                 {/* Franchises */}
-                {libraryFranchises.map((franchise) => (
+                {activeFranchises.map((franchise) => (
                     <FranchiseCard
                         key={franchise.id}
                         franchise={franchise}
@@ -241,15 +339,18 @@ export const GamesPage = () => {
                 ))}
 
                 {/* Single Games */}
-                {libraryGames.map((game) => (
+                {activeGames.map((game) => (
                     <GameCard
                         key={game.id}
                         game={game}
+                        onStatusChange={(status) => updateStatus({ id: game.id, status })}
+                        onRemove={() => removeGame(game.id)}
+                        onPlatformClick={(g) => setEditingPlatformGame(g)}
                     />
                 ))}
             </div>
 
-            {libraryGames.length === 0 && libraryFranchises.length === 0 && (
+            {activeGames.length === 0 && activeFranchises.length === 0 && (
                 <div className="u-full-center py-20 u-vstack text-center" style={{ color: '#94a3b8' }}>
                     <div style={{
                         background: 'rgba(255, 255, 255, 0.05)',
@@ -272,6 +373,21 @@ export const GamesPage = () => {
             <FranchiseOverlay
                 franchise={selectedFranchise}
                 onClose={() => setSelectedFranchise(null)}
+                onPlatformClick={(g) => setEditingPlatformGame(g)}
+            />
+
+            {/* Platform Edit Selector */}
+            <PlatformSelector
+                isOpen={!!editingPlatformGame}
+                onClose={() => setEditingPlatformGame(null)}
+                gameTitle={editingPlatformGame?.title || ''}
+                initialSelected={editingPlatformGame?.platform}
+                onConfirm={(platforms) => {
+                    if (editingPlatformGame) {
+                        updatePlatform({ id: editingPlatformGame.id, platforms });
+                    }
+                    setEditingPlatformGame(null);
+                }}
             />
         </div>
     );

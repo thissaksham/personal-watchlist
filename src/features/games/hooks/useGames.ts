@@ -15,7 +15,9 @@ export const useGameSearch = (query: string) => {
                 params: {
                     key: RAWG_API_KEY,
                     search: query,
-                    page_size: 20
+                    page_size: 20,
+                    exclude_additions: true,
+                    ordering: '-added'
                 }
             });
             return data.results.map((g: any) => transformRAWGGame(g));
@@ -44,12 +46,14 @@ export const useFranchiseCollection = (collectionId: number | undefined) => {
 function transformRAWGGame(rawg: any): Game {
     return {
         id: `rawg-${rawg.id}`,
-        igdb_id: rawg.id, // Keeping property name for compatibility, but storing RAWG ID
+        rawg_id: rawg.id, // Direct mapping
+        igdb_id: 0, // Deprecated default
         title: rawg.name,
         cover_url: rawg.background_image || null, // RAWG uses background_image as the main visual
         status: 'backlog', // Default for new found games
         release_date: rawg.released ? rawg.released.substring(0, 4) : 'TBA',
         rating: rawg.rating ? rawg.rating * 20 : 0, // RAWG is 0-5, converting to 0-100 scale
         genres: rawg.genres?.map((g: any) => g.name),
+        platform: rawg.parent_platforms?.map((p: any) => p.platform.name) || []
     };
 }

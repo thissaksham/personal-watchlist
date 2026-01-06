@@ -1241,7 +1241,8 @@ h6,
     opacity: 0;
 }
 
-.media-card:hover .card-actions-stack {
+.media-card:hover .card-actions-stack,
+.discovery-card:hover .card-actions-stack {
     opacity: 1;
 }
 

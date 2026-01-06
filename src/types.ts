@@ -20,11 +20,12 @@ export interface WatchlistItem {
     user_id?: string;
 }
 
-export type GameStatus = 'backlog' | 'playing' | 'finished' | 'dropped' | 'wishlist';
+export type GameStatus = 'backlog' | 'playing' | 'finished' | 'beaten' | 'dropped' | 'wishlist';
 
 export interface Game {
-    id: string; // database uuid
-    igdb_id: number;
+    id: string; // database uuid (Supabase ID)
+    igdb_id?: number; // Deprecated, keeping for type safety temporarily
+    rawg_id: number; // New ID from RAWG
     title: string;
     cover_url: string | null;
     rating?: number;
@@ -34,6 +35,10 @@ export interface Game {
     franchise_id?: string; // Link to a franchise
     release_date?: string;
     genres?: string[];
+    franchise_data?: any[]; // Store series/related game IDs
+    created_at?: string;
+    updated_at?: string;
+    user_id?: string;
 }
 
 export interface Franchise {

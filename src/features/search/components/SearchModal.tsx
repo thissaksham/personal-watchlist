@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react';
 import { Search, X, LoaderCircle } from 'lucide-react';
 import { useSearch } from '../../media/hooks/useTMDB';
 import { useGameSearch } from '../../games/hooks/useGames';
+import { useGameLibrary } from '../../games/hooks/useGameLibrary';
 import { useDebounce } from '../hooks/useDebounce';
 import type { TMDBMedia } from '../../../lib/tmdb';
 import type { Game } from '../../../types';
 import { useWatchlist } from '../../watchlist/context/WatchlistContext';
 import { SlidingToggle } from '../../../components/ui/SlidingToggle';
 import { DiscoveryCard } from '../../media/components/cards/DiscoveryCard';
-import { GameCard } from '../../games/components/GameCard';
+import { GameDiscoveryCard } from '../../games/components/GameDiscoveryCard';
 
 
 interface SearchModalProps {
@@ -48,6 +49,7 @@ export const SearchModal = ({ isOpen, onClose, type: initialType, onSuccess, ini
             setQuery(initialQuery);
             // Default to Movie if 'multi' was passed, or stick to provided type
             setSearchType(initialType === 'multi' ? 'movie' : initialType);
+            setGameToSelectPlatform(null); // Ensure no stale platform selector state
         }
     }, [isOpen, initialType, initialQuery]);
 
@@ -71,38 +73,30 @@ export const SearchModal = ({ isOpen, onClose, type: initialType, onSuccess, ini
         onClose();
     };
 
-    const handleGameAdd = async (game: Game) => {
-        // TODO: Add to watchlist logic for games needs to be implemented or we assume onSuccess handles it
-        // The current useWatchlist might not support games yet directly or we need a specific method.
-        // Checking GamesPage, it uses useGames hook but doesn't seem to have a global context for adding games generally?
-        // Wait, GamesPage has 'libraryGames'. It seems games might be just stored in a separate list or not fully integrated into 'useWatchlist' yet?
-        // For now, let's just close and maybe trigger onSuccess if needed. 
-        // Actually, looking at GamesPage, it fetches 'libraryGames' from searchResults? No, 'libraryGames: Game[] = searchResults || [];' it was mocking it.
-        // It seems there is NO backend for games yet effectively fully wired? 
-        // Or wait, 'useWatchlist' handles 'movie' and 'show'.
+    const { addGame, removeGame, libraryGames, isInLibrary } = useGameLibrary();
 
-        // Checking 'useWatchlist' context might be useful later, but for now I'll just trigger success.
-        // But the user asked to "add something new". 
-        // If I look at the requested task: "search and add should be in the add something new button".
-        // GamesPage had: "Manage your gaming collection".
-        // It seems I should probably NOT break the app. 
-        // Let's assume for now we just call onSuccess.
-        // Re-reading GamesPage, it was using 'useGameSearch' to show games.
-        // And 'libraryGames' was just searchResults. So it wasn't saving anything?
-        // Ah, line 18: `const libraryGames: Game[] = searchResults || [];`
-        // Line 16: `// Filtered lists for the "Library" view (temporarily using search if library is empty)`
-        // So the current "Games Support" is extremely rudimentary.
-        // I should just ensure the UI works for finding them. Adding them might be a no-op or just log for now?
-        // Or I can add a dummy 'add' if needed.
-        // But wait, the previous code had NO "Add" button on the GameCard. 
-        // Just `GameCard` display.
-        // So simply clicking it or having an add button?
-        // `GameCard` has specific styles.
-        // Let's check `GameCard.tsx` again.
+    const handleGameRemove = async (game: Game) => {
+        // Find the library game that corresponds to this RAWG game
+        const libraryGame = libraryGames.find(g => g.rawg_id === game.rawg_id);
+        if (libraryGame) {
+            removeGame(libraryGame.id);
+        }
+    };
 
+
+
+    const [gameToSelectPlatform, setGameToSelectPlatform] = useState<Game | null>(null);
+
+    const handleGameAddClick = (game: Game) => {
+        // Delegate to parent/layout
         if (onSuccess) onSuccess(game);
         onClose();
     };
+
+    const confirmGameAdd = (platforms: string[]) => {
+        // Redundant - Logic moved to GamesPage
+    };
+
 
     if (!isOpen) return null;
 
@@ -169,15 +163,18 @@ export const SearchModal = ({ isOpen, onClose, type: initialType, onSuccess, ini
 
                         {searchType === 'game' ? (
                             <div className={`media-grid ${isSearching ? 'loading-state' : ''}`}>
-                                {(results as Game[]).map((game) => (
-                                    <GameCard
-                                        key={game.id}
-                                        game={game}
-                                        onClick={() => handleGameAdd(game)}
-                                        onAdd={() => handleGameAdd(game)}
-                                        isAdded={false} // Placeholder until we have game library context
-                                    />
-                                ))}
+                                {(results as Game[]).map((game) => {
+                                    const isAdded = isInLibrary(game.rawg_id);
+                                    return (
+                                        <GameDiscoveryCard
+                                            key={game.id}
+                                            game={game}
+                                            onAdd={() => handleGameAddClick(game)} // Calls onSuccess + Close
+                                            onRemove={() => handleGameRemove(game)}
+                                            isAdded={isAdded}
+                                        />
+                                    );
+                                })}
                                 {results.length === 0 && !isSearching && query.trim() && (
                                     <div className="col-span-full text-center py-20 text-gray-400">
                                         No games found. Try a different search!

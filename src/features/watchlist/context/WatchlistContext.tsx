@@ -94,30 +94,31 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
         console.log('🏁 Health Check & Repair Complete.');
     };
 
+    const value = React.useMemo(() => ({
+        watchlist,
+        loading: isLoading || isGlobalRefreshing,
+        watchedSeasons: undefined as never,
+        isInWatchlist,
+        refreshAllMetadata,
+        addToWatchlist: (media: TMDBMedia, type: 'movie' | 'show') => mutations.addToWatchlist({ media, type }),
+        removeFromWatchlist: (tmdbId: number, type: 'movie' | 'show') => mutations.removeFromWatchlist({ tmdbId, type }),
+        markAsWatched: (tmdbId: number, type: 'movie' | 'show') => mutations.markAsWatched({ tmdbId, type }),
+        markAsUnwatched: (tmdbId: number, type: 'movie' | 'show') => mutations.markAsUnwatched({ tmdbId, type }),
+        moveToLibrary: (tmdbId: number, type: 'movie' | 'show') => mutations.moveToLibrary({ tmdbId, type }),
+        markSeasonWatched: (tmdbId: number, seasonNumber: number) => mutations.markSeasonWatched({ tmdbId, seasonNumber }),
+        markSeasonUnwatched: (tmdbId: number, seasonNumber: number) => mutations.markSeasonUnwatched({ tmdbId, seasonNumber }),
+        dismissFromUpcoming: (tmdbId: number, type: 'movie' | 'show') => mutations.dismissFromUpcoming({ tmdbId, type }),
+        restoreToUpcoming: (tmdbId: number, type: 'movie' | 'show') => mutations.restoreToUpcoming({ tmdbId, type }),
+        updateWatchlistItemMetadata: (tmdbId: number, type: 'movie' | 'show', newMetadata: any) => mutations.updateMetadata({ tmdbId, type, metadata: newMetadata }),
+        updateStatus: (tmdbId: number, type: 'movie' | 'show', newStatus: WatchStatus) => mutations.updateStatus({ tmdbId, type, status: newStatus }),
+        refreshMetadata: (tmdbId: number, type: 'movie' | 'show', overrideMetadata?: any) => mutations.refreshMetadata({ tmdbId, type, overrideMetadata }),
+        markAsDropped: (tmdbId: number, type: 'movie' | 'show') => mutations.markAsDropped({ tmdbId, type }),
+        restoreFromDropped: (tmdbId: number, type: 'movie' | 'show') => mutations.restoreFromDropped({ tmdbId, type }),
+        updateProgress: (tmdbId: number, type: 'movie' | 'show', progress: number) => mutations.updateProgress({ tmdbId, type, progress }),
+    }), [watchlist, isLoading, isGlobalRefreshing, mutations]);
+
     return (
-        <WatchlistContext.Provider value={{
-            watchlist,
-            loading: isLoading || isGlobalRefreshing,
-            watchedSeasons: undefined as never,
-            isInWatchlist,
-            refreshAllMetadata,
-            // Map mutation hook object to Context interface
-            addToWatchlist: (media, type) => mutations.addToWatchlist({ media, type }),
-            removeFromWatchlist: (tmdbId, type) => mutations.removeFromWatchlist({ tmdbId, type }),
-            markAsWatched: (tmdbId, type) => mutations.markAsWatched({ tmdbId, type }),
-            markAsUnwatched: (tmdbId, type) => mutations.markAsUnwatched({ tmdbId, type }),
-            moveToLibrary: (tmdbId, type) => mutations.moveToLibrary({ tmdbId, type }),
-            markSeasonWatched: (tmdbId, seasonNumber) => mutations.markSeasonWatched({ tmdbId, seasonNumber }),
-            markSeasonUnwatched: (tmdbId, seasonNumber) => mutations.markSeasonUnwatched({ tmdbId, seasonNumber }),
-            dismissFromUpcoming: (tmdbId, type) => mutations.dismissFromUpcoming({ tmdbId, type }),
-            restoreToUpcoming: (tmdbId, type) => mutations.restoreToUpcoming({ tmdbId, type }),
-            updateWatchlistItemMetadata: (tmdbId, type, newMetadata) => mutations.updateMetadata({ tmdbId, type, metadata: newMetadata }),
-            updateStatus: (tmdbId, type, newStatus) => mutations.updateStatus({ tmdbId, type, status: newStatus }),
-            refreshMetadata: (tmdbId, type, overrideMetadata) => mutations.refreshMetadata({ tmdbId, type, overrideMetadata }),
-            markAsDropped: (tmdbId, type) => mutations.markAsDropped({ tmdbId, type }),
-            restoreFromDropped: (tmdbId, type) => mutations.restoreFromDropped({ tmdbId, type }),
-            updateProgress: (tmdbId, type, progress) => mutations.updateProgress({ tmdbId, type, progress }),
-        }}>
+        <WatchlistContext.Provider value={value}>
             {children}
         </WatchlistContext.Provider>
     );

@@ -1,15 +1,19 @@
 import React, { useEffect } from 'react';
-import type { Franchise } from '../../../types';
+import type { Franchise, Game } from '../../../types';
 import { X } from 'lucide-react';
 import { GameCard } from './GameCard';
 
 interface FranchiseOverlayProps {
     franchise: Franchise | null;
     onClose: () => void;
+    onPlatformClick?: (game: Game) => void;
 }
 
-export const FranchiseOverlay: React.FC<FranchiseOverlayProps> = ({ franchise, onClose }) => {
+import { useGameLibrary } from '../hooks/useGameLibrary';
+
+export const FranchiseOverlay: React.FC<FranchiseOverlayProps> = ({ franchise, onClose, onPlatformClick }) => {
     const isActive = !!franchise;
+    const { updateStatus, removeGame } = useGameLibrary();
 
     // Handle Escape key
     useEffect(() => {
@@ -46,12 +50,17 @@ export const FranchiseOverlay: React.FC<FranchiseOverlayProps> = ({ franchise, o
 
                 <div className="franchise-modal-body">
                     <div className="franchise-games-grid">
-                        {franchise?.games.map((game) => (
-                            <GameCard
-                                key={game.id}
-                                game={game}
-                            />
-                        ))}
+                        {franchise?.games
+                            .sort((a, b) => (a.release_date || '') > (b.release_date || '') ? 1 : -1)
+                            .map((game) => (
+                                <GameCard
+                                    key={game.id}
+                                    game={game}
+                                    onStatusChange={(status) => updateStatus({ id: game.id, status })}
+                                    onRemove={() => removeGame(game.id)}
+                                    onPlatformClick={onPlatformClick}
+                                />
+                            ))}
                     </div>
                 </div>
             </div>
