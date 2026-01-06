@@ -7,11 +7,7 @@ interface IconProps {
     className?: string;
 }
 
-const DefaultProps = {
-    size: 24,
-    color: 'currentColor',
-    className: ''
-};
+
 
 // SVG Paths
 export const SteamIcon: React.FC<IconProps> = ({ size, color, className }) => (

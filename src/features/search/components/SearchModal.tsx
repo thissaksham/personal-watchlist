@@ -49,7 +49,7 @@ export const SearchModal = ({ isOpen, onClose, type: initialType, onSuccess, ini
             setQuery(initialQuery);
             // Default to Movie if 'multi' was passed, or stick to provided type
             setSearchType(initialType === 'multi' ? 'movie' : initialType);
-            setGameToSelectPlatform(null); // Ensure no stale platform selector state
+
         }
     }, [isOpen, initialType, initialQuery]);
 
@@ -73,7 +73,7 @@ export const SearchModal = ({ isOpen, onClose, type: initialType, onSuccess, ini
         onClose();
     };
 
-    const { addGame, removeGame, libraryGames, isInLibrary } = useGameLibrary();
+    const { removeGame, libraryGames, isInLibrary } = useGameLibrary();
 
     const handleGameRemove = async (game: Game) => {
         // Find the library game that corresponds to this RAWG game
@@ -83,18 +83,10 @@ export const SearchModal = ({ isOpen, onClose, type: initialType, onSuccess, ini
         }
     };
 
-
-
-    const [gameToSelectPlatform, setGameToSelectPlatform] = useState<Game | null>(null);
-
     const handleGameAddClick = (game: Game) => {
         // Delegate to parent/layout
         if (onSuccess) onSuccess(game);
         onClose();
-    };
-
-    const confirmGameAdd = (platforms: string[]) => {
-        // Redundant - Logic moved to GamesPage
     };
 
 
