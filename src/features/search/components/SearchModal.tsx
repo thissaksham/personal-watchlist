@@ -77,7 +77,7 @@ export const SearchModal = ({ isOpen, onClose, type: initialType, onSuccess, ini
     }, [isOpen]);
 
     // Infinite Scroll Observer
-    const observer = useRef<IntersectionObserver>();
+    const observer = useRef<IntersectionObserver | null>(null);
     const lastElementRef = useCallback((node: HTMLDivElement) => {
         if (isSearching || isFetchingMore) return;
         if (observer.current) observer.current.disconnect();
