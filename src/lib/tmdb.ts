@@ -165,15 +165,15 @@ export const tmdb = {
         return fetchTMDB(`/trending/${type}/${timeWindow}`, {}, region);
     },
 
-    search: async (query: string, type: 'movie' | 'tv' | 'multi', _region: string = 'IN') => {
-        console.log(`[TMDB] search called: query="${query}", type="${type}"`);
+    search: async (query: string, type: 'movie' | 'tv' | 'multi', _region: string = 'IN', page: number = 1) => {
+        console.log(`[TMDB] search called: query="${query}", type="${type}", page=${page}`);
         if (!query.trim()) return { results: [] };
 
         // Explicitly constructing URL as requested by user:
         // https://api.themoviedb.org/3/search/tv?query={user_entry}&api_key={api_key}
         // Proxy handles Key
         // Removing region param to avoid localized release date filtering which causes incorrect years (e.g. 1987 vs 2013)
-        const url = `${BASE_URL}/search/${type}?query=${encodeURIComponent(query)}`;
+        const url = `${BASE_URL}/search/${type}?query=${encodeURIComponent(query)}&page=${page}`;
         const safeUrl = url.replace(/api_key=[^&]*&?/i, 'api_key=HIDDEN&');
 
         console.log(`[TMDB] Fetching explicitly: ${safeUrl}`);

@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import type { Game } from '../../../types';
 
@@ -6,21 +6,29 @@ const RAWG_API_KEY = import.meta.env.VITE_RAWG_API_KEY;
 const RAWG_BASE_URL = 'https://api.rawg.io/api';
 
 export const useGameSearch = (query: string) => {
-    return useQuery({
+    return useInfiniteQuery({
         queryKey: ['games', 'search', query],
-        queryFn: async () => {
-            if (!query) return [];
+        queryFn: async ({ pageParam = 1 }) => {
+            if (!query) return { results: [] };
             // RAWG Search
             const { data } = await axios.get(`${RAWG_BASE_URL}/games`, {
                 params: {
                     key: RAWG_API_KEY,
                     search: query,
                     page_size: 20,
-                    exclude_additions: true,
-                    ordering: '-added'
+                    page: pageParam,
+                    search_precise: true
                 }
             });
-            return data.results.map((g: any) => transformRAWGGame(g));
+            return {
+                results: data.results.map((g: any) => transformRAWGGame(g)),
+                next: data.next
+            };
+        },
+        initialPageParam: 1,
+        getNextPageParam: (lastPage: any, allPages) => {
+            if (lastPage.next) return allPages.length + 1;
+            return undefined;
         },
         enabled: !!query && !!RAWG_API_KEY
     });
