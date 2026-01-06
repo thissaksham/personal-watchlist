@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { LogOut, Clapperboard, MonitorPlay, Gamepad2, Menu, X, Plus, Lock, Trash2, RotateCw } from 'lucide-react';
 import { useAuth } from '../features/auth/context/AuthContext';
 import { useWatchlist } from '../features/watchlist/context/WatchlistContext';
@@ -20,9 +20,19 @@ export default function Layout() {
     const { signOut, deleteAccount, user } = useAuth();
     const { refreshAllMetadata, loading } = useWatchlist();
     const navigate = useNavigate();
+    const location = useLocation();
 
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [isAddOpen, setIsAddOpen] = useState(false);
+    const [initialSearchType, setInitialSearchType] = useState<'movie' | 'tv' | 'game' | 'multi'>('multi');
+
+    useEffect(() => {
+        if (location.pathname.startsWith('/movies')) setInitialSearchType('movie');
+        else if (location.pathname.startsWith('/shows')) setInitialSearchType('tv');
+        else if (location.pathname.startsWith('/games')) setInitialSearchType('game');
+        else setInitialSearchType('multi');
+    }, [location.pathname]);
+
     const [recentlyAddedMedia, setRecentlyAddedMedia] = useState<TMDBMedia | null>(null);
 
     // Dropdown State
@@ -258,8 +268,8 @@ export default function Layout() {
             <SearchModal
                 isOpen={isAddOpen}
                 onClose={() => setIsAddOpen(false)}
-                type="multi"
-                onSuccess={(media) => {
+                type={initialSearchType}
+                onSuccess={(media: TMDBMedia | any) => {
                     const isTV = media.media_type === 'tv' || !!(media as any).first_air_date;
                     if (isTV) {
                         setRecentlyAddedMedia(media);

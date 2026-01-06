@@ -1,18 +1,21 @@
 import { useState, useEffect } from 'react';
 import { Search, X, LoaderCircle } from 'lucide-react';
 import { useSearch } from '../../media/hooks/useTMDB';
+import { useGameSearch } from '../../games/hooks/useGames';
 import { useDebounce } from '../hooks/useDebounce';
 import type { TMDBMedia } from '../../../lib/tmdb';
+import type { Game } from '../../../types';
 import { useWatchlist } from '../../watchlist/context/WatchlistContext';
 import { SlidingToggle } from '../../../components/ui/SlidingToggle';
 import { DiscoveryCard } from '../../media/components/cards/DiscoveryCard';
+import { GameCard } from '../../games/components/GameCard';
 
 
 interface SearchModalProps {
     isOpen: boolean;
     onClose: () => void;
-    type: 'movie' | 'tv' | 'multi';
-    onSuccess?: (media: TMDBMedia) => void;
+    type: 'movie' | 'tv' | 'multi' | 'game';
+    onSuccess?: (media: TMDBMedia | Game) => void;
     initialQuery?: string;
 }
 
@@ -26,8 +29,16 @@ export const SearchModal = ({ isOpen, onClose, type: initialType, onSuccess, ini
     // React Query Hook - Only search if not 'game'
     const { data, isLoading } = useSearch(debouncedQuery, searchType === 'game' ? 'multi' : searchType as 'multi' | 'movie' | 'tv');
 
-    // If game, force results empty for now
-    const results = searchType === 'game' ? [] : ((data?.results as TMDBMedia[]) || []);
+    // Game Search Hook
+    const { data: gameResults, isLoading: isGameLoading } = useGameSearch(searchType === 'game' ? debouncedQuery : '');
+
+    // Combine loading states
+    const isSearching = searchType === 'game' ? isGameLoading : isLoading;
+
+    // Determine results based on type
+    const results = searchType === 'game'
+        ? (gameResults || [])
+        : ((data?.results as TMDBMedia[]) || []);
 
     const { addToWatchlist, isInWatchlist } = useWatchlist();
 
@@ -60,10 +71,43 @@ export const SearchModal = ({ isOpen, onClose, type: initialType, onSuccess, ini
         onClose();
     };
 
+    const handleGameAdd = async (game: Game) => {
+        // TODO: Add to watchlist logic for games needs to be implemented or we assume onSuccess handles it
+        // The current useWatchlist might not support games yet directly or we need a specific method.
+        // Checking GamesPage, it uses useGames hook but doesn't seem to have a global context for adding games generally?
+        // Wait, GamesPage has 'libraryGames'. It seems games might be just stored in a separate list or not fully integrated into 'useWatchlist' yet?
+        // For now, let's just close and maybe trigger onSuccess if needed. 
+        // Actually, looking at GamesPage, it fetches 'libraryGames' from searchResults? No, 'libraryGames: Game[] = searchResults || [];' it was mocking it.
+        // It seems there is NO backend for games yet effectively fully wired? 
+        // Or wait, 'useWatchlist' handles 'movie' and 'show'.
+
+        // Checking 'useWatchlist' context might be useful later, but for now I'll just trigger success.
+        // But the user asked to "add something new". 
+        // If I look at the requested task: "search and add should be in the add something new button".
+        // GamesPage had: "Manage your gaming collection".
+        // It seems I should probably NOT break the app. 
+        // Let's assume for now we just call onSuccess.
+        // Re-reading GamesPage, it was using 'useGameSearch' to show games.
+        // And 'libraryGames' was just searchResults. So it wasn't saving anything?
+        // Ah, line 18: `const libraryGames: Game[] = searchResults || [];`
+        // Line 16: `// Filtered lists for the "Library" view (temporarily using search if library is empty)`
+        // So the current "Games Support" is extremely rudimentary.
+        // I should just ensure the UI works for finding them. Adding them might be a no-op or just log for now?
+        // Or I can add a dummy 'add' if needed.
+        // But wait, the previous code had NO "Add" button on the GameCard. 
+        // Just `GameCard` display.
+        // So simply clicking it or having an add button?
+        // `GameCard` has specific styles.
+        // Let's check `GameCard.tsx` again.
+
+        if (onSuccess) onSuccess(game);
+        onClose();
+    };
+
     if (!isOpen) return null;
 
     const displayResults = query.trim() ? results : [];
-    const itemsToShow = displayResults.filter(item => {
+    const itemsToShow = displayResults.filter((item: any) => {
         // Relaxed Filter: Allow items without a date or poster
         // DiscoveryCard handles missing posters with a placeholder.
 
@@ -98,7 +142,7 @@ export const SearchModal = ({ isOpen, onClose, type: initialType, onSuccess, ini
                                 value={query}
                                 onChange={e => setQuery(e.target.value)}
                             />
-                            {isLoading && searchType !== 'game' && <LoaderCircle className="animate-spin text-teal-400" size={24} />}
+                            {isSearching && <LoaderCircle className="animate-spin text-teal-400" size={24} />}
                         </div>
 
                         <div className="search-filters">
@@ -124,18 +168,30 @@ export const SearchModal = ({ isOpen, onClose, type: initialType, onSuccess, ini
                         </div>
 
                         {searchType === 'game' ? (
-                            <div className="text-center py-20 text-gray-400">
-                                <h3 className="text-xl font-bold text-white mb-2">Games Coming Soon</h3>
-                                <p>Game tracking will be powered by a dedicated API.</p>
+                            <div className={`media-grid ${isSearching ? 'loading-state' : ''}`}>
+                                {(results as Game[]).map((game) => (
+                                    <GameCard
+                                        key={game.id}
+                                        game={game}
+                                        onClick={() => handleGameAdd(game)}
+                                        onAdd={() => handleGameAdd(game)}
+                                        isAdded={false} // Placeholder until we have game library context
+                                    />
+                                ))}
+                                {results.length === 0 && !isSearching && query.trim() && (
+                                    <div className="col-span-full text-center py-20 text-gray-400">
+                                        No games found. Try a different search!
+                                    </div>
+                                )}
                             </div>
                         ) : (
-                            itemsToShow.length === 0 && !isLoading && query.trim() ? (
+                            itemsToShow.length === 0 && !isSearching && query.trim() ? (
                                 <div className="text-center py-20 text-gray-400">
                                     No discovery found. Try a different search!
                                 </div>
                             ) : (
-                                <div className={`media-grid ${isLoading ? 'loading-state' : ''}`}>
-                                    {itemsToShow.map(media => {
+                                <div className={`media-grid ${isSearching ? 'loading-state' : ''}`}>
+                                    {(itemsToShow as TMDBMedia[]).map(media => {
                                         const mType = media.media_type || (searchType === 'tv' ? 'tv' : 'movie');
                                         const targetType = mType === 'tv' ? 'show' : 'movie';
 

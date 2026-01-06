@@ -95,7 +95,8 @@ function App() {
                     <Route path="upcoming/:status" element={<Upcoming />} />
 
 
-                    <Route path="games" element={<GamesPage />} />
+                    <Route path="games" element={<Navigate to="/games/unplayed" replace />} />
+                    <Route path="games/:status" element={<GamesPage />} />
                   </Route>
 
                   {/* 404 Catch-All -> Redirect to Home */}

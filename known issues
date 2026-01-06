@@ -1,6 +1,0 @@
-1)
-current time: 1st jan 3:50am IST
-i added a show which is about to premiere its season 5 last episode at 6:30am IST.
-when i added the show and select S5 in the modal, it correctly partially marked the S5 bubble and below that it's written ongoing
-but, the show has gone in watched and it does not display the upcoming date on upcoming page
-FYI: tmdb might return last air date as 31st december as it gives dates in UTC or ET timing i guess
