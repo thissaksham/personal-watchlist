@@ -1,8 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
-import { determineShowStatus, pruneMetadata, WatchStatus } from '../src/lib/watchlist-shared';
+import { determineShowStatus, pruneMetadata, type WatchStatus } from '../src/lib/watchlist-shared';
+import type { TMDBMedia } from '../src/lib/tmdb';
 
 // --- Handler ---
-
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default async function handler(request: any, response: any) {
     // 1. Security Check
     const cronSecret = process.env.CRON_SECRET || process.env.VITE_CRON_SECRET;
@@ -46,9 +47,9 @@ export default async function handler(request: any, response: any) {
                 const details = await detailsRes.json();
 
                 // Calculate Logic
-                let newStatus = item.status;
+                let newStatus = item.status as WatchStatus;
                 if (item.type === 'show') {
-                    newStatus = determineShowStatus(details, item.last_watched_season || 0, item.progress || 0);
+                    newStatus = determineShowStatus(details as TMDBMedia, item.last_watched_season || 0, item.progress || 0);
                 } else {
                     const providers = details['watch/providers']?.results?.[region];
                     const hasProviders = (providers?.flatrate?.length > 0) || (providers?.ads?.length > 0);
@@ -80,8 +81,8 @@ export default async function handler(request: any, response: any) {
                     newStatus, 
                     success: !updateError 
                 };
-            } catch (err: any) {
-                return { title: item.title, success: false, error: err.message };
+            } catch (err: unknown) {
+                return { title: item.title, success: false, error: err instanceof Error ? err.message : 'Unknown error' };
             }
         }));
 
@@ -90,8 +91,8 @@ export default async function handler(request: any, response: any) {
             count: results.length,
             processed: results.filter(r => r.success).map(r => r.title)
         });
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error('Refresh Job Failed:', err);
-        return response.status(500).json({ error: err.message });
+        return response.status(500).json({ error: err instanceof Error ? err.message : 'Unknown error' });
     }
 }

@@ -1,9 +1,9 @@
-import { defineConfig, loadEnv } from 'vite'
+import { defineConfig, loadEnv, type UserConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { Agent } from 'node:https'
 
 // https://vite.dev/config/
-export default defineConfig(async ({ mode }) => {
+export default defineConfig(async ({ mode }): Promise<UserConfig> => {
   const env = loadEnv(mode, process.cwd(), '');
 
   // Debug: Check if Key is loaded (Do not log the actual key)
@@ -14,8 +14,8 @@ export default defineConfig(async ({ mode }) => {
     try {
       console.log('[Vite] resolving api.themoviedb.org via Google DNS...');
       const res = await fetch('https://dns.google/resolve?name=api.themoviedb.org');
-      const data = await res.json() as any;
-      const ip = data.Answer?.find((a: any) => a.type === 1)?.data; // Type 1 is A Record
+      const data = await res.json() as { Answer?: { type: number; data: string }[] };
+      const ip = data.Answer?.find(a => a.type === 1)?.data; // Type 1 is A Record
       if (ip && typeof ip === 'string') {
         const cleanIp = ip.trim();
         console.log(`[Vite] Resolved TMDB to: "${cleanIp}"`);
@@ -57,14 +57,15 @@ export default defineConfig(async ({ mode }) => {
         }
         return `${newPath}${separator}api_key=${env.VITE_TMDB_API_KEY}`;
       },
-      configure: (_proxy: any, _options: any) => {
-        _proxy.on('proxyReq', (proxyReq: any, _req: any, _res: any) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      configure: (proxy: any) => {
+        proxy.on('proxyReq', ((proxyReq: { setHeader: (name: string, value: string) => void }) => {
           // Ensure Host header matches SNI
           proxyReq.setHeader('Host', 'api.themoviedb.org');
-        });
-        _proxy.on('error', (err: any, _req: any, _res: any) => {
+        }) as (...args: unknown[]) => void);
+        proxy.on('error', ((err: Error) => {
           console.log('[Proxy] TMDB Error:', err);
-        });
+        }) as (...args: unknown[]) => void);
       }
     },
     '/api/rapid': {
@@ -79,7 +80,7 @@ export default defineConfig(async ({ mode }) => {
   };
 
   return {
-    plugins: [react()],
+    plugins: [...react()],
     server: {
       host: '0.0.0.0',
       port: 5173,

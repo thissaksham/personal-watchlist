@@ -34,8 +34,8 @@ export const ChangePasswordModal = ({ onClose }: ChangePasswordModalProps) => {
             if (error) throw error;
             setSuccess(true);
             setTimeout(onClose, 2000);
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'An error occurred');
         } finally {
             setLoading(false);
         }

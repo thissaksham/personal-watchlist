@@ -65,7 +65,7 @@ const getHeaders = () => {
 
 // Helper for fetching
 async function fetchTMDB(endpoint: string, params: Record<string, string> = {}, region: string) {
-    const queryParams: any = {
+    const queryParams: Record<string, string> = {
         region: region,
         ...params,
     };
@@ -98,15 +98,29 @@ async function fetchTMDB(endpoint: string, params: Record<string, string> = {}, 
         }
 
         return res.json();
-    } catch (error: any) {
+    } catch (error: unknown) {
         clearTimeout(id);
         console.error('[TMDB] Network/Fetch Error:', error);
-        if (error.name === 'AbortError') {
+        if (error instanceof Error && error.name === 'AbortError') {
             const safeUrl = url.replace(/api_key=[^&]*&?/i, 'api_key=HIDDEN&');
             throw new Error(`Request timed out for: ${safeUrl}`);
         }
         throw error;
     }
+}
+
+export interface WatchProvider {
+    provider_id: number;
+    provider_name: string;
+    logo_path: string;
+}
+
+export interface Video {
+    id: string;
+    key: string;
+    name: string;
+    site: string;
+    type: string;
 }
 
 export interface TMDBMedia {
@@ -129,44 +143,71 @@ export interface TMDBMedia {
         season_number: number;
         episode_number: number;
         air_date: string;
-    };
+    } | null;
     next_episode_to_air?: {
         season_number: number;
         episode_number: number;
         air_date: string;
-    };
+    } | null;
     external_ids?: {
         imdb_id?: string;
+        facebook_id?: string;
+        instagram_id?: string;
+        twitter_id?: string;
     };
     tvmaze_runtime?: number;
     status?: string;
     tmdb_status?: string; // Original TMDB status (e.g., 'Ended', 'Returning Series') for logic when status is overwritten by Supabase status
-    'watch/providers'?: any;
+    'watch/providers'?: {
+        results: Record<string, { link: string; flatrate?: WatchProvider[]; rent?: WatchProvider[]; buy?: WatchProvider[]; ads?: WatchProvider[]; free?: WatchProvider[] }>;
+    };
     genres?: { id: number; name: string }[];
-    seasons?: any[];
+    seasons?: {
+        id: number;
+        name: string;
+        overview: string;
+        poster_path: string | null;
+        season_number: number;
+        episode_count: number;
+        air_date: string | null;
+    }[];
+    videos?: {
+        results: Video[];
+    };
     countdown?: number; // UI propery for upcoming
     digital_release_date?: string;
+    digital_release_note?: string | null;
     theatrical_release_date?: string;
     // App-Specific Overrides
+    type?: 'movie' | 'show' | 'tv' | 'Miniseries'; // Added Miniseries
     manual_date_override?: boolean;
-    manual_release_date?: string | null; // New priority field
-    manual_ott_name?: string;
+    manual_release_date?: string | null;
+    manual_ott_name?: string | null;
     moved_to_library?: boolean;
     dismissed_from_upcoming?: boolean;
+    last_updated_at?: number;
+    last_watched_season?: number; // Added
+    progress?: number; // Added
     // UI Transient Properties
     tmdbMediaType?: 'movie' | 'tv' | 'show'; // 'show' is legacy alias for 'tv'
     tabCategory?: 'ott' | 'theatrical' | 'coming_soon' | 'other';
     seasonInfo?: string;
+    vote_count?: number;
+    credits?: unknown;
+    production_companies?: { id: number; name: string }[];
+    images?: unknown;
+    reviews?: unknown;
 }
 
 
 
 export const tmdb = {
-    getTrending: async (type: 'movie' | 'tv' | 'all' = 'movie', timeWindow: 'day' | 'week' = 'week', region: string = 'IN') => {
+    getTrending: async (type: 'movie' | 'tv' | 'all' = 'movie', timeWindow: 'day' | 'week' = 'week', region: string = 'IN'): Promise<{ results: TMDBMedia[] }> => {
         return fetchTMDB(`/trending/${type}/${timeWindow}`, {}, region);
     },
 
-    search: async (query: string, type: 'movie' | 'tv' | 'multi', _region: string = 'IN', page: number = 1) => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    search: async (query: string, type: 'movie' | 'tv' | 'multi', _region: string = 'IN', page: number = 1): Promise<{ results: TMDBMedia[]; total_pages?: number; page?: number }> => {
         console.log(`[TMDB] search called: query="${query}", type="${type}", page=${page}`);
         if (!query.trim()) return { results: [] };
 
@@ -193,7 +234,7 @@ export const tmdb = {
             // 2. Released (Past/Null) -> Filter if (No Poster AND No Votes)
             if (data.results && Array.isArray(data.results)) {
                 const today = new Date();
-                data.results = data.results.filter((item: any) => {
+                data.results = data.results.filter((item: TMDBMedia) => {
                     // Check date
                     const releaseDate = item.release_date || item.first_air_date;
                     const isFuture = releaseDate ? new Date(releaseDate) > today : false;
@@ -202,7 +243,7 @@ export const tmdb = {
 
                     // For passed/unknown dates, filter out "junk"
                     const hasPoster = !!item.poster_path;
-                    const hasVotes = item.vote_count > 0;
+                    const hasVotes = (item.vote_count ?? 0) > 0;
 
                     // Keep if it has at least one indicator of quality
                     return hasPoster || hasVotes;
@@ -215,14 +256,14 @@ export const tmdb = {
         }
     },
 
-    getDetails: async (id: number, type: 'movie' | 'tv', region: string = 'IN') => {
+    getDetails: async (id: number, type: 'movie' | 'tv', region: string = 'IN'): Promise<TMDBMedia> => {
         const data = await fetchTMDB(`/${type}/${id}`, {
             append_to_response: 'watch/providers,external_ids,videos'
         }, region);
 
         // Check if TMDB has provider data for the user's region
-        const tmdbProviders = data['watch/providers']?.results?.[region];
-        const hasProviders = tmdbProviders && (tmdbProviders.flatrate || tmdbProviders.rent || tmdbProviders.buy);
+        const tmdbProviders = (data as TMDBMedia)['watch/providers']?.results?.[region];
+        const hasProviders = tmdbProviders && (tmdbProviders.flatrate || tmdbProviders.rent || tmdbProviders.buy || tmdbProviders.ads || tmdbProviders.free);
 
         if (!hasProviders) {
             console.log(`[TMDB] No providers found for ${region}. Checking Watchmode...`);
@@ -247,7 +288,7 @@ export const tmdb = {
         return data;
     },
 
-    getReleaseDates: async (id: number) => {
+    getReleaseDates: async (id: number): Promise<{ results: { iso_3166_1: string; release_dates: { type: number; release_date: string; note?: string }[] }[] }> => {
         // Release dates are global, but maybe we should filter? No, standard API returns all.
         // We do not need region param here necessarily, unless we want to filter on server side.
         // For now, keep it simple.
@@ -258,6 +299,7 @@ export const tmdb = {
 };
 
 // Helper to safely calculate total runtime (Binge Time) for sorting and display
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const calculateMediaRuntime = (media: any): number => {
     // 1. Handle Movies (Simple) or explicit runtime
     if (media.type === 'movie' || media.tmdb_type === 'movie' || media.media_type === 'movie') {

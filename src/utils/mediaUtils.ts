@@ -1,10 +1,10 @@
-import { type TMDBMedia } from '../lib/tmdb';
+import { type TMDBMedia, type WatchProvider } from '../lib/tmdb';
 
 
 
 
 
-export const calculateShowStats = (media: TMDBMedia | null, details: any | null) => {
+export const calculateShowStats = (media: TMDBMedia | null, details: TMDBMedia | null | undefined) => {
     if (!media && !details) return null;
 
     // We can't really determine type here easily without passing it, but usually this is called for TV shows.
@@ -55,7 +55,7 @@ export const calculateShowStats = (media: TMDBMedia | null, details: any | null)
         let validEpisodes = 0;
         const todayStr = new Date().toISOString().split('T')[0];
 
-        details.seasons.forEach((season: any) => {
+        details.seasons.forEach((season) => {
             if (season.season_number === 0) return; // Usually specials are not counted in "Seasons" count
 
             let isFuture = false;
@@ -95,8 +95,8 @@ export const calculateShowStats = (media: TMDBMedia | null, details: any | null)
     return { avgRuntime, episodes, seasons, bingeTime };
 };
 
-export const getWatchProviders = (media: TMDBMedia | null, details: any | null, region: string) => {
-    const getFromSource = (source: any) => {
+export const getWatchProviders = (media: TMDBMedia | null, details: TMDBMedia | null | undefined, region: string): WatchProvider[] => {
+    const getFromSource = (source: TMDBMedia | null | undefined) => {
         const rData = source?.['watch/providers']?.results?.[region];
         if (!rData) return [];
         return [
@@ -111,7 +111,7 @@ export const getWatchProviders = (media: TMDBMedia | null, details: any | null, 
     return getFromSource(media);
 };
 
-export const getWatchLink = (media: TMDBMedia | null, details: any | null, region: string) => {
+export const getWatchLink = (media: TMDBMedia | null, details: TMDBMedia | null | undefined, region: string) => {
     return details?.['watch/providers']?.results?.[region]?.link ||
         media?.['watch/providers']?.results?.[region]?.link;
 };

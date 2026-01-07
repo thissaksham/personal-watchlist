@@ -34,7 +34,7 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
         const watchlistItem = watchlist.find(i => i.tmdb_id === media.id && i.type === 'show');
         if (!watchlistItem) return null;
 
-        const meta = (watchlistItem.metadata || {}) as any;
+        const meta = (watchlistItem.metadata || {}) as TMDBMedia;
         const lastWatched = watchlistItem.last_watched_season || 0;
 
         // Use seasons list from metadata if available
@@ -43,7 +43,7 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
 
         if (seasonsList.length > 0) {
             const today = new Date();
-            const releasedSeasons = seasonsList.filter((s: any) => s.season_number > 0 && s.air_date && new Date(s.air_date) <= today);
+            const releasedSeasons = seasonsList.filter((s) => s.season_number > 0 && s.air_date && new Date(s.air_date) <= today);
             totalSeasons = releasedSeasons.length;
         }
 

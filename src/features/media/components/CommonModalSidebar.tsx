@@ -1,10 +1,10 @@
 import { PlayCircle } from 'lucide-react';
-import { type TMDBMedia } from '../../../lib/tmdb';
+import { type TMDBMedia, type WatchProvider } from '../../../lib/tmdb';
 
 interface CommonModalSidebarProps {
-    details: any;
+    details: TMDBMedia | null | undefined;
     media: TMDBMedia;
-    providers: any[];
+    providers: WatchProvider[];
     watchLink?: string;
     title: string;
 }
@@ -16,7 +16,7 @@ export const CommonModalSidebar = ({ details, media, providers, watchLink, title
                 <div className="mb-6">
                     <h4 className="subtitle-text">Genres</h4>
                     <div className="genres-list">
-                        {(details?.genres || media?.genres)?.map((g: any) => (
+                        {(details?.genres || media?.genres)?.map((g: { id: number; name: string }) => (
                             <span key={g.id} className="genre-tag">{g.name}</span>
                         ))}
                     </div>
@@ -29,7 +29,7 @@ export const CommonModalSidebar = ({ details, media, providers, watchLink, title
                         <PlayCircle size={14} /> Available to Stream
                     </h3>
                     <div className="provider-list">
-                        {providers.map((provider: any) => (
+                        {providers.map((provider: WatchProvider) => (
                             <a
                                 key={provider.provider_id}
                                 href={watchLink}

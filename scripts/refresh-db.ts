@@ -1,12 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 import 'dotenv/config';
-import { determineShowStatus, pruneMetadata } from '../src/lib/watchlist-shared';
+import { determineShowStatus, pruneMetadata, type WatchStatus } from '../src/lib/watchlist-shared';
+import type { TMDBMedia } from '../src/lib/tmdb';
 
 // --- Helper Functions ---
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mapWatchmodeSource = (s: any) => ({
     provider_id: s.source_id,
     provider_name: s.name,
@@ -32,9 +33,13 @@ const fetchWatchmodeFallback = async (tmdbId: number, type: 'movie' | 'tv', regi
         const sources = Array.isArray(sourcesData) ? sourcesData : [];
 
         return {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             flatrate: sources.filter((s: any) => s.type === 'sub').map(mapWatchmodeSource),
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             rent: sources.filter((s: any) => s.type === 'rent').map(mapWatchmodeSource),
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             buy: sources.filter((s: any) => s.type === 'buy').map(mapWatchmodeSource),
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             free: sources.filter((s: any) => s.type === 'free').map(mapWatchmodeSource)
         };
     } catch (e) {
@@ -98,15 +103,15 @@ async function runRefresh() {
                     
                     const details = await detailsRes.json();
 
-                    let newStatus = item.status;
+                    let newStatus = item.status as WatchStatus;
                     if (item.type === 'show') {
-                        newStatus = determineShowStatus(details, item.last_watched_season || 0, item.progress || 0);
+                        newStatus = determineShowStatus(details as TMDBMedia, item.last_watched_season || 0, item.progress || 0);
                     } else {
-                        let providers = details['watch/providers']?.results?.[region];
+                        const providers = details['watch/providers']?.results?.[region];
                         let hasProviders = (providers?.flatrate?.length > 0) || (providers?.ads?.length > 0);
                         
                         if (!hasProviders && WATCHMODE_API_KEY) {
-                            const wmProviders = await fetchWatchmodeFallback(item.tmdb_id, item.type as any, region, WATCHMODE_API_KEY);
+                            const wmProviders = await fetchWatchmodeFallback(item.tmdb_id, item.type as 'movie' | 'tv', region, WATCHMODE_API_KEY);
                             if (wmProviders) {
                                 details['watch/providers'] = { results: { [region]: wmProviders } };
                                 hasProviders = (wmProviders.flatrate.length > 0) || (wmProviders.free?.length > 0);
@@ -129,8 +134,8 @@ async function runRefresh() {
                     if (updateError) throw updateError;
                     console.log(`[Success] ${item.title}: ${item.status} -> ${newStatus}`);
                     return true;
-                } catch (err: any) {
-                    console.error(`[Error] Failed to process ${item.title}:`, err.message);
+                } catch (err: unknown) {
+                    console.error(`[Error] Failed to process ${item.title}:`, err instanceof Error ? err.message : String(err));
                     return false;
                 }
             }));
@@ -146,7 +151,7 @@ async function runRefresh() {
 
         console.log(`\n--- Refresh Job Complete: ${successCount}/${processedCount} successful ---`);
 
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error('CRITICAL: Refresh Job Failed:', err);
         process.exit(1);
     }

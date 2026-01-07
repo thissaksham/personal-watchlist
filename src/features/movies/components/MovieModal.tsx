@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
-import { type TMDBMedia } from '../../../lib/tmdb';
+import { type TMDBMedia, type Video } from '../../../lib/tmdb';
 import { useMediaDetails } from '../../media/hooks/useTMDB';
 import { getWatchProviders, getWatchLink } from '../../../utils/mediaUtils';
 import { usePreferences } from '../../../context/PreferencesContext';
@@ -30,7 +30,7 @@ export const MovieModal = ({ media, onClose }: MovieModalProps) => {
     const runtime = details?.runtime || media.runtime;
 
     const trailer = details?.videos?.results?.find(
-        (v: any) => v.site === 'YouTube' && (v.type === 'Trailer' || v.type === 'Teaser')
+        (v: Video) => v.site === 'YouTube' && (v.type === 'Trailer' || v.type === 'Teaser')
     );
     const trailerKey = trailer?.key;
 

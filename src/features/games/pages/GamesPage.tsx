@@ -1,4 +1,4 @@
-import { useState, useRef, useLayoutEffect, useEffect, useMemo } from 'react';
+import { useState, useRef, useLayoutEffect, useEffect, useMemo, useCallback } from 'react';
 import { Gamepad2, Search, ListFilter } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { GameCard } from '../components/GameCard';
@@ -32,10 +32,16 @@ export const GamesPage = () => {
     };
 
     const [viewMode, setViewMode] = useState<string>(getInitialViewMode());
+    const prevPathRef = useRef(location.pathname);
 
+    // Sync viewMode with URL changes using ref pattern
     useEffect(() => {
-        const mode = getInitialViewMode();
-        if (mode !== viewMode) setViewMode(mode);
+        if (location.pathname !== prevPathRef.current) {
+            const mode = getInitialViewMode();
+            if (mode !== viewMode) setViewMode(mode);
+            prevPathRef.current = location.pathname;
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [location.pathname]);
 
     const handleViewModeChange = (mode: string) => {
@@ -50,18 +56,18 @@ export const GamesPage = () => {
     const [highlightStyle, setHighlightStyle] = useState<React.CSSProperties>({});
     const optionRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-    const updateHighlight = () => {
+    const updateHighlight = useCallback(() => {
         if (activeIndex !== -1 && optionRefs.current[activeIndex]) {
             const element = optionRefs.current[activeIndex]!;
             setHighlightStyle({ width: `${element.offsetWidth}px`, left: `${element.offsetLeft}px` });
         }
-    };
+    }, [activeIndex]);
 
     useLayoutEffect(() => {
         updateHighlight();
         window.addEventListener('resize', updateHighlight);
         return () => window.removeEventListener('resize', updateHighlight);
-    }, [activeIndex]);
+    }, [activeIndex, updateHighlight]);
 
     // -------------------------------------------------------------------------
     // 3. SEARCH & CONTENT (Local Filter)
@@ -116,7 +122,7 @@ export const GamesPage = () => {
             // Check for series data
             const seriesIds = new Set<number>();
             if (game.franchise_data) {
-                game.franchise_data.forEach((s: any) => seriesIds.add(s.id));
+                game.franchise_data.forEach((s) => seriesIds.add(s.id));
             }
 
             // Find related games within the VISIBLE set only
@@ -126,9 +132,9 @@ export const GamesPage = () => {
 
                 const otherId = otherGame.rawg_id;
                 if (seriesIds.has(otherId)) return true;
-                if (otherGame.franchise_data?.some((s: any) => s.id === game.rawg_id)) return true;
+                if (otherGame.franchise_data?.some((s) => s.id === game.rawg_id)) return true;
                 if (otherGame.franchise_data) {
-                    return otherGame.franchise_data.some((s: any) => seriesIds.has(s.id));
+                    return otherGame.franchise_data.some((s) => seriesIds.has(s.id));
                 }
                 return false;
             });
@@ -191,6 +197,7 @@ export const GamesPage = () => {
                 setSelectedFranchise(null);
             }
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeFranchises]); // Only check when the grouping result changes
 
     return (
@@ -270,7 +277,7 @@ export const GamesPage = () => {
                                         <button
                                             key={opt.id}
                                             onClick={() => {
-                                                setSortOption(opt.id as any);
+                                                setSortOption(opt.id as 'date_added' | 'rating' | 'release_date' | 'random');
                                                 setIsSortOpen(false);
                                             }}
                                             style={{

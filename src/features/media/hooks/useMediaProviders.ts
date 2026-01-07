@@ -13,13 +13,13 @@ export const useMediaProviders = (mediaList: TMDBMedia[], region: string) => {
         let hasNoProvider = false;
 
         mediaList.forEach(media => {
-            // @ts-ignore - dynamic property access
             const providerData = media['watch/providers']?.results?.[region];
             const flatrate = providerData?.flatrate || [];
 
             if (flatrate.length === 0) {
                 hasNoProvider = true;
             } else {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 flatrate.forEach((p: any) => {
                     if (!providers.has(p.provider_id)) {
                         providers.set(p.provider_id, { id: p.provider_id, name: p.provider_name, logo: p.logo_path });
@@ -47,5 +47,5 @@ export const useMediaProviders = (mediaList: TMDBMedia[], region: string) => {
 
         // Sort by name for nicer UI
         return result.sort((a, b) => a.name.localeCompare(b.name));
-    }, [mediaList]);
+    }, [mediaList, region]);
 };

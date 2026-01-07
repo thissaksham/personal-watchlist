@@ -26,7 +26,7 @@ interface FilterOption {
 interface FilterExpandableProps {
     label: string; // e.g. "Status", "OTT"
     value: string | number | null;
-    onChange: (value: any) => void;
+    onChange: (value: string | number | null) => void;
     options: FilterOption[];
 }
 

@@ -21,11 +21,13 @@ export const useGameSearch = (query: string) => {
                 }
             });
             return {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 results: data.results.map((g: any) => transformRAWGGame(g)),
                 next: data.next
             };
         },
         initialPageParam: 1,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         getNextPageParam: (lastPage: any, allPages) => {
             if (lastPage.next) return allPages.length + 1;
             return undefined;
@@ -51,6 +53,7 @@ export const useFranchiseCollection = (collectionId: number | undefined) => {
 };
 
 // Helper to transform RAWG data to our Game type
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function transformRAWGGame(rawg: any): Game {
     return {
         id: `rawg-${rawg.id}`,
@@ -61,7 +64,9 @@ function transformRAWGGame(rawg: any): Game {
         status: 'backlog', // Default for new found games
         release_date: rawg.released ? rawg.released.substring(0, 4) : 'TBA',
         rating: rawg.rating ? rawg.rating * 20 : 0, // RAWG is 0-5, converting to 0-100 scale
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         genres: rawg.genres?.map((g: any) => g.name),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         platform: rawg.parent_platforms?.map((p: any) => p.platform.name) || []
     };
 }

@@ -1,5 +1,5 @@
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
-import { tmdb } from '../../../lib/tmdb';
+import { tmdb, type TMDBMedia } from '../../../lib/tmdb';
 import { usePreferences } from '../../../context/PreferencesContext';
 
 export function useTrending(type: 'movie' | 'tv' | 'all' = 'movie', timeWindow: 'day' | 'week' = 'week') {
@@ -18,8 +18,8 @@ export function useSearch(query: string, type: 'movie' | 'tv' | 'multi' = 'multi
         queryKey: ['search', query, type, region],
         queryFn: ({ pageParam = 1 }) => tmdb.search(query, type, region, pageParam as number),
         initialPageParam: 1,
-        getNextPageParam: (lastPage: any) => {
-            if (!lastPage || !lastPage.total_pages || lastPage.page >= lastPage.total_pages) return undefined;
+        getNextPageParam: (lastPage: { results: TMDBMedia[]; total_pages?: number; page?: number }) => {
+            if (!lastPage || !lastPage.total_pages || !lastPage.page || lastPage.page >= lastPage.total_pages) return undefined;
             return lastPage.page + 1;
         },
         enabled: !!query && query.length > 0,

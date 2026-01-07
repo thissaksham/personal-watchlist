@@ -99,7 +99,7 @@ export default function Layout() {
             try {
                 await deleteAccount();
                 navigate('/auth');
-            } catch (err) {
+            } catch {
                 alert('Failed to delete account data. Please try again.');
             }
         }
@@ -281,13 +281,13 @@ export default function Layout() {
                 isOpen={isAddOpen}
                 onClose={() => setIsAddOpen(false)}
                 type={initialSearchType}
-                onSuccess={(media: TMDBMedia | Game | any) => {
+                onSuccess={(media: TMDBMedia | Game) => {
                     // Check if it's a Game (has rawg_id)
-                    if ((media as Game).rawg_id) {
+                    if ('rawg_id' in media) {
                         setGameToSelectPlatform(media as Game);
                     } else {
                         // Standard Media Logic
-                        const isTV = media.media_type === 'tv' || !!(media as any).first_air_date;
+                        const isTV = media.media_type === 'tv' || !!media.first_air_date;
                         if (isTV) {
                             setRecentlyAddedMedia(media);
                         }

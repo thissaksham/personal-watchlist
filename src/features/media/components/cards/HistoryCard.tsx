@@ -47,7 +47,7 @@ export const HistoryCard = ({
                 {/* Actions Stack */}
                 <div className="card-actions-stack">
                     {/* Restore to Upcoming Button */}
-                    {((media as any).dismissed_from_upcoming && onRestoreToUpcoming) && (
+                    {(media.dismissed_from_upcoming && onRestoreToUpcoming) && (
                         <button
                             className="add-btn bg-white/10 hover:bg-blue-500/80 text-white"
                             onClick={(e) => { e.stopPropagation(); onRestoreToUpcoming(media); }}

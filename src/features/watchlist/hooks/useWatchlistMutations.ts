@@ -2,8 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../auth/context/AuthContext';
 import { usePreferences } from '../../../context/PreferencesContext';
-import { pruneMetadata, getEnrichedMetadata } from '../utils/watchlistUtils';
-import { determineShowStatus } from '../utils/watchlistLogic';
+import { pruneMetadata, determineShowStatus, getEnrichedMetadata } from '../../../lib/watchlist-shared';
 import { tmdb, type TMDBMedia } from '../../../lib/tmdb';
 import type { WatchlistItem, WatchStatus } from '../../../types';
 
@@ -32,7 +31,7 @@ export function useWatchlistMutations() {
             if (!user) {
                 // Local
                 const local = JSON.parse(localStorage.getItem('watchlist') || '[]');
-                const updated = local.map((item: any) =>
+                const updated = local.map((item: WatchlistItem) =>
                     (item.tmdb_id === tmdbId && item.type === type) ? { ...item, ...updates } : item
                 );
                 localStorage.setItem('watchlist', JSON.stringify(updated));
@@ -54,8 +53,8 @@ export function useWatchlistMutations() {
     };
 
     // --- RECALCULATE STATUS LOGIC ---
-    const recalculateShowStatus = async (tmdbId: number, lastWatchedSeason: number, currentMeta: any, progress: number = 0) => {
-        const newStatus = determineShowStatus(currentMeta, lastWatchedSeason, progress);
+    const recalculateShowStatus = async (tmdbId: number, lastWatchedSeason: number, currentMeta: TMDBMedia | undefined, progress: number = 0) => {
+        const newStatus = determineShowStatus(currentMeta as TMDBMedia, lastWatchedSeason, progress);
         await mutateItem(tmdbId, 'show', { status: newStatus }, (item) => ({ ...item, status: newStatus }));
     };
 
@@ -83,7 +82,7 @@ export function useWatchlistMutations() {
             const { initialStatus, finalMetadata } = await getEnrichedMetadata(media.id, type, region, media);
             const prunedMetadata = pruneMetadata(finalMetadata, region);
 
-            const itemData: any = {
+            const itemData: Partial<WatchlistItem> = {
                 tmdb_id: media.id,
                 type: type,
                 title: media.title || media.name || 'Unknown',
@@ -98,7 +97,7 @@ export function useWatchlistMutations() {
                 const local = JSON.parse(localStorage.getItem('watchlist') || '[]');
                 const tempId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `local-${Date.now()}`;
                 const finalItem = { ...itemData, id: tempId, user_id: 'local-user' };
-                const cleaned = local.filter((item: any) => !(item.tmdb_id == media.id && item.type === type));
+                const cleaned = (local as WatchlistItem[]).filter(item => !(item.tmdb_id == media.id && item.type === type));
                 const updated = [finalItem, ...cleaned];
                 localStorage.setItem('watchlist', JSON.stringify(updated));
                 return finalItem;
@@ -129,7 +128,7 @@ export function useWatchlistMutations() {
         mutationFn: async ({ tmdbId, type }: { tmdbId: number; type: 'movie' | 'show' }) => {
             if (!user) {
                 const local = JSON.parse(localStorage.getItem('watchlist') || '[]');
-                const updated = local.filter((item: any) => !(item.tmdb_id == tmdbId && item.type === type));
+                const updated = (local as WatchlistItem[]).filter(item => !(item.tmdb_id == tmdbId && item.type === type));
                 localStorage.setItem('watchlist', JSON.stringify(updated));
                 return;
             }
@@ -151,7 +150,7 @@ export function useWatchlistMutations() {
     });
 
     const updateMetadata = useMutation({
-        mutationFn: async ({ tmdbId, type, metadata }: { tmdbId: number; type: 'movie' | 'show', metadata: any }) => {
+        mutationFn: async ({ tmdbId, type, metadata }: { tmdbId: number; type: 'movie' | 'show', metadata: TMDBMedia }) => {
             const pruned = pruneMetadata(metadata, region);
             await mutateItem(tmdbId, type, { metadata: pruned }, (item) => ({ ...item, metadata: pruned }));
         }
@@ -165,17 +164,18 @@ export function useWatchlistMutations() {
                 let seasons = item?.metadata?.seasons;
 
                 if (!seasons) {
-                    try {
+                        try {
                         const details = await tmdb.getDetails(tmdbId, 'tv');
                         seasons = details.seasons || [];
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
                     } catch (e) { seasons = []; }
                 }
 
                 const todayStr = new Date().toISOString().split('T')[0];
-                const released = (seasons || []).filter((s: any) => s.season_number > 0 && s.air_date && s.air_date <= todayStr);
+                const released = (seasons || []).filter(s => s.season_number > 0 && s.air_date && s.air_date <= todayStr);
                 const maxSeason = released.length > 0 ? released[released.length - 1].season_number : 0;
 
-                const newMeta = { ...(item?.metadata || {}), last_watched_season: maxSeason, seasons };
+                const newMeta = { ...(item?.metadata || {}), last_watched_season: maxSeason, seasons } as TMDBMedia;
                 const pruned = pruneMetadata(newMeta, region);
 
                 // Update Metadata & Last Watched Season combined
@@ -196,7 +196,7 @@ export function useWatchlistMutations() {
                 // Reset season progress
                 const list = getList();
                 const item = list.find(i => i.tmdb_id === tmdbId && i.type === 'show');
-                const newMeta = { ...(item?.metadata || {}), last_watched_season: 0 };
+                const newMeta = { ...(item?.metadata || {}), last_watched_season: 0 } as TMDBMedia;
                 const pruned = pruneMetadata(newMeta, region);
 
                 await mutateItem(tmdbId, 'show', { last_watched_season: 0, metadata: pruned }, (i) => ({ ...i, last_watched_season: 0, metadata: pruned }));
@@ -212,7 +212,7 @@ export function useWatchlistMutations() {
             const list = getList();
             const item = list.find(i => i.tmdb_id === tmdbId && i.type === 'show');
             
-            const newMeta = { ...(item?.metadata || {}), last_watched_season: seasonNumber };
+            const newMeta = { ...(item?.metadata || {}), last_watched_season: seasonNumber } as TMDBMedia;
             const pruned = pruneMetadata(newMeta, region);
 
             await mutateItem(tmdbId, 'show', { last_watched_season: seasonNumber, progress: 0, metadata: pruned }, (i) => ({ ...i, last_watched_season: seasonNumber, progress: 0, metadata: pruned }));
@@ -225,7 +225,7 @@ export function useWatchlistMutations() {
             const newLastWatched = Math.max(0, seasonNumber - 1);
             const list = getList();
             const item = list.find(i => i.tmdb_id === tmdbId && i.type === 'show');
-            const newMeta = { ...(item?.metadata || {}), last_watched_season: newLastWatched };
+            const newMeta = { ...(item?.metadata || {}), last_watched_season: newLastWatched } as TMDBMedia;
             const pruned = pruneMetadata(newMeta, region);
 
             await mutateItem(tmdbId, 'show', { last_watched_season: newLastWatched, metadata: pruned }, (i) => ({ ...i, last_watched_season: newLastWatched, metadata: pruned }));
@@ -238,7 +238,7 @@ export function useWatchlistMutations() {
             const targetStatus = type === 'movie' ? 'movie_unwatched' : 'show_new';
             const list = getList();
             const item = list.find(i => i.tmdb_id === tmdbId && i.type === type);
-            const newMeta = { ...(item?.metadata || {}), moved_to_library: true };
+            const newMeta = { ...(item?.metadata || {}), moved_to_library: true } as TMDBMedia;
             const pruned = pruneMetadata(newMeta, region);
 
             await mutateItem(tmdbId, type, { status: targetStatus, metadata: pruned }, (i) => ({ ...i, status: targetStatus, metadata: pruned }));
@@ -270,7 +270,7 @@ export function useWatchlistMutations() {
         mutationFn: async ({ tmdbId, type }: { tmdbId: number; type: 'movie' | 'show' }) => {
             const list = getList();
             const item = list.find(i => i.tmdb_id === tmdbId && i.type === type);
-            const newMeta = { ...(item?.metadata || {}), dismissed_from_upcoming: true };
+            const newMeta = { ...(item?.metadata || {}), dismissed_from_upcoming: true } as TMDBMedia;
             const pruned = pruneMetadata(newMeta, region);
             await mutateItem(tmdbId, type, { metadata: pruned }, (i) => ({ ...i, metadata: pruned }));
         }
@@ -280,14 +280,14 @@ export function useWatchlistMutations() {
         mutationFn: async ({ tmdbId, type }: { tmdbId: number; type: 'movie' | 'show' }) => {
             const list = getList();
             const item = list.find(i => i.tmdb_id === tmdbId && i.type === type);
-            const newMeta = { ...(item?.metadata || {}), dismissed_from_upcoming: false };
+            const newMeta = { ...(item?.metadata || {}), dismissed_from_upcoming: false } as TMDBMedia;
             const pruned = pruneMetadata(newMeta, region);
             await mutateItem(tmdbId, type, { metadata: pruned }, (i) => ({ ...i, metadata: pruned }));
         }
     });
 
     const refreshMetadata = useMutation({
-        mutationFn: async ({ tmdbId, type, overrideMetadata }: { tmdbId: number; type: 'movie' | 'show'; overrideMetadata?: any }) => {
+        mutationFn: async ({ tmdbId, type, overrideMetadata }: { tmdbId: number; type: 'movie' | 'show'; overrideMetadata?: TMDBMedia }) => {
             const list = getList();
             const item = list.find(i => i.tmdb_id === tmdbId && i.type === 'show');
             if (!item) return;
@@ -319,7 +319,7 @@ export function useWatchlistMutations() {
             if (item?.metadata) {
                 const currentSeasonNum = (item.last_watched_season || 0) + 1;
                 const seasons = item.metadata.seasons || [];
-                const currentSeason = seasons.find((s: any) => s.season_number === currentSeasonNum);
+                const currentSeason = seasons.find(s => s.season_number === currentSeasonNum);
                 
                 if (currentSeason && currentSeason.episode_count) {
                     if (progress >= currentSeason.episode_count) {

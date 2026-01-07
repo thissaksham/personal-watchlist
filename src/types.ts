@@ -35,7 +35,7 @@ export interface Game {
     franchise_id?: string; // Link to a franchise
     release_date?: string;
     genres?: string[];
-    franchise_data?: any[]; // Store series/related game IDs
+    franchise_data?: { id: number; title: string }[]; // Store series/related game IDs
     created_at?: string;
     updated_at?: string;
     user_id?: string;

@@ -93,9 +93,10 @@ export default function Login() {
                 navigate('/');
             }
 
-        } catch (err: any) {
+        } catch (err) {
             console.error("Auth Error:", err);
-            setError(err.message || "Authentication failed");
+            const message = err instanceof Error ? err.message : "Authentication failed";
+            setError(message);
         } finally {
             setLoading(false);
         }

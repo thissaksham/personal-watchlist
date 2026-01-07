@@ -82,9 +82,9 @@ export const WatchlistCard = ({
         // Fallback search
         if (!nextEpDate && media.seasons && Array.isArray(media.seasons)) {
             const today = getTodayValues();
-            const futureSeason = media.seasons.find((s: any) => s.air_date && parseDate(s.air_date)! >= today);
+            const futureSeason = media.seasons.find((s) => s.air_date && parseDate(s.air_date)! >= today);
             if (futureSeason) {
-                nextEpDate = futureSeason.air_date;
+                nextEpDate = futureSeason.air_date || undefined;
                 seasonNumber = futureSeason.season_number;
                 episodeNumber = 1;
             }
@@ -95,6 +95,7 @@ export const WatchlistCard = ({
 
         const isEnded = media.status === 'Ended' || media.status === 'Canceled';
         const lastSeasonNumber = media.number_of_seasons || 0;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const currentSeason = media.seasons?.find((s: any) => s.season_number === seasonNumber);
         const isLastEpisodeOfSeason = currentSeason && episodeNumber && episodeNumber === currentSeason.episode_count;
         const isLastSeason = seasonNumber && seasonNumber === lastSeasonNumber;
@@ -132,9 +133,9 @@ export const WatchlistCard = ({
 
         // If we have detailed seasons, filter out future ones FIRST for "Remaining" logic
         if (media.seasons && Array.isArray(media.seasons)) {
-            const releasedSeasons = media.seasons.filter((s: any) => {
+            const releasedSeasons = media.seasons.filter((s) => {
                 if (s.season_number === 0) return false;
-                return isReleased(s.air_date);
+                return isReleased(s.air_date || undefined);
             });
 
             if (releasedSeasons.length > 0) {
@@ -153,11 +154,11 @@ export const WatchlistCard = ({
         let remainingEpisodes = totalEpisodes;
 
         if (media.seasons && Array.isArray(media.seasons)) {
-            const remainingEpsCount = media.seasons.reduce((acc: number, season: any) => {
+            const remainingEpsCount = media.seasons.reduce((acc: number, season) => {
                 if (season.season_number > 0 && season.season_number > lastWatched) {
                     let count = season.episode_count || 0;
 
-                    if (isReleased(season.air_date) === false) return acc;
+                    if (isReleased(season.air_date || undefined) === false) return acc;
 
                     if (media.next_episode_to_air) {
                         const nextSeason = media.next_episode_to_air.season_number;
@@ -305,7 +306,7 @@ export const WatchlistCard = ({
                 </div>
 
                 <div className="card-actions-stack">
-                    {(type === 'tv' && (media as any).dismissed_from_upcoming && onRestoreToUpcoming) && (
+                    {(type === 'tv' && media.dismissed_from_upcoming && onRestoreToUpcoming) && (
                         <button
                             className="add-btn bg-white/10 hover:bg-blue-500/80 text-white"
                             onClick={(e) => { e.stopPropagation(); onRestoreToUpcoming(media); }}

@@ -13,19 +13,20 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
     // Initialize from LocalStorage
     const [region, setRegionState] = useState(localStorage.getItem('tmdb_region') || 'IN');
 
-    // Sync with User Profile on Login
-    useEffect(() => {
-        if (user?.user_metadata?.region && user.user_metadata.region !== region) {
-            console.log(`[Preferences] Syncing region from user profile: ${user.user_metadata.region}`);
-            updateRegion(user.user_metadata.region);
-        }
-    }, [user]);
-
     const updateRegion = (newRegion: string) => {
         setRegionState(newRegion);
         localStorage.setItem('tmdb_region', newRegion);
         console.log(`[Preferences] Region updated to: ${newRegion}`);
     };
+
+    // Sync with User Profile on Login
+    useEffect(() => {
+        if (user?.user_metadata?.region && user.user_metadata.region !== region) {
+            console.log(`[Preferences] Syncing region from user profile: ${user.user_metadata.region}`);
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            updateRegion(user.user_metadata.region);
+        }
+    }, [user, region]);
 
     const value = {
         region,
@@ -35,6 +36,7 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
     return <PreferencesContext.Provider value={value}>{children}</PreferencesContext.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const usePreferences = () => {
     const context = useContext(PreferencesContext);
     if (context === undefined) {

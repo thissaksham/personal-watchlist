@@ -11,7 +11,7 @@ import {
 
 interface CommonModalHeroProps {
     media: TMDBMedia;
-    details: any;
+    details: TMDBMedia | null | undefined;
     title: string;
     year: string | null | undefined;
     runtime?: number;

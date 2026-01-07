@@ -1,4 +1,4 @@
-import { useRef, useState, useLayoutEffect } from 'react';
+import { useRef, useState, useLayoutEffect, useCallback } from 'react';
 import styles from './SmartPillButton.module.css';
 
 interface SmartPillButtonProps {
@@ -7,6 +7,21 @@ interface SmartPillButtonProps {
     onViewModeChange: (mode: string) => void;
     onSeriesStatusChange: (status: string) => void;
 }
+
+// Static components moved outside to avoid recreating on each render
+const ContentFinished = () => (
+    <>
+        <span>Finished</span>
+        <span className={styles['sub-text']}>on-going</span>
+    </>
+);
+
+const ContentOngoing = () => (
+    <>
+        <span className={styles['sub-text']}>finished</span>
+        <span>On-going</span>
+    </>
+);
 
 export const SmartPillButton = ({
     viewMode,
@@ -22,20 +37,20 @@ export const SmartPillButton = ({
 
     const activeIndex = slots.indexOf(viewMode);
 
-    const updateHighlight = () => {
+    const updateHighlight = useCallback(() => {
         if (activeIndex !== -1 && optionRefs.current[activeIndex]) {
             const element = optionRefs.current[activeIndex]!;
             const width = element.offsetWidth;
             const left = element.offsetLeft;
             setHighlightStyle({ width: `${width}px`, left: `${left}px` });
         }
-    };
+    }, [activeIndex]);
 
     useLayoutEffect(() => {
         updateHighlight();
         window.addEventListener('resize', updateHighlight);
         return () => window.removeEventListener('resize', updateHighlight);
-    }, [activeIndex, seriesStatus]);
+    }, [activeIndex, seriesStatus, updateHighlight]);
 
     const handleClick = (index: number) => {
         const selectedSlot = slots[index];
@@ -51,21 +66,6 @@ export const SmartPillButton = ({
             onViewModeChange(selectedSlot);
         }
     };
-
-    // Helper components for the content states
-    const ContentFinished = () => (
-        <>
-            <span>Finished</span>
-            <span className={styles['sub-text']}>on-going</span>
-        </>
-    );
-
-    const ContentOngoing = () => (
-        <>
-            <span className={styles['sub-text']}>finished</span>
-            <span>On-going</span>
-        </>
-    );
 
     return (
         <div className={styles['pill-button']}>

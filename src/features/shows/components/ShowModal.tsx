@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Layers, Hash, Hourglass } from 'lucide-react';
-import { type TMDBMedia } from '../../../lib/tmdb';
+import { type TMDBMedia, type Video } from '../../../lib/tmdb';
 import { useMediaDetails } from '../../media/hooks/useTMDB';
 import { useWatchlist } from '../../watchlist/context/WatchlistContext';
 import { usePreferences } from '../../../context/PreferencesContext';
@@ -36,7 +36,7 @@ export const ShowModal = ({ media, onClose }: ShowModalProps) => {
     const watchLink = getWatchLink(media, details, region);
 
     const trailer = details?.videos?.results?.find(
-        (v: any) => v.site === 'YouTube' && (v.type === 'Trailer' || v.type === 'Teaser')
+        (v: Video) => v.site === 'YouTube' && (v.type === 'Trailer' || v.type === 'Teaser')
     );
     const trailerKey = trailer?.key;
 
@@ -45,8 +45,8 @@ export const ShowModal = ({ media, onClose }: ShowModalProps) => {
     const extraTags = (
         <>
             {showStats?.bingeTime && <span className="tag theme-teal"><Hourglass size={14} /> {showStats.bingeTime}</span>}
-            {((showStats as any)?.seasons || 0) > 0 && <span className="tag"><Layers size={14} /> {(showStats as any).seasons} Seasons</span>}
-            {((showStats as any)?.episodes || 0) > 0 && <span className="tag"><Hash size={14} /> {(showStats as any).episodes} Episodes</span>}
+            {(showStats && showStats.seasons > 0) && <span className="tag"><Layers size={14} /> {showStats.seasons} Seasons</span>}
+            {(showStats && showStats.episodes > 0) && <span className="tag"><Hash size={14} /> {showStats.episodes} Episodes</span>}
         </>
     );
 
@@ -73,9 +73,8 @@ export const ShowModal = ({ media, onClose }: ShowModalProps) => {
 
                 <div className="modal-body">
                     <div className="modal-col-main">
-                        {/* Seasons Grid (Interactive if Added) */}
-                        {/* SKELETON LOADER - Only show if loading AND no data available yet */}
-                        {isLoading && !(media as any).seasons && !(details as any)?.seasons && (
+                        {/* Real Data */}
+                        {isLoading && !media.seasons && !details && (
                             <div className="seasons-section mb-8 animate-pulse">
                                 <div className="section-label mb-3">Seasons</div>
                                 <div className="seasons-grid">
@@ -99,7 +98,7 @@ export const ShowModal = ({ media, onClose }: ShowModalProps) => {
                             <div className="seasons-section mb-8">
                                 <div className="section-label">Seasons</div>
                                 <div className="seasons-grid" onMouseLeave={() => setHoveredSeason(null)}>
-                                    {(details?.seasons || media.seasons).filter((s: any) => s.season_number > 0).map((season: any) => {
+                                    {(details?.seasons || media.seasons)?.filter(s => s.season_number > 0).map(season => {
                                         const seasonNum = Number(season.season_number);
 
                                         // Future Season Logic
@@ -117,8 +116,8 @@ export const ShowModal = ({ media, onClose }: ShowModalProps) => {
                                             isFuture = true;
                                         }
 
-                                        const nextEp = (details?.next_episode_to_air || (media as any).next_episode_to_air);
-                                        const lastEp = (details?.last_episode_to_air || (media as any).last_episode_to_air);
+                                        const nextEp = details?.next_episode_to_air || media.next_episode_to_air;
+                                        const lastEp = details?.last_episode_to_air || media.last_episode_to_air;
 
                                         // A season is "Ongoing" if it's the next to air, OR if it's the last to air and show isn't finished
                                         // Prioritize next aired for the label to avoid multiple "ONGOING" tags

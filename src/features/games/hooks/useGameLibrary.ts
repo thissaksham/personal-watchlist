@@ -42,7 +42,7 @@ export const useGameLibrary = () => {
 
             // Fetch Series Data from RAWG
             const RAWG_API_KEY = import.meta.env.VITE_RAWG_API_KEY;
-            let franchiseData: any[] = [];
+            let franchiseData: { id: number; name: string; slug: string; released: string; background_image: string }[] = [];
             
             try {
                 if (rawgId && RAWG_API_KEY) {
@@ -50,6 +50,7 @@ export const useGameLibrary = () => {
                         params: { key: RAWG_API_KEY, page_size: 20 }
                     });
                     if (seriesData && seriesData.results) {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         franchiseData = seriesData.results.map((g: any) => ({
                             id: g.id,
                             name: g.name,

@@ -6,6 +6,7 @@ import { usePreferences } from '../context/PreferencesContext';
 import { WatchlistCard } from '../features/media/components/cards/WatchlistCard';
 import { MovieModal } from '../features/movies/components/MovieModal';
 import { ShowModal } from '../features/shows/components/ShowModal';
+import type { WatchlistItem } from '../types';
 
 import { FAB } from '../components/FAB';
 import { FilterBar, FilterExpandable } from '../components/FilterBar';
@@ -78,7 +79,8 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
                 }
             }
         }
-    }, [basePath, params.status, tmdbType, navigate]); // Added dependencies
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [basePath, params.status, tmdbType, navigate]); // viewMode omitted intentionally to avoid loop
 
     const handleViewModeChange = (opt: string) => {
         if (basePath) {
@@ -138,7 +140,7 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
     }, [isSortOpen]);
 
     // Helper to determine Show status based on V3 logic
-    const getShowStatus = (item: any): 'Unwatched' | 'Watching' | 'Watched' | 'Upcoming' => {
+    const getShowStatus = (item: WatchlistItem): 'Unwatched' | 'Watching' | 'Watched' | 'Upcoming' => {
         const s = item.status;
         if (s === 'show_watched' || s === 'show_returning' || s === 'movie_watched') return 'Watched'; // Include movie_watched just in case
         if (s === 'show_watching') return 'Watching';
@@ -162,12 +164,12 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
             // Normal View Mode Logic (No Search)
             // Handle Dropped View explicitly first
             if (viewMode === 'Dropped') {
-                if (tmdbType === 'tv') return (item as any).status === 'show_dropped';
-                return (item as any).status === 'movie_dropped';
+                if (tmdbType === 'tv') return item.status === 'show_dropped';
+                return item.status === 'movie_dropped';
             }
 
             // For all other views, explicitly EXCLUDE dropped items
-            if ((item as any).status === 'show_dropped' || (item as any).status === 'movie_dropped') return false;
+            if (item.status === 'show_dropped' || item.status === 'movie_dropped') return false;
 
             // Logic for Shows (Derived)
             if (tmdbType === 'tv') {
@@ -195,12 +197,13 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
             poster_path: item.poster_path,
             vote_average: item.vote_average,
             status: item.status, // PASS STATUS FOR VISUAL FILTERS
-            tmdb_status: (item.metadata as any)?.status // Preserve TMDB status for logic
+            tmdb_status: (item.metadata as TMDBMedia)?.status // Preserve TMDB status for logic
         } as TMDBMedia)), [watchlist, watchlistType, tmdbType, searchTerm, viewMode]);
 
     // Extract unique providers sorted by popularity
     const allProviders = useMemo(() => {
-        const providers = new Map<number, { id: number; name: string; logo?: string; count: number }>();
+        interface Provider { id: number; name: string; logo?: string; count: number; merged_ids?: number[] }
+        const providers = new Map<number, Provider>();
         let hasNoProvider = false;
 
         // Context-Aware Filter: Valid providers should only come from items VISIBLE in the current tab context
@@ -233,7 +236,7 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
             } else {
                 // Use a Set to ensure we only count a provider once *per media item*
                 const uniqueMediaProviders = new Set<number>();
-                available.forEach((p: any) => {
+                available.forEach(p => {
                     uniqueMediaProviders.add(p.provider_id);
                     if (!providers.has(p.provider_id)) {
                         const logoUrl = p.logo_path ? `https://image.tmdb.org/t/p/original${p.logo_path}` : undefined;
@@ -298,7 +301,7 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
                     name: group.some(p => p.name === normalName) ? normalName : main.name, // Use pretty name if available
                     count: totalCount,
                     merged_ids: group.map(p => p.id)
-                } as any);
+                });
             }
         });
 
@@ -348,14 +351,14 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
 
             // Find the selected provider object from our smart list
             // We use 'allProviders' here which is defined above.
-            const selectedProviderObj = allProviders.find((p: any) => p.id === filterProvider) as any;
+            const selectedProviderObj = allProviders.find(p => p.id === filterProvider);
 
-            if (selectedProviderObj && selectedProviderObj.merged_ids) {
+            if (selectedProviderObj && 'merged_ids' in selectedProviderObj && selectedProviderObj.merged_ids) {
                 // If it's a merged group, match ANY of the IDs
-                return available.some((p: any) => selectedProviderObj.merged_ids.includes(p.provider_id));
+                return available.some(p => (selectedProviderObj.merged_ids as number[]).includes(p.provider_id));
             } else {
                 // Std match
-                return available.some((p: any) => p.provider_id === filterProvider);
+                return available.some(p => p.provider_id === filterProvider);
             }
         }
 
@@ -368,10 +371,10 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
             switch (sortOption) {
                 case 'rating':
                     return (b.vote_average || 0) - (a.vote_average || 0);
-                case 'release_date':
+                case 'release_date': {
                     // Special Logic for 'Watching' TV Shows: Sort by Next Episode Date (Pill Date)
                     if (tmdbType === 'tv' && viewMode === 'Watching') {
-                        const getDate = (m: any) => {
+                        const getDate = (m: TMDBMedia) => {
                             if (m.next_episode_to_air?.air_date) return new Date(m.next_episode_to_air.air_date).getTime();
                             if (m.last_episode_to_air?.air_date) return new Date(m.last_episode_to_air.air_date).getTime();
                             return new Date(m.first_air_date || 0).getTime();
@@ -382,6 +385,7 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
                     const dateA = new Date(a.release_date || a.first_air_date || 0).getTime();
                     const dateB = new Date(b.release_date || b.first_air_date || 0).getTime();
                     return dateB - dateA; // Newest first
+                }
                 case 'runtime':
                     return calculateMediaRuntime(a) - calculateMediaRuntime(b); // Shortest first
                 case 'random':
@@ -392,7 +396,7 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
                     return 0; // Default order
             }
         });
-    }, [filteredLibrary, sortOption]);
+    }, [filteredLibrary, sortOption, tmdbType, viewMode]);
 
     // Apply Random Shuffle if selected
     // Note: We use a separate memo or effect if we want to avoid re-shuffling on every render, 
@@ -418,12 +422,12 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
 
             // Handle Dropped View explicitly first
             if (viewMode === 'Dropped') {
-                if (tmdbType === 'tv') return (item as any).status === 'show_dropped';
-                return (item as any).status === 'movie_dropped';
+                if (tmdbType === 'tv') return item.status === 'show_dropped';
+                return item.status === 'movie_dropped';
             }
 
             // For all other views, explicitly EXCLUDE dropped items
-            if ((item as any).status === 'show_dropped' || (item as any).status === 'movie_dropped') return false;
+            if (item.status === 'show_dropped' || item.status === 'movie_dropped') return false;
 
             // Strict Status Matching to match ViewMode
             if (tmdbType === 'tv') {
@@ -432,7 +436,7 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
 
                 // Extra check for Unwatched (Finished vs Ongoing filter)
                 if (viewMode === 'Unwatched') {
-                    const metadata = (item.metadata || {}) as any;
+                    const metadata = (item.metadata || {}) as TMDBMedia;
                     const tStatus = metadata.status || ''; // TMDB status
                     const isFinished = tStatus === 'Ended' || tStatus === 'Canceled';
 
@@ -529,7 +533,7 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
                                         <button
                                             key={opt.id}
                                             onClick={() => {
-                                                setSortOption(opt.id as any);
+                                                setSortOption(opt.id as 'date_added' | 'rating' | 'release_date' | 'runtime' | 'random');
                                                 setIsSortOpen(false);
                                             }}
                                             style={{
@@ -597,8 +601,8 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
                     <FilterExpandable
                         label="OTT"
                         value={filterProvider}
-                        onChange={(val: any) => setFilterProvider(val)}
-                        options={allProviders.map((p: any) => ({
+                        onChange={(val: number | null) => setFilterProvider(val)}
+                        options={allProviders.map(p => ({
                             id: p.id,
                             label: p.name,
                             image: p.logo || undefined // Pass logo path

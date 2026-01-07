@@ -9,7 +9,7 @@ interface AuthContextType {
     loading: boolean;
     signOut: () => Promise<void>;
     deleteAccount: () => Promise<void>;
-    changePassword: (password: string) => Promise<{ error: any }>;
+    changePassword: (password: string) => Promise<{ error: Error | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -50,9 +50,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 }
 
 
-            } catch (err: any) {
+            } catch (err: unknown) {
                 console.error("Auth Init Error:", err);
-                setError(err.message || "Unknown Auth Error");
+                setError(err instanceof Error ? err.message : "Unknown Auth Error");
             } finally {
                 setLoading(false);
             }
@@ -73,13 +73,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         return () => subscription.unsubscribe();
     }, []);
-
-    if (error) {
-        return <div style={{ color: 'red', padding: 20, border: '1px solid red' }}>
-            <h3>Auth Context Error:</h3>
-            <pre>{error}</pre>
-        </div>;
-    }
 
     const signOut = async () => {
         await supabase.auth.signOut();
@@ -122,11 +115,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signOut,
         deleteAccount,
         changePassword,
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }), [user, session, loading]);
+
+    if (error) {
+        return <div style={{ color: 'red', padding: 20, border: '1px solid red' }}>
+            <h3>Auth Context Error:</h3>
+            <pre>{error}</pre>
+        </div>;
+    }
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => {
     const context = useContext(AuthContext);
     if (context === undefined) {

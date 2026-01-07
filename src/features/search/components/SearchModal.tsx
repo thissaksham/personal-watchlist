@@ -23,6 +23,18 @@ interface SearchModalProps {
 export const SearchModal = ({ isOpen, onClose, type: initialType, onSuccess, initialQuery = '' }: SearchModalProps) => {
     const [query, setQuery] = useState(initialQuery);
     const [searchType, setSearchType] = useState<'multi' | 'movie' | 'tv' | 'game'>(initialType === 'multi' ? 'movie' : initialType);
+    const prevIsOpenRef = useRef(isOpen);
+
+    // Reset state when modal opens - using effect with ref tracking
+    useEffect(() => {
+        // Only reset when transitioning from closed to open
+        if (isOpen && !prevIsOpenRef.current) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setQuery(initialQuery);
+            setSearchType(initialType === 'multi' ? 'movie' : initialType);
+        }
+        prevIsOpenRef.current = isOpen;
+    }, [isOpen, initialQuery, initialType]);
 
     // Debounce query to prevent excessive API calls
     const debouncedQuery = useDebounce(query, 300);
@@ -55,16 +67,6 @@ export const SearchModal = ({ isOpen, onClose, type: initialType, onSuccess, ini
         : (data?.pages.flatMap(p => p.results as TMDBMedia[]) || []);
 
     const { addToWatchlist, isInWatchlist } = useWatchlist();
-
-    // Reset state on open
-    useEffect(() => {
-        if (isOpen) {
-            setQuery(initialQuery);
-            // Default to Movie if 'multi' was passed, or stick to provided type
-            setSearchType(initialType === 'multi' ? 'movie' : initialType);
-
-        }
-    }, [isOpen, initialType, initialQuery]);
 
     // Body scroll lock
     useEffect(() => {
@@ -125,15 +127,19 @@ export const SearchModal = ({ isOpen, onClose, type: initialType, onSuccess, ini
     if (!isOpen) return null;
 
     const displayResults = query.trim() ? results : [];
-    const itemsToShow = displayResults.filter((item: any) => {
+    const itemsToShow = displayResults.filter((item: TMDBMedia | Game) => {
         // Relaxed Filter: Allow items without a date or poster
         // DiscoveryCard handles missing posters with a placeholder.
 
         // Filter by media_type if searchType is not 'multi' (and not 'game')
         if (searchType !== 'multi' && searchType !== 'game') {
-            // If media_type is missing, assume it matches searchType for specific categories
-            const itemMediaType = item.media_type || searchType;
-            return itemMediaType === searchType;
+            // Check if it's a TMDBMedia object
+            if ('media_type' in item || 'first_air_date' in item || 'release_date' in item) {
+                const tmdbItem = item as TMDBMedia;
+                // If media_type is missing, assume it matches searchType for specific categories
+                const itemMediaType = tmdbItem.media_type || searchType;
+                return itemMediaType === searchType;
+            }
         }
         return true;
     });

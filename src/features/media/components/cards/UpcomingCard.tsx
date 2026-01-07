@@ -42,6 +42,7 @@ export const UpcomingCard = ({
 
         // Filter out future seasons for "Released" stats
         if (seasonsList && Array.isArray(seasonsList)) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const releasedSeasons = seasonsList.filter((s: any) => {
                 if (s.season_number === 0) return false;
                 return isReleased(s.air_date); // strict check
@@ -49,6 +50,7 @@ export const UpcomingCard = ({
 
             if (releasedSeasons.length > 0) {
                 totalSeasons = releasedSeasons.length;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 totalEpisodes = releasedSeasons.reduce((acc: number, s: any) => acc + (s.episode_count || 0), 0);
                 seasonsList = releasedSeasons;
             }
@@ -63,6 +65,7 @@ export const UpcomingCard = ({
 
         let remainingEpisodes = totalEpisodes;
         if (seasonsList && Array.isArray(seasonsList)) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             remainingEpisodes = seasonsList.reduce((acc: number, season: any) => {
                 if (season.season_number > 0 && season.season_number > lastWatched) {
                     let count = season.episode_count || 0;
@@ -185,6 +188,7 @@ export const UpcomingCard = ({
         // Fallback to searching seasons if next_episode_to_air is missing but we have season data
         if (!nextEpDate && media.seasons && Array.isArray(media.seasons)) {
             const today = getTodayValues(); // from dateUtils
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const futureSeason = media.seasons.find((s: any) => s.air_date && parseDate(s.air_date)! >= today);
             if (futureSeason) {
                 nextEpDate = futureSeason.air_date;
@@ -205,6 +209,7 @@ export const UpcomingCard = ({
 
         const isEnded = media.status === 'Ended' || media.status === 'Canceled';
         const lastSeasonNumber = media.number_of_seasons || 0;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const currentSeason = media.seasons?.find((s: any) => s.season_number === seasonNumber);
         const isLastEpisodeOfSeason = currentSeason && episodeNumber && episodeNumber === currentSeason.episode_count;
         const isLastSeason = seasonNumber && seasonNumber === lastSeasonNumber;

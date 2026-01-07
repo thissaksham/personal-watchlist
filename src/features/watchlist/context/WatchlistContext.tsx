@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useWatchlistData } from '../hooks/useWatchlistData';
 import { useWatchlistMutations } from '../hooks/useWatchlistMutations';
 import type { WatchlistItem, WatchStatus } from '../../../types';
@@ -18,9 +18,9 @@ interface WatchlistContextType {
     markSeasonUnwatched: (tmdbId: number, seasonNumber: number) => Promise<void>;
     dismissFromUpcoming: (tmdbId: number, type: 'movie' | 'show') => Promise<void>;
     restoreToUpcoming: (tmdbId: number, type: 'movie' | 'show') => Promise<void>;
-    updateWatchlistItemMetadata: (tmdbId: number, type: 'movie' | 'show', newMetadata: any) => Promise<void>;
+    updateWatchlistItemMetadata: (tmdbId: number, type: 'movie' | 'show', newMetadata: TMDBMedia) => Promise<void>;
     updateStatus: (tmdbId: number, type: 'movie' | 'show', newStatus: WatchStatus) => Promise<void>;
-    refreshMetadata: (tmdbId: number, type: 'movie' | 'show', overrideMetadata?: any) => Promise<void>;
+    refreshMetadata: (tmdbId: number, type: 'movie' | 'show', overrideMetadata?: TMDBMedia) => Promise<void>;
     markAsDropped: (tmdbId: number, type: 'movie' | 'show') => Promise<void>;
     restoreFromDropped: (tmdbId: number, type: 'movie' | 'show') => Promise<void>;
     refreshAllMetadata: () => Promise<void>;
@@ -34,11 +34,11 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
     const mutations = useWatchlistMutations();
     const [isGlobalRefreshing, setIsGlobalRefreshing] = useState(false);
 
-    const isInWatchlist = (tmdbId: number, type: 'movie' | 'show') => {
+    const isInWatchlist = useCallback((tmdbId: number, type: 'movie' | 'show') => {
         return watchlist.some((item) => item.tmdb_id == tmdbId && item.type === type);
-    };
+    }, [watchlist]);
 
-    const refreshAllMetadata = async () => {
+    const refreshAllMetadata = useCallback(async () => {
         setIsGlobalRefreshing(true);
         try {
             console.log(`Starting global refresh for ${watchlist.length} items...`);
@@ -54,7 +54,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
         } finally {
             setIsGlobalRefreshing(false);
         }
-    };
+    }, [watchlist, mutations]);
 
     // --- SYSTEMIC HEALTH CHECK (Auto-Repair) ---
     useEffect(() => {
@@ -64,12 +64,13 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
             }, 2000);
             return () => clearTimeout(timer);
         }
-    }, [isLoading]); // Run once when loading finishes (technically whenever loading toggles, but harmless)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isLoading, watchlist.length]); // performHealthCheck is stable
 
     const performHealthCheck = async () => {
         console.log('🏥 Performing Global Health Check...');
         const sickItems = watchlist.filter(item => {
-            const meta = (item.metadata || {}) as any;
+            const meta = (item.metadata || {}) as TMDBMedia;
             if (item.type === 'show') {
                 const hasNext = !!meta.next_episode_to_air;
                 const hasLast = !!meta.last_episode_to_air;
@@ -109,13 +110,13 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
         markSeasonUnwatched: (tmdbId: number, seasonNumber: number) => mutations.markSeasonUnwatched({ tmdbId, seasonNumber }),
         dismissFromUpcoming: (tmdbId: number, type: 'movie' | 'show') => mutations.dismissFromUpcoming({ tmdbId, type }),
         restoreToUpcoming: (tmdbId: number, type: 'movie' | 'show') => mutations.restoreToUpcoming({ tmdbId, type }),
-        updateWatchlistItemMetadata: (tmdbId: number, type: 'movie' | 'show', newMetadata: any) => mutations.updateMetadata({ tmdbId, type, metadata: newMetadata }),
+        updateWatchlistItemMetadata: (tmdbId: number, type: 'movie' | 'show', newMetadata: TMDBMedia) => mutations.updateMetadata({ tmdbId, type, metadata: newMetadata }),
         updateStatus: (tmdbId: number, type: 'movie' | 'show', newStatus: WatchStatus) => mutations.updateStatus({ tmdbId, type, status: newStatus }),
-        refreshMetadata: (tmdbId: number, type: 'movie' | 'show', overrideMetadata?: any) => mutations.refreshMetadata({ tmdbId, type, overrideMetadata }),
+        refreshMetadata: (tmdbId: number, type: 'movie' | 'show', overrideMetadata?: TMDBMedia) => mutations.refreshMetadata({ tmdbId, type, overrideMetadata }),
         markAsDropped: (tmdbId: number, type: 'movie' | 'show') => mutations.markAsDropped({ tmdbId, type }),
         restoreFromDropped: (tmdbId: number, type: 'movie' | 'show') => mutations.restoreFromDropped({ tmdbId, type }),
         updateProgress: (tmdbId: number, type: 'movie' | 'show', progress: number) => mutations.updateProgress({ tmdbId, type, progress }),
-    }), [watchlist, isLoading, isGlobalRefreshing, mutations]);
+    }), [watchlist, isLoading, isGlobalRefreshing, mutations, isInWatchlist, refreshAllMetadata]);
 
     return (
         <WatchlistContext.Provider value={value}>
@@ -124,6 +125,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
     );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useWatchlist = () => {
     const context = useContext(WatchlistContext);
     if (context === undefined) throw new Error('useWatchlist must be used within a WatchlistProvider');
