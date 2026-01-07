@@ -191,7 +191,7 @@ export const UpcomingCard = ({
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const futureSeason = media.seasons.find((s: any) => s.air_date && parseDate(s.air_date)! >= today);
             if (futureSeason) {
-                nextEpDate = futureSeason.air_date;
+                nextEpDate = futureSeason.air_date ?? undefined;
                 seasonNumber = futureSeason.season_number;
                 episodeNumber = 1;
             }

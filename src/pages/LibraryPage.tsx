@@ -601,7 +601,7 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
                     <FilterExpandable
                         label="OTT"
                         value={filterProvider}
-                        onChange={(val: number | null) => setFilterProvider(val)}
+                        onChange={(val) => setFilterProvider(typeof val === 'number' ? val : null)}
                         options={allProviders.map(p => ({
                             id: p.id,
                             label: p.name,
