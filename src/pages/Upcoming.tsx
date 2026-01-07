@@ -6,8 +6,8 @@ import { calculateMediaRuntime, type TMDBMedia } from '../lib/tmdb';
 import { parseDateLocal } from '../lib/dateUtils';
 import { SlidingToggle } from '../components/ui/SlidingToggle';
 import { usePreferences } from '../context/PreferencesContext';
-import { MovieModal } from '../features/media/components/modals/MovieModal';
-import { ShowModal } from '../features/media/components/modals/ShowModal';
+import { MovieModal } from '../features/movies/components/MovieModal';
+import { ShowModal } from '../features/shows/components/ShowModal';
 import { ManualDateModal } from '../features/media/components/modals/ManualDateModal';
 
 // ... (helper functions omitted for brevity, they are unchanged)

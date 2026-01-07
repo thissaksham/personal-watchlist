@@ -10,8 +10,8 @@ import Layout from './components/Layout';
 import Login from './pages/Login';
 import { Clapperboard } from 'lucide-react';
 
-import { Movies } from './pages/Movies';
-import { Shows } from './pages/Shows';
+import { MoviesPage } from './features/movies/pages/MoviesPage';
+import { ShowsPage } from './features/shows/pages/ShowsPage';
 import { Upcoming } from './pages/Upcoming';
 import { GamesPage } from './features/games/pages/GamesPage';
 import VerifySuccess from './pages/VerifySuccess';
@@ -85,10 +85,10 @@ function App() {
 
                     {/* Movies Tab with URL State */}
                     <Route path="movies" element={<Navigate to="/movies/unwatched" replace />} />
-                    <Route path="movies/:status" element={<Movies />} />
+                    <Route path="movies/:status" element={<MoviesPage />} />
 
                     <Route path="shows" element={<Navigate to="/shows/watching" replace />} />
-                    <Route path="shows/:status" element={<Shows />} />
+                    <Route path="shows/:status" element={<ShowsPage />} />
 
                     {/* Upcoming Tab with URL State */}
                     <Route path="upcoming" element={<Navigate to="/upcoming/onOTT" replace />} />

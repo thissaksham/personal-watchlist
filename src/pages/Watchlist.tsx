@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { WatchlistCard } from '../features/media/components/cards/WatchlistCard';
-import { MovieModal } from '../features/media/components/modals/MovieModal';
-import { ShowModal } from '../features/media/components/modals/ShowModal';
+import { MovieModal } from '../features/movies/components/MovieModal';
+import { ShowModal } from '../features/shows/components/ShowModal';
 import { useWatchlist } from '../features/watchlist/context/WatchlistContext';
 import { type TMDBMedia } from '../lib/tmdb';
 import { FilterBar, FilterExpandable } from '../components/FilterBar';

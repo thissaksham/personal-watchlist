@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { Plus, Check, Star } from 'lucide-react';
 import { type TMDBMedia } from '../../../../lib/tmdb';
 import { useWatchlist } from '../../../watchlist/context/WatchlistContext';
-import { MovieModal } from '../modals/MovieModal';
-import { ShowModal } from '../modals/ShowModal';
+import { MovieModal } from '../../../movies/components/MovieModal';
+import { ShowModal } from '../../../shows/components/ShowModal';
 
 interface DiscoveryCardProps {
     media: TMDBMedia;

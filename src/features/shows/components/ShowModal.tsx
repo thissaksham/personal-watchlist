@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Calendar, Star, PlayCircle, Play, Layers, Hash, Hourglass } from 'lucide-react';
-import { type TMDBMedia } from '../../../../lib/tmdb';
-import { useMediaDetails } from '../../hooks/useTMDB';
-import { useWatchlist } from '../../../watchlist/context/WatchlistContext';
-import { getMoctaleUrl, getTMDBUrl, getJustWatchUrl, TMDB_ICON_BASE64, MOCTALE_ICON_BASE64, JUSTWATCH_ICON_BASE64 } from '../../../../lib/urls';
-import { usePreferences } from '../../../../context/PreferencesContext';
-import { calculateShowStats, getWatchProviders, getWatchLink } from '../../../../utils/mediaUtils';
+import { type TMDBMedia } from '../../../lib/tmdb';
+import { useMediaDetails } from '../../media/hooks/useTMDB';
+import { useWatchlist } from '../../watchlist/context/WatchlistContext';
+import { getMoctaleUrl, getTMDBUrl, getJustWatchUrl, TMDB_ICON_BASE64, MOCTALE_ICON_BASE64, JUSTWATCH_ICON_BASE64 } from '../../../lib/urls';
+import { usePreferences } from '../../../context/PreferencesContext';
+import { calculateShowStats, getWatchProviders, getWatchLink } from '../../../utils/mediaUtils';
 
 interface ShowModalProps {
     media: TMDBMedia;

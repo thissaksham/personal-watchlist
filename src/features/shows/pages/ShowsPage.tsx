@@ -1,7 +1,7 @@
 
-import { LibraryPage } from './LibraryPage';
+import { LibraryPage } from '../../../pages/LibraryPage';
 
-export const Shows = () => {
+export const ShowsPage = () => {
     return (
         <LibraryPage
             title="My Shows"

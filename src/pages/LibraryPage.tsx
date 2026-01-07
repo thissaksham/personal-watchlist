@@ -4,8 +4,8 @@ import { calculateMediaRuntime, type TMDBMedia } from '../lib/tmdb';
 import { useWatchlist } from '../features/watchlist/context/WatchlistContext';
 import { usePreferences } from '../context/PreferencesContext';
 import { WatchlistCard } from '../features/media/components/cards/WatchlistCard';
-import { MovieModal } from '../features/media/components/modals/MovieModal';
-import { ShowModal } from '../features/media/components/modals/ShowModal';
+import { MovieModal } from '../features/movies/components/MovieModal';
+import { ShowModal } from '../features/shows/components/ShowModal';
 
 import { FAB } from '../components/FAB';
 import { FilterBar, FilterExpandable } from '../components/FilterBar';

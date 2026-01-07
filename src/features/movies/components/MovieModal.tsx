@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Calendar, Clock, Star, PlayCircle, Play } from 'lucide-react';
-import { type TMDBMedia } from '../../../../lib/tmdb';
-import { useMediaDetails } from '../../hooks/useTMDB';
-import { getMoctaleUrl, getTMDBUrl, getJustWatchUrl, TMDB_ICON_BASE64, MOCTALE_ICON_BASE64, JUSTWATCH_ICON_BASE64 } from '../../../../lib/urls';
-import { getWatchProviders, getWatchLink } from '../../../../utils/mediaUtils';
-import { usePreferences } from '../../../../context/PreferencesContext';
+import { type TMDBMedia } from '../../../lib/tmdb';
+import { useMediaDetails } from '../../media/hooks/useTMDB';
+import { getMoctaleUrl, getTMDBUrl, getJustWatchUrl, TMDB_ICON_BASE64, MOCTALE_ICON_BASE64, JUSTWATCH_ICON_BASE64 } from '../../../lib/urls';
+import { getWatchProviders, getWatchLink } from '../../../utils/mediaUtils';
+import { usePreferences } from '../../../context/PreferencesContext';
 
 interface MovieModalProps {
     media: TMDBMedia;

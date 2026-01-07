@@ -11,7 +11,7 @@ const PlaceholderPage = ({ title }: { title: string }) => (
 );
 
 export const Movies = () => <PlaceholderPage title="Movies" />;
-export { Shows } from './Shows';
+export { ShowsPage as Shows } from '../features/shows/pages/ShowsPage';
 
 export const Games = () => {
     const { status } = useParams();

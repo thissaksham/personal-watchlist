@@ -4,8 +4,8 @@ import { LogOut, Clapperboard, MonitorPlay, Gamepad2, Menu, X, Plus, Lock, Trash
 import { useAuth } from '../features/auth/context/AuthContext';
 import { useWatchlist } from '../features/watchlist/context/WatchlistContext';
 import { SearchModal } from '../features/search/components/SearchModal';
-import { MovieModal } from '../features/media/components/modals/MovieModal';
-import { ShowModal } from '../features/media/components/modals/ShowModal';
+import { MovieModal } from '../features/movies/components/MovieModal';
+import { ShowModal } from '../features/shows/components/ShowModal';
 import { ChangePasswordModal } from '../features/auth/components/ChangePasswordModal';
 import { WelcomeSplash } from '../features/auth/components/WelcomeSplash';
 import { PlatformSelector } from '../features/games/components/PlatformSelector';
