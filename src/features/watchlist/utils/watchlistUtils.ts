@@ -1,59 +1,9 @@
 import { tmdb } from '../../../lib/tmdb';
 import { parseDateLocal } from '../../../lib/dateUtils';
 import type { WatchStatus } from '../../../types';
+import { pruneMetadata } from '../../../lib/watchlist-shared';
 
-export const pruneMetadata = (meta: any, region: string) => {
-    if (!meta) return meta;
-
-    // 1. Strict Filter Providers (Only Current Region)
-    const providers = meta['watch/providers']?.results;
-    let leanProviders = {};
-    if (providers && providers[region]) {
-        leanProviders = {
-            results: {
-                [region]: providers[region]
-            }
-        };
-    }
-
-    // 2. Prune Videos (Keep only first trailer)
-    let leanVideos = meta.videos;
-    if (meta.videos?.results) {
-        const trailer = meta.videos.results.find((v: any) => v.type === 'Trailer' && v.site === 'YouTube');
-        if (trailer) {
-            leanVideos = { results: [trailer] };
-        } else {
-            leanVideos = { results: [] };
-        }
-    }
-
-    // 3. Whitelist Essential Keys
-    const {
-        backdrop_path, overview,
-        release_date, first_air_date, runtime, status,
-        next_episode_to_air, last_episode_to_air, seasons, external_ids,
-        genres, number_of_episodes, number_of_seasons,
-        episode_run_time, tvmaze_runtime,
-        digital_release_date, digital_release_note, theatrical_release_date, moved_to_library,
-        manual_date_override, manual_ott_name, dismissed_from_upcoming, last_updated_at
-    } = meta;
-
-    return {
-        title: meta.title || meta.name,
-        name: meta.name || meta.title,
-        poster_path: meta.poster_path,
-        backdrop_path, overview,
-        vote_average: meta.vote_average,
-        release_date, first_air_date, runtime, status,
-        next_episode_to_air, last_episode_to_air, seasons, external_ids,
-        genres, number_of_episodes, number_of_seasons,
-        episode_run_time, tvmaze_runtime,
-        digital_release_date, digital_release_note, theatrical_release_date, moved_to_library,
-        manual_date_override, manual_ott_name, dismissed_from_upcoming, last_updated_at,
-        'watch/providers': leanProviders,
-        videos: leanVideos
-    };
-};
+export { pruneMetadata };
 
 export const getEnrichedMetadata = async (tmdbId: number, type: 'movie' | 'show', region: string, existingMetadata?: any, currentStatus?: WatchStatus) => {
     const tmdbType = type === 'show' ? 'tv' : 'movie';

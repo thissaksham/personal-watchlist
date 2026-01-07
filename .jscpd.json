@@ -1,0 +1,12 @@
+{
+    "ignore": [
+        "**/node_modules/**",
+        "**/dist/**",
+        "**/.git/**"
+    ],
+    "reporters": [
+        "console",
+        "json"
+    ],
+    "absolute": true
+}
