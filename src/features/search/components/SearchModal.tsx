@@ -102,8 +102,15 @@ export const SearchModal = ({ isOpen, onClose, type: initialType, onSuccess, ini
         const targetType: 'movie' | 'show' = mediaType === 'tv' ? 'show' : 'movie';
 
         if (isInWatchlist(media.id, targetType)) return;
-        addToWatchlist(media, targetType); // Fire and forget for instant close
-        if (onSuccess) onSuccess(media);
+
+        // Ensure media object has media_type for downstream consumers (like Layout.tsx)
+        const enrichedMedia = {
+            ...media,
+            media_type: media.media_type || (searchType === 'tv' ? 'tv' : 'movie') as 'tv' | 'movie'
+        };
+
+        addToWatchlist(enrichedMedia, targetType);
+        if (onSuccess) onSuccess(enrichedMedia);
         onClose();
     };
 

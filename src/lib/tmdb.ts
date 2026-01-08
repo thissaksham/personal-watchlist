@@ -143,11 +143,13 @@ export interface TMDBMedia {
         season_number: number;
         episode_number: number;
         air_date: string;
+        episode_type?: string;
     } | null;
     next_episode_to_air?: {
         season_number: number;
         episode_number: number;
         air_date: string;
+        episode_type?: string;
     } | null;
     external_ids?: {
         imdb_id?: string;

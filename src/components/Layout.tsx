@@ -296,7 +296,7 @@ export default function Layout() {
             />
 
             {recentlyAddedMedia && (
-                recentlyAddedMedia.media_type === 'tv' ? (
+                (recentlyAddedMedia.media_type === 'tv' || !!recentlyAddedMedia.first_air_date) ? (
                     <ShowModal
                         media={recentlyAddedMedia}
                         onClose={() => setRecentlyAddedMedia(null)}
