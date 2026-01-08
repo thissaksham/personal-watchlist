@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Plus, Check, Star } from 'lucide-react';
 import { type TMDBMedia } from '../../../../lib/tmdb';
 import { useWatchlist } from '../../../watchlist/context/WatchlistContext';
 import { MovieModal } from '../../../movies/components/MovieModal';
 import { ShowModal } from '../../../shows/components/ShowModal';
+import { getPosterUrl, getMediaTitle, getMediaYear, isTVShow, formatRating } from '@/utils';
+import { useModal } from '@/hooks/useModal';
 
 interface DiscoveryCardProps {
     media: TMDBMedia;
@@ -18,15 +20,12 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
     onAdd
 }) => {
     const { watchlist, removeFromWatchlist } = useWatchlist();
-    const [showModal, setShowModal] = useState(false);
+    const { isOpen: showModal, open: openModal, close: closeModal } = useModal();
 
-    const title = media.title || media.name || 'Unknown';
-    const posterUrl = media.poster_path
-        ? (media.poster_path.startsWith('http') ? media.poster_path : `https://image.tmdb.org/t/p/w500${media.poster_path}`)
-        : `https://placehold.co/500x750/1f2937/ffffff?text=${encodeURIComponent(title)}`;
-
-    const year = (media.release_date || media.first_air_date)?.substring(0, 4);
-    const isTV = media.media_type === 'tv' || !!media.first_air_date;
+    const title = getMediaTitle(media);
+    const posterUrl = getPosterUrl(media.poster_path, title);
+    const year = getMediaYear(media);
+    const isTV = isTVShow(media);
 
     // Ported TV Status logic
     const getTVStatus = () => {
@@ -61,7 +60,7 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
 
     return (
         <>
-            <div className="discovery-card group" onClick={() => setShowModal(true)}>
+            <div className="discovery-card group" onClick={() => openModal()}>
                 <div className="discovery-poster-wrapper">
                     <img src={posterUrl} alt={title} className="discovery-poster-img" loading="lazy" />
 
@@ -70,7 +69,7 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
                         {media.vote_average > 0 && (
                             <div className="media-pill pill-rating">
                                 <Star size={10} fill="#fbbf24" strokeWidth={0} />
-                                <span>{media.vote_average.toFixed(1)}</span>
+                                <span>{formatRating(media.vote_average)}</span>
                             </div>
                         )}
 
@@ -124,9 +123,9 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
 
             {showModal && (
                 isTV ? (
-                    <ShowModal media={media} onClose={() => setShowModal(false)} />
+                    <ShowModal media={media} onClose={closeModal} />
                 ) : (
-                    <MovieModal media={media} onClose={() => setShowModal(false)} />
+                    <MovieModal media={media} onClose={closeModal} />
                 )
             )}
         </>
