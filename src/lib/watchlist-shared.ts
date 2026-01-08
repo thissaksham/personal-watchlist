@@ -1,4 +1,4 @@
-import { tmdb, type TMDBMedia } from './tmdb';
+import type { TMDBMedia } from './tmdb';
 import { parseDateLocal, getTodayValues } from './dateUtils';
 import type { WatchStatus } from '../types';
 
@@ -68,6 +68,8 @@ export const pruneMetadata = (meta: TMDBMedia | undefined, region: string): TMDB
 };
 
 export const getEnrichedMetadata = async (tmdbId: number, type: 'movie' | 'show', region: string, existingMetadata?: TMDBMedia | null, currentStatus?: WatchStatus) => {
+    // Dynamic import to avoid loading tmdb.ts (which uses import.meta.env) in Node.js
+    const { tmdb } = await import('./tmdb');
     const tmdbType = type === 'show' ? 'tv' : 'movie';
     const [details, releaseData] = await Promise.all([
         tmdb.getDetails(tmdbId, tmdbType, region),
