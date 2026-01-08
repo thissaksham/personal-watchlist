@@ -1,7 +1,7 @@
 /**
  * Hook to manage localStorage with type safety
  */
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 export const useLocalStorage = <T>(key: string, initialValue: T): [T, (value: T) => void] => {
   const [storedValue, setStoredValue] = useState<T>(() => {
