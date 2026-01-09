@@ -4,6 +4,26 @@ import type { WatchStatus } from '../types';
 
 export type { WatchStatus };
 
+/**
+ * Determines if a specific season of a show is currently "ongoing" (not finished airing).
+ */
+export const isSeasonOngoing = (metadata: TMDBMedia, seasonNum: number): boolean => {
+    const nextEp = metadata.next_episode_to_air;
+    const lastEp = metadata.last_episode_to_air;
+
+    // If there's a future episode scheduled for this season, it's definitely ongoing.
+    if (nextEp && nextEp.season_number === seasonNum) {
+        return true;
+    }
+
+    // If this was the last season to air an episode, and it's not a finale,
+    // and the show is still active, we assume it's ongoing (more episodes expected).
+    return lastEp?.season_number === seasonNum &&
+        lastEp?.episode_type !== 'finale' &&
+        metadata.status !== 'Ended' &&
+        metadata.status !== 'Canceled';
+};
+
 export const determineShowStatus = (metadata: TMDBMedia, lastWatchedSeason: number, progress: number = 0): WatchStatus => {
     if (lastWatchedSeason === 0 && progress > 0) return 'show_watching';
     const seasons = metadata.seasons || [];
@@ -18,6 +38,11 @@ export const determineShowStatus = (metadata: TMDBMedia, lastWatchedSeason: numb
         return isFinished ? 'show_finished' : 'show_ongoing';
     }
     if (lastWatchedSeason < totalReleased) return 'show_watching';
+
+    // Check if the current season (or the last watched one) is still ongoing
+    if (isSeasonOngoing(metadata, lastWatchedSeason)) {
+        return 'show_watching';
+    }
 
     if (metadata.next_episode_to_air?.air_date) {
         const nextDate = parseDateLocal(metadata.next_episode_to_air.air_date);

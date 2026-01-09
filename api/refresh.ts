@@ -28,7 +28,7 @@ export default async function handler(request: any, response: any) {
         const { data: candidates, error: fetchError } = await supabase
             .from('watchlist')
             .select('*')
-            .in('status', ['movie_coming_soon', 'movie_on_ott', 'show_returning', 'show_ongoing', 'show_watching', 'show_new'])
+            .in('status', ['movie_coming_soon', 'movie_on_ott', 'show_returning', 'show_ongoing', 'show_watching', 'show_new', 'show_watched'])
             .order('updated_at', { ascending: true })
             .limit(5);
 

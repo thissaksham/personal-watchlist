@@ -6,6 +6,7 @@ import { useMediaDetails } from '../../media/hooks/useTMDB';
 import { useWatchlist } from '../../watchlist/context/WatchlistContext';
 import { usePreferences } from '../../../context/PreferencesContext';
 import { calculateShowStats, getWatchProviders, getWatchLink } from '../../../utils/mediaUtils';
+import { isSeasonOngoing } from '../../../lib/watchlist-shared';
 import { CommonModalHero } from '../../media/components/CommonModalHero';
 import { CommonModalSidebar } from '../../media/components/CommonModalSidebar';
 import { TrailerOverlay } from '../../media/components/TrailerOverlay';
@@ -124,20 +125,16 @@ export const ShowModal = ({ media, onClose }: ShowModalProps) => {
                                                 isFuture = true;
                                             }
 
-                                            const nextEp = details?.next_episode_to_air || media.next_episode_to_air;
-                                            const lastEp = details?.last_episode_to_air || media.last_episode_to_air;
-
                                             // A season is "Ongoing" if it's the next to air, OR if it's the last to air and show isn't finished
                                             // Prioritize next aired for the label to avoid multiple "ONGOING" tags
-                                            const isOngoing = nextEp
-                                                ? nextEp.season_number === seasonNum
-                                                : lastEp?.season_number === seasonNum && lastEp?.episode_type !== 'finale' && details?.status !== 'Ended' && details?.status !== 'Canceled';
+                                            const isOngoing = isSeasonOngoing(details || (media as TMDBMedia), seasonNum);
 
                                             const isWatched = isAdded && seasonNum <= lastWatched;
+                                            const isCompleted = isWatched && !isOngoing;
                                             const currentProgress = watchlistItem?.progress || 0;
 
                                             let isPreview = false;
-                                            if (hoveredSeason !== null && isAdded && !isWatched && seasonNum <= hoveredSeason) {
+                                            if (hoveredSeason !== null && isAdded && !isCompleted && seasonNum <= hoveredSeason) {
                                                 isPreview = true;
                                             }
 
@@ -160,7 +157,7 @@ export const ShowModal = ({ media, onClose }: ShowModalProps) => {
                                                                     markSeasonWatched(media.id, seasonNum);
                                                                 }
                                                             }}
-                                                            className={`season-bubble ${isWatched ? 'watched' : ''} ${isPreview ? 'preview' : ''} ${isFuture ? 'future' : ''}`}
+                                                            className={`season-bubble ${isCompleted ? 'watched' : ''} ${isPreview ? 'preview' : ''} ${isFuture ? 'future' : ''}`}
                                                             title={isFuture ? `Available on ${airDateLabel}` : `${season.name} (${season.episode_count} Episodes)`}
                                                         >
                                                             <span className="season-num">S{season.season_number}</span>

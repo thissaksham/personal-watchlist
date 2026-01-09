@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../auth/context/AuthContext';
 import { usePreferences } from '../../../context/PreferencesContext';
-import { pruneMetadata, determineShowStatus, getEnrichedMetadata } from '../../../lib/watchlist-shared';
+import { pruneMetadata, determineShowStatus, getEnrichedMetadata, isSeasonOngoing } from '../../../lib/watchlist-shared';
 import { tmdb, type TMDBMedia } from '../../../lib/tmdb';
 import type { WatchlistItem, WatchStatus } from '../../../types';
 
@@ -323,11 +323,19 @@ export function useWatchlistMutations() {
                 
                 if (currentSeason && currentSeason.episode_count) {
                     if (progress >= currentSeason.episode_count) {
-                        // Auto-complete season
-                        const newLastWatched = currentSeasonNum;
-                        await mutateItem(tmdbId, 'show', { last_watched_season: newLastWatched, progress: 0 }, (i) => ({ ...i, last_watched_season: newLastWatched, progress: 0 }));
-                        await recalculateShowStatus(tmdbId, newLastWatched, item.metadata, 0);
-                        return;
+                        // Check if the season is ongoing before auto-completing
+                        if (isSeasonOngoing(item.metadata, currentSeasonNum)) {
+                            // Keep progress at max but don't complete season
+                            progress = currentSeason.episode_count;
+                        } else {
+                            // Auto-complete season
+                            const newLastWatched = currentSeasonNum;
+                            await mutateItem(tmdbId, 'show', { last_watched_season: newLastWatched, progress: 0 }, (i) => ({ ...i, last_watched_season: newLastWatched, progress: 0 }));
+                            await recalculateShowStatus(tmdbId, newLastWatched, item.metadata, 0);
+                            return;
+                        }
+                    } else {
+                        progress = Math.max(0, progress); // Safety
                     }
                     progress = Math.min(progress, currentSeason.episode_count);
                 }

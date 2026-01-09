@@ -73,7 +73,7 @@ async function runRefresh() {
         const { data: candidates, error: fetchError } = await supabase
             .from('watchlist')
             .select('*')
-            .in('status', ['movie_coming_soon', 'movie_on_ott', 'show_returning', 'show_ongoing', 'show_watching', 'show_new'])
+            .in('status', ['movie_coming_soon', 'movie_on_ott', 'show_returning', 'show_ongoing', 'show_watching', 'show_new', 'show_watched'])
             .order('created_at', { ascending: true }); // No limit, fetch all
 
         if (fetchError) throw fetchError;
