@@ -1,7 +1,7 @@
-const API_KEY = import.meta.env.VITE_WATCHMODE_API_KEY;
+const API_KEYS = import.meta.env.VITE_WATCHMODE_API_KEY ? import.meta.env.VITE_WATCHMODE_API_KEY.split(',').map((k: string) => k.trim()).filter(Boolean) : [];
 const BASE_URL = 'https://api.watchmode.com/v1';
 
-if (!API_KEY) {
+if (API_KEYS.length === 0) {
     console.warn("Missing VITE_WATCHMODE_API_KEY. Watchmode fallback will be disabled.");
 }
 
@@ -19,23 +19,54 @@ interface WatchmodeSource {
     episodes?: number;
 }
 
+let currentKeyIndex = 0;
+
+const fetchWithRotation = async (urlGenerator: (key: string) => string) => {
+    if (API_KEYS.length === 0) return null;
+
+    // Try starting from the current index, and wrap around once if needed
+    for (let i = 0; i < API_KEYS.length; i++) {
+        const index = (currentKeyIndex + i) % API_KEYS.length;
+        const key = API_KEYS[index];
+        const url = urlGenerator(key);
+
+        try {
+            const res = await fetch(url);
+            
+            // If we hit a rate limit or quota issue
+            if (res.status === 402 || res.status === 429) {
+                console.warn(`[Watchmode] Key index ${index} exhausted (Status ${res.status}). Trying next key...`);
+                continue; 
+            }
+
+            if (!res.ok) {
+                throw new Error(`Status ${res.status}`);
+            }
+
+            // Successfully used this key, update the index for future calls
+            currentKeyIndex = index;
+            return await res.json();
+            
+        } catch (e) {
+            console.error(`[Watchmode] Error with key index ${index}:`, e);
+            // If it's the last key, rethrow to be caught by the caller
+            if (i === API_KEYS.length - 1) throw e;
+        }
+    }
+    return null;
+};
+
 export const fetchWatchmodeDetails = async (tmdbId: number, type: 'movie' | 'tv', region: string) => {
-    if (!API_KEY) return null;
+    if (API_KEYS.length === 0) return null;
 
     try {
-        // 1. Search for Title by TMDB ID to get Watchmode ID
-        // Endpoint: /search/?search_field=tmdb_movie_id&search_value={id}
+        // 1. Search for Title
         const searchField = type === 'movie' ? 'tmdb_movie_id' : 'tmdb_tv_id';
-        const searchUrl = `${BASE_URL}/search/?apiKey=${API_KEY}&search_field=${searchField}&search_value=${tmdbId}`;
+        const searchData = await fetchWithRotation((key) => 
+            `${BASE_URL}/search/?apiKey=${key}&search_field=${searchField}&search_value=${tmdbId}`
+        );
 
-        console.log(`[Watchmode] Lookup ID: ${searchUrl.replace(API_KEY, 'HIDDEN')}`);
-
-        const searchRes = await fetch(searchUrl);
-        if (!searchRes.ok) throw new Error(`Search Failed: ${searchRes.status}`);
-
-        const searchData = await searchRes.json();
-        const results = searchData.title_results || [];
-
+        const results = searchData?.title_results || [];
         if (results.length === 0) {
             console.log(`[Watchmode] No match found for TMDB ${tmdbId}`);
             return null;
@@ -44,16 +75,10 @@ export const fetchWatchmodeDetails = async (tmdbId: number, type: 'movie' | 'tv'
         const watchmodeId = results[0].id;
 
         // 2. Get Sources
-        // Endpoint: /title/{id}/sources/?regions={region}
-        const sourcesUrl = `${BASE_URL}/title/${watchmodeId}/sources/?apiKey=${API_KEY}&regions=${region}`;
-        console.log(`[Watchmode] Fetching Sources: ${sourcesUrl.replace(API_KEY, 'HIDDEN')}`);
+        const sourcesData = await fetchWithRotation((key) => 
+            `${BASE_URL}/title/${watchmodeId}/sources/?apiKey=${key}&regions=${region}`
+        );
 
-        const sourcesRes = await fetch(sourcesUrl);
-        if (!sourcesRes.ok) throw new Error(`Sources Failed: ${sourcesRes.status}`);
-
-        const sourcesData = await sourcesRes.json();
-
-        // Map to TMDB structure
         const sources: WatchmodeSource[] = Array.isArray(sourcesData) ? sourcesData : [];
 
         const flatrate = sources.filter(s => s.type === 'sub').map(mapSource);
@@ -73,7 +98,7 @@ export const fetchWatchmodeDetails = async (tmdbId: number, type: 'movie' | 'tv'
         };
 
     } catch (e) {
-        console.error("[Watchmode] Error:", e);
+        console.error("[Watchmode] Global Error:", e);
         return null;
     }
 };
@@ -81,6 +106,6 @@ export const fetchWatchmodeDetails = async (tmdbId: number, type: 'movie' | 'tv'
 const mapSource = (s: WatchmodeSource) => ({
     provider_id: s.source_id,
     provider_name: s.name,
-    logo_path: null, // Watchmode doesn't provide TMDB-compatible logo paths easily, we might need a local map or just use text
+    logo_path: null,
     display_priority: 10
 });

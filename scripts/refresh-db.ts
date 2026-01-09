@@ -8,6 +8,7 @@ import type { TMDBMedia } from '../src/lib/tmdb';
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mapWatchmodeSource = (s: any) => ({
     provider_id: s.source_id,
     provider_name: s.name,
@@ -15,37 +16,61 @@ const mapWatchmodeSource = (s: any) => ({
     display_priority: 10
 });
 
-const fetchWatchmodeFallback = async (tmdbId: number, type: 'movie' | 'tv', region: string, apiKey: string) => {
-    if (!apiKey) return null;
-    try {
-        const searchField = type === 'movie' ? 'tmdb_movie_id' : 'tmdb_tv_id';
-        const searchUrl = `https://api.watchmode.com/v1/search/?apiKey=${apiKey}&search_field=${searchField}&search_value=${tmdbId}`;
-        const searchRes = await fetch(searchUrl);
-        if (!searchRes.ok) return null;
-        const searchData = await searchRes.json();
-        const watchmodeId = searchData.title_results?.[0]?.id;
-        if (!watchmodeId) return null;
+let currentWMKeyIndex = 0;
 
-        const sourcesUrl = `https://api.watchmode.com/v1/title/${watchmodeId}/sources/?apiKey=${apiKey}&regions=${region}`;
-        const sourcesRes = await fetch(sourcesUrl);
-        if (!sourcesRes.ok) return null;
-        const sourcesData = await sourcesRes.json();
-        const sources = Array.isArray(sourcesData) ? sourcesData : [];
+const fetchWatchmodeFallback = async (tmdbId: number, type: 'movie' | 'tv', region: string, apiKeys: string[]) => {
+    if (!apiKeys || apiKeys.length === 0) return null;
 
-        return {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            flatrate: sources.filter((s: any) => s.type === 'sub').map(mapWatchmodeSource),
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            rent: sources.filter((s: any) => s.type === 'rent').map(mapWatchmodeSource),
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            buy: sources.filter((s: any) => s.type === 'buy').map(mapWatchmodeSource),
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            free: sources.filter((s: any) => s.type === 'free').map(mapWatchmodeSource)
-        };
-    } catch (e) {
-        console.error('[Watchmode Fallback Error]:', e);
-        return null;
+    for (let i = 0; i < apiKeys.length; i++) {
+        const index = (currentWMKeyIndex + i) % apiKeys.length;
+        const apiKey = apiKeys[index];
+        
+        try {
+            const searchField = type === 'movie' ? 'tmdb_movie_id' : 'tmdb_tv_id';
+            const searchUrl = `https://api.watchmode.com/v1/search/?apiKey=${apiKey}&search_field=${searchField}&search_value=${tmdbId}`;
+            const searchRes = await fetch(searchUrl);
+            
+            if (searchRes.status === 402 || searchRes.status === 429) {
+                console.warn(`[Watchmode Script] Key index ${index} exhausted. Trying next...`);
+                continue;
+            }
+
+            if (!searchRes.ok) return null;
+            const searchData = await searchRes.json();
+            const watchmodeId = searchData.title_results?.[0]?.id;
+            if (!watchmodeId) return null;
+
+            const sourcesUrl = `https://api.watchmode.com/v1/title/${watchmodeId}/sources/?apiKey=${apiKey}&regions=${region}`;
+            const sourcesRes = await fetch(sourcesUrl);
+            
+            if (sourcesRes.status === 402 || sourcesRes.status === 429) {
+                console.warn(`[Watchmode Script] Key index ${index} exhausted during sources fetch. Trying next...`);
+                continue;
+            }
+
+            if (!sourcesRes.ok) return null;
+            const sourcesData = await sourcesRes.json();
+            const sources = Array.isArray(sourcesData) ? sourcesData : [];
+
+            // Update global index so next calls start here
+            currentWMKeyIndex = index;
+
+            return {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                flatrate: sources.filter((s: any) => s.type === 'sub').map(mapWatchmodeSource),
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                rent: sources.filter((s: any) => s.type === 'rent').map(mapWatchmodeSource),
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                buy: sources.filter((s: any) => s.type === 'buy').map(mapWatchmodeSource),
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                free: sources.filter((s: any) => s.type === 'free').map(mapWatchmodeSource)
+            };
+        } catch (e) {
+            console.error(`[Watchmode Fallback Error] Key index ${index}:`, e);
+            if (i === apiKeys.length - 1) return null;
+        }
     }
+    return null;
 };
 
 
@@ -55,9 +80,10 @@ const fetchWatchmodeFallback = async (tmdbId: number, type: 'movie' | 'tv', regi
 async function runRefresh() {
     console.log('--- Starting Refresh Job ---');
     
-    const TMDB_API_KEY = process.env.VITE_TMDB_API_KEY;
-    const WATCHMODE_API_KEY = process.env.VITE_WATCHMODE_API_KEY;
-    const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
+    const TMDB_API_KEY = process.env.VITE_TMDB_API_KEY || process.env.TMDB_API_KEY;
+    const WATCHMODE_RAW = process.env.VITE_WATCHMODE_API_KEY || process.env.WATCHMODE_API_KEY || '';
+    const WATCHMODE_API_KEYS = WATCHMODE_RAW.split(',').map(k => k.trim()).filter(Boolean);
+    const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
     const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const region = 'IN';
 
@@ -110,8 +136,8 @@ async function runRefresh() {
                         const providers = details['watch/providers']?.results?.[region];
                         let hasProviders = (providers?.flatrate?.length > 0) || (providers?.ads?.length > 0);
                         
-                        if (!hasProviders && WATCHMODE_API_KEY) {
-                            const wmProviders = await fetchWatchmodeFallback(item.tmdb_id, item.type as 'movie' | 'tv', region, WATCHMODE_API_KEY);
+                        if (!hasProviders && WATCHMODE_API_KEYS.length > 0) {
+                            const wmProviders = await fetchWatchmodeFallback(item.tmdb_id, item.type as 'movie' | 'tv', region, WATCHMODE_API_KEYS);
                             if (wmProviders) {
                                 details['watch/providers'] = { results: { [region]: wmProviders } };
                                 hasProviders = (wmProviders.flatrate.length > 0) || (wmProviders.free?.length > 0);
