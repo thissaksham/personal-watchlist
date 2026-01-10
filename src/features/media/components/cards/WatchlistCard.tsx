@@ -2,7 +2,7 @@ import { Star, Check, X, Undo2, CalendarPlus } from 'lucide-react';
 import { type TMDBMedia } from '../../../../lib/tmdb';
 import { useWatchlist } from '../../../watchlist/context/WatchlistContext';
 import { usePreferences } from '../../../../context/PreferencesContext';
-import { getTodayValues, parseDate, parseDateLocal, formatDisplayDate, isReleased } from '../../../../lib/dateUtils';
+import { getTodayValues, parseDate, parseDateLocal, isReleased } from '../../../../lib/dateUtils';
 
 interface WatchlistCardProps {
     media: TMDBMedia;
@@ -17,6 +17,7 @@ interface WatchlistCardProps {
     actionIcon?: React.ReactNode;
     actionLabel?: string;
     isDropped?: boolean;
+    showContextLabel?: boolean;
 }
 
 export const WatchlistCard = ({
@@ -31,7 +32,8 @@ export const WatchlistCard = ({
     removeLabel,
     actionIcon,
     actionLabel,
-    isDropped = false
+    isDropped = false,
+    showContextLabel = true
 }: WatchlistCardProps) => {
     const { watchlist } = useWatchlist();
     const { region } = usePreferences();
@@ -43,35 +45,16 @@ export const WatchlistCard = ({
 
     const year = (media.release_date || media.first_air_date)?.split('-')[0] || '';
 
-    // Date Formatting Helper
-    const getFormattedDate = (dateStr: string | undefined): string => {
-        let display = formatDisplayDate(dateStr);
-        const currentYear = new Date().getFullYear().toString();
-
-        if (display.endsWith(` ${currentYear}`)) {
-            return display.replace(` ${currentYear}`, '');
-        }
-
-        const yearMatch = display.match(/ (\d{4})$/);
-        if (yearMatch) {
-            const yearWrapper = yearMatch[0];
-            const shortYear = yearMatch[1].slice(2);
-            display = display.replace(yearWrapper, `'${shortYear}`);
-        }
-
-        return display;
-    };
 
     // Provider Logic
     const providers = media['watch/providers']?.results?.[region];
     const providerName = providers?.flatrate?.[0]?.provider_name ||
         providers?.ads?.[0]?.provider_name ||
         providers?.free?.[0]?.provider_name || 'OTT';
-    const showProvider = media.status === 'movie_on_ott' || (type === 'tv' && media.status !== 'show_finished' && media.status !== 'show_dropped');
+    const showProvider = media.status === 'movie_on_ott' || (type === 'tv' && media.status !== 'show_dropped');
 
     // Stats & Context Logic
     let contextLabel = '';
-    let formattedDate = '';
 
     if (type === 'tv') {
         const nextEp = media.next_episode_to_air;
@@ -90,8 +73,6 @@ export const WatchlistCard = ({
             }
         }
 
-        const dateStr = nextEpDate || media.first_air_date || media.release_date;
-        formattedDate = getFormattedDate(dateStr);
 
         const isEnded = media.status === 'Ended' || media.status === 'Canceled';
         const lastSeasonNumber = media.number_of_seasons || 0;
@@ -268,17 +249,11 @@ export const WatchlistCard = ({
                         </div>
                     )}
 
-                    {/* Date Pill (New) - Priority over Year if available */}
-                    {formattedDate ? (
-                        <div className="media-pill font-bold px-2 py-0.5 text-[10px] uppercase tracking-wider" style={{ backgroundColor: 'rgba(20, 20, 20, 0.9)', color: 'white', border: '1px solid rgba(255, 255, 255, 0.3)' }}>
-                            {formattedDate}
+                    {/* Date Pill - Standardized to Year */}
+                    {year && (
+                        <div className="media-pill pill-year">
+                            <span>{year}</span>
                         </div>
-                    ) : (
-                        year && (
-                            <div className="media-pill pill-year">
-                                <span>{year}</span>
-                            </div>
-                        )
                     )}
 
                     {media.vote_average > 0 && (
@@ -344,7 +319,7 @@ export const WatchlistCard = ({
 
                 {/* Bottom Info Stack */}
                 <div className="discovery-info-stack">
-                    {contextLabel && (
+                    {(contextLabel && showContextLabel) && (
                         <div className="media-pill" style={{ backgroundColor: 'rgba(20, 20, 20, 0.8)', border: '1px solid rgba(255, 255, 255, 0.2)', marginBottom: '4px', width: 'fit-content' }}>
                             <span className="text-gray-300">{contextLabel}</span>
                         </div>

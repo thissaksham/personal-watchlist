@@ -34,7 +34,7 @@ export const determineShowStatus = (metadata: TMDBMedia, lastWatchedSeason: numb
     if (totalReleased === 0) return metadata.last_episode_to_air ? 'show_ongoing' : 'show_new';
     if (lastWatchedSeason === 0) {
         const { status, type } = metadata;
-        const isFinished = status === 'Ended' || status === 'Canceled' || status === 'Miniseries' || type === 'Miniseries';
+        const isFinished = (status === 'Ended' || status === 'Canceled' || status === 'Miniseries' || type === 'Miniseries') && status !== 'Returning Series';
         return isFinished ? 'show_finished' : 'show_ongoing';
     }
     if (lastWatchedSeason < totalReleased) return 'show_watching';
@@ -273,7 +273,7 @@ export const getEnrichedMetadata = async (tmdbId: number, type: 'movie' | 'show'
             if (!currentStatus) {
                 const status = details.status;
                 const showType = details.type as string;
-                const isFinished = status === 'Ended' || status === 'Canceled' || status === 'Miniseries' || showType === 'Miniseries';
+                const isFinished = (status === 'Ended' || status === 'Canceled' || status === 'Miniseries' || showType === 'Miniseries') && status !== 'Returning Series';
                 const isNew = status === 'Planned' || status === 'In Production' || status === 'Pilot' || status === 'Rumored';
 
                 if (isNew) initialStatus = 'show_new';

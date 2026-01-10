@@ -210,7 +210,7 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
         const contextLibrary = library.filter(media => {
             if (tmdbType === 'tv' && viewMode === 'Unwatched') {
                 const status = media.tmdb_status || media.status || ''; // TMDB status (use preserved one first)
-                const isFinished = status === 'Ended' || status === 'Canceled';
+                const isFinished = (status === 'Ended' || status === 'Canceled' || status === 'Miniseries' || media.type === 'Miniseries') && status !== 'Returning Series';
 
                 if (seriesStatusFilter === 'Finished' && !isFinished) return false;
                 if (seriesStatusFilter === 'Ongoing' && isFinished) return false;
@@ -328,7 +328,7 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
         // 'Returning Series' -> Ongoing
         if (tmdbType === 'tv' && viewMode === 'Unwatched') {
             const status = media.tmdb_status || media.status || '';
-            const isFinished = status === 'Ended' || status === 'Canceled';
+            const isFinished = (status === 'Ended' || status === 'Canceled' || status === 'Miniseries' || media.type === 'Miniseries') && status !== 'Returning Series';
 
             if (seriesStatusFilter === 'Finished' && !isFinished) return false;
             if (seriesStatusFilter === 'Ongoing' && isFinished) return false;
@@ -438,7 +438,7 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
                 if (viewMode === 'Unwatched') {
                     const metadata = (item.metadata || {}) as TMDBMedia;
                     const tStatus = metadata.status || ''; // TMDB status
-                    const isFinished = tStatus === 'Ended' || tStatus === 'Canceled';
+                    const isFinished = (tStatus === 'Ended' || tStatus === 'Canceled' || tStatus === 'Miniseries' || metadata.type === 'Miniseries') && tStatus !== 'Returning Series';
 
                     if (seriesStatusFilter === 'Finished' && !isFinished) return false;
                     if (seriesStatusFilter === 'Ongoing' && isFinished) return false;
@@ -683,6 +683,11 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
                                         } : undefined}
                                         onRestoreToUpcoming={(m) => restoreToUpcoming(Number(m.id), watchlistType)}
                                         onClick={() => setSelectedMedia(media)}
+                                        showContextLabel={
+                                            viewMode === 'Watching'
+                                                ? (media.tmdb_status !== 'Ended' && media.tmdb_status !== 'Canceled')
+                                                : (viewMode === 'Upcoming')
+                                        }
                                     />
                                 )}
                             </div>
