@@ -1,13 +1,14 @@
-import { Plus, Dice5 } from 'lucide-react';
+import { Plus, Dice5, Shuffle } from 'lucide-react';
 
 interface FABProps {
     onClick?: () => void;
     onRandom?: () => void;
+    onShuffle?: () => void;
     hideRandom?: boolean;
     mode?: 'add' | 'random' | 'both';
 }
 
-export const FAB = ({ onClick, onRandom, hideRandom, mode = 'both' }: FABProps) => {
+export const FAB = ({ onClick, onRandom, onShuffle, hideRandom, mode = 'both' }: FABProps) => {
 
     // Helper to render Random Button
     const renderRandom = (isMain: boolean) => (
@@ -24,6 +25,15 @@ export const FAB = ({ onClick, onRandom, hideRandom, mode = 'both' }: FABProps) 
     if (mode === 'random') {
         return (
             <div className="fab-container">
+                {onShuffle && (
+                    <button
+                        className="fab-btn secondary-fab"
+                        onClick={onShuffle}
+                        title="Shuffle List"
+                    >
+                        <Shuffle size={20} />
+                    </button>
+                )}
                 {renderRandom(true)}
             </div>
         );
@@ -31,6 +41,16 @@ export const FAB = ({ onClick, onRandom, hideRandom, mode = 'both' }: FABProps) 
 
     return (
         <div className="fab-container">
+            {onShuffle && (
+                <button
+                    className="fab-btn secondary-fab"
+                    onClick={onShuffle}
+                    title="Shuffle List"
+                >
+                    <Shuffle size={20} />
+                </button>
+            )}
+
             {(!hideRandom && mode !== 'add') && renderRandom(false)}
 
             {(

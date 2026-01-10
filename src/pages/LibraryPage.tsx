@@ -103,7 +103,9 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
         }
     };
 
-    const [sortOption, setSortOption] = useState<'date_added' | 'rating' | 'release_date' | 'runtime' | 'random'>('random'); // Default Random Sort
+    const [sortOption, setSortOption] = useState<'date_added' | 'rating' | 'release_date' | 'runtime'>('rating');
+    const [isShuffled, setIsShuffled] = useState(false);
+    const [shuffleKey, setShuffleKey] = useState(0);
     const [isSortOpen, setIsSortOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const sortRef = useRef<HTMLDivElement>(null);
@@ -388,9 +390,6 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
                 }
                 case 'runtime':
                     return calculateMediaRuntime(a) - calculateMediaRuntime(b); // Shortest first
-                case 'random':
-                    // Fisher-Yates Shuffle is not a comparator, handling separately below
-                    return 0;
                 case 'date_added':
                 default:
                     return 0; // Default order
@@ -398,22 +397,20 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
         });
     }, [filteredLibrary, sortOption, tmdbType, viewMode]);
 
-    // Apply Random Shuffle if selected
-    // Note: We use a separate memo or effect if we want to avoid re-shuffling on every render, 
-    // but putting it in the useMemo above is safer for consistency, except sort() expects a comparator.
-    // Better approach: Transform the array fully.
-
     const finalDisplayLibrary = useMemo(() => {
         const result = [...sortedLibrary];
-        if (sortOption === 'random') {
+
+        if (isShuffled) {
             // Fisher-Yates Shuffle
             for (let i = result.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [result[i], result[j]] = [result[j], result[i]];
             }
         }
+
         return result;
-    }, [sortedLibrary, sortOption]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [sortedLibrary, isShuffled, shuffleKey]);
 
     // Total Count Calculation for Debugging (User Request: "10/11")
     const totalCount = useMemo(() => {
@@ -527,13 +524,13 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
                                         { id: 'date_added', label: 'Date Added' },
                                         { id: 'rating', label: 'Highest Rated' },
                                         { id: 'release_date', label: 'Newest Release' },
-                                        { id: 'runtime', label: 'Shortest Runtime' },
-                                        { id: 'random', label: 'Random Shuffle' }
+                                        { id: 'runtime', label: 'Shortest Runtime' }
                                     ].map(opt => (
                                         <button
                                             key={opt.id}
                                             onClick={() => {
-                                                setSortOption(opt.id as 'date_added' | 'rating' | 'release_date' | 'runtime' | 'random');
+                                                setSortOption(opt.id as 'date_added' | 'rating' | 'release_date' | 'runtime');
+                                                setIsShuffled(false);
                                                 setIsSortOpen(false);
                                             }}
                                             style={{
@@ -698,6 +695,10 @@ export const LibraryPage = ({ title, subtitle, watchlistType, tmdbType, emptyMes
 
             <FAB
                 mode="random"
+                onShuffle={() => {
+                    setIsShuffled(true);
+                    setShuffleKey(k => k + 1);
+                }}
                 onRandom={() => {
                     const pool = filteredLibrary.length > 0 ? filteredLibrary : library;
                     if (pool.length > 0) {
