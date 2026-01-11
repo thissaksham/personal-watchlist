@@ -7,7 +7,7 @@ import { FranchiseOverlay } from '../components/FranchiseOverlay';
 import { useGameLibrary } from '../hooks/useGameLibrary';
 import type { Franchise, Game } from '../../../types';
 import '../styles/GameCards.css';
-import styles from '../../../components/ui/SmartPillButton.module.css';
+import styles from '../../../shared/components/ui/SmartPillButton.module.css';
 
 import { PlatformSelector } from '../components/PlatformSelector';
 

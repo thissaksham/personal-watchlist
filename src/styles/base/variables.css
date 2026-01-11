@@ -1,0 +1,42 @@
+/**
+ * CSS Variables
+ * Design tokens and theme variables.
+ */
+
+:root {
+  /* Primary Colors */
+  --primary: #14b8a6;
+  --primary-hover: #0d9488;
+  
+  /* Background Colors */
+  --background: #121212;
+  --surface: #1e1e1e;
+  --surface-hover: #2a2a2a;
+  
+  /* Text Colors */
+  --text-primary: #f3f4f6;
+  --text-secondary: #9ca3af;
+  
+  /* Border */
+  --border: #374151;
+  
+  /* Semantic Colors */
+  --error: #ef4444;
+  --error-hover: #dc2626;
+  --success: #10b981;
+  --warning: #fbbf24;
+  
+  /* Spacing */
+  --radius: 12px;
+  --header-height: 64px;
+  
+  /* Shadows */
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  
+  /* Glass Effect */
+  --glass-background: rgba(22, 22, 22, 0.6);
+  --glass-border: 1px solid rgba(255, 255, 255, 0.08);
+}

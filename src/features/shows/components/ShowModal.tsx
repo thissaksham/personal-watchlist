@@ -7,9 +7,9 @@ import { useWatchlist } from '../../watchlist/context/WatchlistContext';
 import { usePreferences } from '../../../context/PreferencesContext';
 import { calculateShowStats, getWatchProviders, getWatchLink } from '../../../utils/mediaUtils';
 import { isSeasonOngoing } from '../../../lib/watchlist-shared';
-import { CommonModalHero } from '../../media/components/CommonModalHero';
-import { CommonModalSidebar } from '../../media/components/CommonModalSidebar';
-import { TrailerOverlay } from '../../media/components/TrailerOverlay';
+import { CommonModalHero } from '../../../shared/components/modals/CommonModalHero';
+import { CommonModalSidebar } from '../../../shared/components/modals/CommonModalSidebar';
+import { TrailerOverlay } from '../../../shared/components/modals/TrailerOverlay';
 
 interface ShowModalProps {
     media: TMDBMedia;

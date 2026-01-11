@@ -7,8 +7,8 @@ import { useDebounce } from '../hooks/useDebounce';
 import type { TMDBMedia } from '../../../lib/tmdb';
 import type { Game } from '../../../types';
 import { useWatchlist } from '../../watchlist/context/WatchlistContext';
-import { SlidingToggle } from '../../../components/ui/SlidingToggle';
-import { DiscoveryCard } from '../../media/components/cards/DiscoveryCard';
+import { SlidingToggle } from '../../../shared/components/ui/SlidingToggle';
+import { DiscoveryCard } from '../../../shared/components/cards/DiscoveryCard';
 import { GameDiscoveryCard } from '../../games/components/GameDiscoveryCard';
 
 

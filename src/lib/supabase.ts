@@ -1,11 +1,6 @@
-import { createClient } from '@supabase/supabase-js';
+/**
+ * @deprecated Import from '@/lib/api/supabase' or '@/lib' instead.
+ * This file is kept for backwards compatibility.
+ */
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Missing Supabase Environment Variables');
-  alert('Missing Supabase Environment Variables! Check your .env.local file.');
-}
-
-export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '');
+export { supabase } from './api/supabase';

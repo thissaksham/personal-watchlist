@@ -1,5 +1,5 @@
 
-import { LibraryPage } from '../../../pages/LibraryPage';
+import { LibraryPage } from '../../../shared/pages/LibraryPage';
 
 export const MoviesPage = () => {
     return (

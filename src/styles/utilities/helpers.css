@@ -1,0 +1,55 @@
+/**
+ * Helper Utilities
+ * Common utility classes.
+ */
+
+/* Flexbox utilities */
+.flex-center {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.u-full-center {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.u-vstack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Text utilities */
+.u-text-gray {
+  color: var(--text-secondary);
+}
+
+/* Spacing utilities */
+.mb-6 {
+  margin-bottom: 2.5rem !important;
+}
+
+/* Scrollbar utilities */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Selection utilities */
+.select-none {
+  user-select: none;
+}
+
+/* Rotation */
+.rotate-180 {
+  transform: rotate(180deg);
+}

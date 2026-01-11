@@ -1,0 +1,84 @@
+/* Variable Mapping */
+.pill-button {
+    --button-z: 0;
+    --button-highlight: 1;
+    --button-selection: 2;
+    --highlight-color: var(--primary, #14b8a6);
+    --bg-color: rgba(45, 45, 45, 0.5);
+    --text-active: #fff;
+    --text-inactive: #9ca3af;
+
+    display: inline-flex;
+    align-items: center;
+    position: relative;
+    padding: 4px;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 14px;
+    background: var(--bg-color);
+    border-radius: 50px;
+    color: var(--text-inactive);
+    z-index: var(--button-z);
+    user-select: none;
+
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow:
+        0 4px 10px rgba(0, 0, 0, 0.3),
+        inset 0 2px 6px rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    transition: all 0.3s ease;
+}
+
+.pill-button:hover {
+    background: rgba(70, 70, 70, 0.7);
+    box-shadow:
+        0 8px 20px rgba(0, 0, 0, 0.4),
+        inset 0 2px 8px rgba(255, 255, 255, 0.1);
+}
+
+.pill-button_disabled {
+    opacity: 0.5;
+    filter: grayscale(0.8);
+    cursor: not-allowed;
+    pointer-events: none;
+    background: rgba(45, 45, 45, 0.3) !important;
+    box-shadow: none !important;
+}
+
+.pill-button_disabled .pill-button-selection {
+    cursor: not-allowed;
+    color: var(--text-inactive) !important;
+}
+
+.pill-button-input {
+    display: none;
+    visibility: hidden;
+}
+
+.pill-button-highlight {
+    transform: translate(0, -50%);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: absolute;
+    top: 50%;
+    left: 4px;
+    height: calc(100% - 8px);
+    background: var(--highlight-color);
+    border-radius: 50px;
+    z-index: var(--button-highlight);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.pill-button-selection {
+    transition: color 0.3s;
+    display: inline-block;
+    position: relative;
+    padding: 0.5em 1em;
+    cursor: pointer;
+    z-index: var(--button-selection);
+    font-weight: 500;
+}
+
+.pill-button-selection_active {
+    color: var(--text-active);
+    font-weight: 600;
+}
